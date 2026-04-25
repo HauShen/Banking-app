@@ -2,6 +2,8 @@
 docker compose up -d
 docker compose down
 
+V1__user_table_create
+
 CREATE TABLE users (
     id VARCHAR PRIMARY KEY,
     role VARCHAR(20) NOT NULL,
