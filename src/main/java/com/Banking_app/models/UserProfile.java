@@ -23,9 +23,8 @@ import java.util.UUID;
 @Setter
 public class UserProfile {
     @Id
-    @GeneratedValue
     @Column(name = "id")
-    private UUID id;
+    private String id;
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private UserRole role;
@@ -44,7 +43,7 @@ public class UserProfile {
     private List<Account> accounts;
 
 
-    public UserProfile(UUID id, UserRole role, String fullName, String email, String password, Instant createdAt, Instant updatedAt){
+    public UserProfile(String id, UserRole role, String fullName, String email, String password, Instant createdAt, Instant updatedAt){
         this.id = id;
         this.role = role;
         this.fullName = fullName;

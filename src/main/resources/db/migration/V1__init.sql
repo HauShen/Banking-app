@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    id BIGSERIAL PRIMARY KEY,
+    id VARCHAR PRIMARY KEY,
     role VARCHAR(20) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -21,6 +21,7 @@ CREATE TABLE accounts (
         REFERENCES users(id)
         ON DELETE CASCADE
 );
+CONSTRAINT fk_article_user FOREIGN KEY (user_id) REFERENCES user_profile(user_id)
 
 CREATE TABLE transactions (
     id BIGSERIAL PRIMARY KEY,
