@@ -8,8 +8,8 @@ services:
       - "127.0.0.1:15432:5432"
     environment:
       POSTGRES_PASSWORD: abc123
-      POSTGRES_USER: admin
-      POSTGRES_DB: news
+      POSTGRES_USER: hau
+      POSTGRES_DB: banking
     command: >
       postgres -c shared_preload_libraries='pg_stat_statements'
     networks:
