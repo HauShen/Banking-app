@@ -34,11 +34,11 @@ CREATE TABLE transactions (
     description VARCHAR(255),
     created_at TIMESTAMP,
 
-    CONSTRAINT fk_tx_from_account
+    CONSTRAINT fk_tx_from_accounts
         FOREIGN KEY (from_account_id)
         REFERENCES accounts(id),
 
-    CONSTRAINT fk_tx_to_account
+    CONSTRAINT fk_tx_to_accounts
         FOREIGN KEY (to_account_id)
         REFERENCES accounts(id),
 
@@ -56,7 +56,7 @@ CREATE TABLE ledger_entries (
     balance_after NUMERIC(19,2) NOT NULL,
     created_at TIMESTAMP,
 
-    CONSTRAINT fk_ledger_account
+    CONSTRAINT fk_ledger_accounts
         FOREIGN KEY (account_id)
         REFERENCES accounts(id)
         ON DELETE CASCADE,
@@ -75,10 +75,11 @@ CREATE INDEX idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX idx_accounts_account_number ON accounts(account_number);
 
 -- Transactions
-CREATE INDEX idx_tx_from_account ON transactions(from_account_id);
-CREATE INDEX idx_tx_to_account ON transactions(to_account_id);
+CREATE INDEX idx_tx_from_accounts ON transactions(from_account_id);
+CREATE INDEX idx_tx_to_accounts ON transactions(to_account_id);
 CREATE INDEX idx_tx_created_at ON transactions(created_at);
 
 -- Ledger
-CREATE INDEX idx_ledger_account ON ledger_entries(account_id);
+CREATE INDEX idx_ledger_accounts ON ledger_entries(account_id);
 CREATE INDEX idx_ledger_transaction ON ledger_entries(transaction_id);
+

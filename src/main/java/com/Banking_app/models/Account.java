@@ -47,10 +47,10 @@ public class Account {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<Ledger> ledgers;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "fromAccount,", cascade = CascadeType.ALL, orphanRemoval = true )
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "fromAccount", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<Transaction> outgoingTransactions;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "toAccount,", cascade = CascadeType.ALL, orphanRemoval = true )
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "toAccount", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<Transaction> incomingTransactions;
 
     public Account(Long id, UserProfile user, String accountNumber, AccountType accountType, AccountStatus accountStatus, Instant createdAt){
