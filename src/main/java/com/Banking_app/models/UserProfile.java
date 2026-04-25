@@ -13,7 +13,7 @@ import lombok.Data;
 import jakarta.persistence.CascadeType;
 import lombok.Getter;
 import lombok.Setter;
-
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +21,7 @@ import java.util.UUID;
 @Entity
 @Getter
 @Setter
+@Table(name = "users")
 public class UserProfile {
     @Id
     @Column(name = "id")
