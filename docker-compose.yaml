@@ -5,23 +5,16 @@ services:
     image: postgres:17
     container_name: postgresForBanking
     ports:
-      - "127.0.0.1:8000:5432"
+      - "127.0.0.1:7000:5432"
     environment:
       POSTGRES_PASSWORD: abc123
       POSTGRES_USER: hau
-      POSTGRES_DB: banking_app
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      POSTGRES_DB: news
     command: >
       postgres -c shared_preload_libraries='pg_stat_statements'
-
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  postgres_data:
-
