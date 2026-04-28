@@ -3,6 +3,9 @@ package com.Banking_app.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -11,10 +14,17 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.security.Key;
 
 @Service
 public class JWTUtility {
-    private static final String SECRET_KEY = "your-very-long-secret-key-here";
+    private String SECRET_KEY_STRING = "MySuperSecretKeyForBankingApplicationThatIsLongEnough";
+    private Key SECRET_KEY;
+    @PostConstruct
+    public void init(){
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY_STRING);
+        this.SECRET_KEY = Keys.hmacShaKeyFor(keyBytes);
+    }
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
