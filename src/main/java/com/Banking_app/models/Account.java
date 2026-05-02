@@ -31,7 +31,7 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    private Long id;
+    private Long accountId;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
@@ -55,8 +55,8 @@ public class Account {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "toAccount", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Transaction> incomingTransactions;
 
-    public Account(Long id, UserProfile user, String accountNumber, AccountType accountType, AccountStatus accountStatus, Instant createdAt){
-        this.id = id;
+    public Account(Long accountId, UserProfile user, String accountNumber, AccountType accountType, AccountStatus accountStatus, Instant createdAt){
+        this.accountId = accountId;
         this.user = user;
         this.accountNumber = accountNumber;
         this.accountType = accountType;

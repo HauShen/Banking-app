@@ -36,9 +36,11 @@ public class SecurityConfig{
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/users/create").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/accounts/create").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
+
                 .httpBasic(Customizer.withDefaults()); // temporary for testing
 
         return http.build();

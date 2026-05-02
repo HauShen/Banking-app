@@ -19,10 +19,22 @@ curl -X POST http://localhost:8080/authenticate \
 -H "Content-Type: application/json" \
 -d '{"username":"user","password":"password"}'
 
-
+Create User
 curl -i -X POST "http://localhost:8080/api/users/create" \
   -H "Content-Type: application/json" \
   -d '{"username":"Hau","fullName":"HauShen","email":"xxx@gmail.com","role":"CUSTOMER","password":"12345678"}'
+
+
+Get user with UserId
+    curl -v -X GET http://localhost:8080/api/users/ecd1f7b2-322f-47b7-ae83-e14e37430795
+
+
+ Create account with UserId
+  curl -i -X POST "http://localhost:8080/api/accounts/create" \
+    -u Hau:$2a$10$GZ64s2xO/hi6ypIW1hitYOeTSFLqMqAgg7fcr5OO7tig5PBLOnyRi \
+    -H "Content-Type: application/json" \
+    -d '{"userId":"ecd1f7b2-322f-47b7-ae83-e14e37430795","accountType":"SAVINGS"}'
+
 
 //Get User By UserId
 curl -v -X GET http://localhost:8080/user/get/e1e031f3-0f27-4524-a2cb-934c9648d132
