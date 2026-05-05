@@ -27,7 +27,7 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "transactions",uniqueConstraints = {
-        @UniqueConstraint(name = "uk_transactions_reference", columnNames = "reference"),
+        @UniqueConstraint(name = "uk_transactions_reference", columnNames = "reference_number"),
         @UniqueConstraint(name = "uk_transactions_idempotency_key", columnNames = "idempotency_key")
         })
 public class Transaction {

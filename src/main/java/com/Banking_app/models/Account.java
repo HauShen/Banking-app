@@ -1,5 +1,6 @@
 package com.Banking_app.models;
 
+import com.Banking_app.models.enums.AccountCurrency;
 import com.Banking_app.models.enums.AccountStatus;
 import com.Banking_app.models.enums.AccountType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -36,17 +37,20 @@ public class Account {
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private UserProfile user;
-    @Column(name = "account_number",unique = true, nullable = false)
+    @Column(name = "account_number",unique = true, nullable = false, length = 30)
     private String accountNumber;
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_type")
+    @Column(name = "account_type",nullable = false, length = 30)
     private AccountType accountType;
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status")
+    @Column(name = "account_status",nullable = false, length = 30)
     private AccountStatus accountStatus;
-    @Column(name = "created_at")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_currency",nullable = false, length = 3)
+    private AccountCurrency accountCurrency = AccountCurrency.MYR;;
+    @Column(name = "created_at",nullable = false)
     private Instant createdAt;
-    @Column(name = "current_balance")
+    @Column(name = "current_balance",nullable = false, precision = 19, scale = 2)
     private BigDecimal currentBalance;
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<LedgerEntry> ledgerEntries;

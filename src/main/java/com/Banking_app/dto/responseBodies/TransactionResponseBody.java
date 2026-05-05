@@ -1,11 +1,15 @@
 package com.Banking_app.dto.responseBodies;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 @Data
-@Builder
+@Getter
+@Setter
 public class TransactionResponseBody {
     private String reference;
     private Long fromAccountId;

@@ -28,11 +28,20 @@ curl -X POST http://localhost:8080/authenticate \
 Create User
 curl -i -X POST "http://localhost:8080/api/users/create" \
   -H "Content-Type: application/json" \
-  -d '{"username":"Hau","fullName":"HauShen","email":"xxx@gmail.com","role":"CUSTOMER","password":"12345678"}'
+  -d '{"username":"Hau1","fullName":"HauShen","email":"xax@gmail.com","role":"CUSTOMER","password":"12345678"}'
+
+Login
+curl -i -X POST "http://localhost:8080/api/auth/authenticate" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"Hau","password":"$2a$10$3nhxqzBUuAICMqRNIwqVlOw9RGoYiZd2VMZkv0U9j4psFaHqF3ETK"}'
+
+Get by Username
 
 
-Get user with UserId
-    curl -v -X GET http://localhost:8080/api/users/ecd1f7b2-322f-47b7-ae83-e14e37430795
+Get user with User name
+ curl -i -X GET "http://localhost:8080/api/users/by-username/Hau" \
+     -u Hau:$2a$10$GZ64s2xO/hi6ypIW1hitYOeTSFLqMqAgg7fcr5OO7tig5PBLOnyRi \
+     -H "Content-Type: application/json" \
 
 
  Create account with UserId
@@ -68,90 +77,5 @@ com.bankapp
  └── config
 
 V1__user_table_create
-
-CREATE TABLE users (
-    id VARCHAR PRIMARY KEY,
-    role VARCHAR(20) NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
-);
-
-CREATE TABLE accounts (
-    id BIGSERIAL PRIMARY KEY,
-    user_id VARCHAR (255) NOT NULL,
-    account_number VARCHAR(30) NOT NULL UNIQUE,
-    account_type VARCHAR(20) NOT NULL,
-    account_status VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP,
-
-    CONSTRAINT fk_accounts_users
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
-);
-
-CREATE TABLE transactions (
-    id BIGSERIAL PRIMARY KEY,
-    reference_number VARCHAR(100) NOT NULL UNIQUE,
-
-    from_account_id BIGSERIAL NOT NULL,
-    to_account_id BIGSERIAL NOT NULL,
-
-    amount NUMERIC(19,2) NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    description VARCHAR(255),
-    created_at TIMESTAMP,
-
-    CONSTRAINT fk_tx_from_accounts
-        FOREIGN KEY (from_account_id)
-        REFERENCES accounts(id),
-
-    CONSTRAINT fk_tx_to_accounts
-        FOREIGN KEY (to_account_id)
-        REFERENCES accounts(id),
-
-    CONSTRAINT chk_amount_positive CHECK (amount > 0)
-);
-
-CREATE TABLE ledger_entries (
-    id BIGSERIAL PRIMARY KEY,
-
-    account_id BIGSERIAL NOT NULL,
-    transaction_id BIGSERIAL NOT NULL,
-
-    ledger_type VARCHAR(10) NOT NULL,
-    amount NUMERIC(19,2) NOT NULL,
-    balance_after NUMERIC(19,2) NOT NULL,
-    created_at TIMESTAMP,
-
-    CONSTRAINT fk_ledger_accounts
-        FOREIGN KEY (account_id)
-        REFERENCES accounts(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_ledger_transaction
-        FOREIGN KEY (transaction_id)
-        REFERENCES transactions(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT chk_ledger_type
-        CHECK (ledger_type IN ('DEBIT', 'CREDIT'))
-);
-
--- Accounts
-CREATE INDEX idx_accounts_user_id ON accounts(user_id);
-CREATE INDEX idx_accounts_account_number ON accounts(account_number);
-
--- Transactions
-CREATE INDEX idx_tx_from_accounts ON transactions(from_account_id);
-CREATE INDEX idx_tx_to_accounts ON transactions(to_account_id);
-CREATE INDEX idx_tx_created_at ON transactions(created_at);
-
--- Ledger
-CREATE INDEX idx_ledger_accounts ON ledger_entries(account_id);
-CREATE INDEX idx_ledger_transactions ON ledger_entries(transaction_id);
 
 

@@ -4,6 +4,7 @@ import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
 import com.Banking_app.models.Account;
 import com.Banking_app.models.UserProfile;
+import com.Banking_app.models.enums.AccountCurrency;
 import com.Banking_app.models.enums.AccountStatus;
 import com.Banking_app.repositories.AccountRepository;
 import com.Banking_app.repositories.UserProfileRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.Banking_app.dto.mappers.AccountMapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -43,6 +45,7 @@ public class AccountServiceImpl implements AccountService {
         account.setUser(user);
         account.setAccountType(accountRequestBody.getAccountType());
         account.setAccountStatus(accountRequestBody.getAccountStatus() != null ? accountRequestBody.getAccountStatus() : AccountStatus.ACTIVE);
+        account.setCurrentBalance(new BigDecimal("20.00"));
         account.setCreatedAt(Instant.now());
         account.setAccountNumber(generateUniqueAccountNumber()); // Generate unique account number in service
 

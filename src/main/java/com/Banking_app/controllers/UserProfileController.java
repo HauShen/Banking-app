@@ -43,12 +43,12 @@ public class UserProfileController {
                         );
         return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
     }
-    @GetMapping("/{id}")
+    @GetMapping("/get-by-id/{id}")
     public ResponseEntity<UserProfileResponseBody> getById(@PathVariable String id){
         UserProfile user = userProfileService.getById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return ResponseEntity.ok(userProfileMapper.toResponse(user));
     }
-    @GetMapping("/by-username/{username}")
+    @GetMapping("/get-by-username/{username}")
     public ResponseEntity<UserProfileResponseBody> getByUsername(@PathVariable String username){
         UserProfile user = userProfileService.getByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return ResponseEntity.ok(userProfileMapper.toResponse(user));
