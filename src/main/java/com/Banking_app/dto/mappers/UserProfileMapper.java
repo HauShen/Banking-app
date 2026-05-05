@@ -1,5 +1,6 @@
-package com.Banking_app.dto;
+package com.Banking_app.dto.mappers;
 
+import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
 import com.Banking_app.models.UserProfile;
 import org.springframework.stereotype.Component;
 @Component

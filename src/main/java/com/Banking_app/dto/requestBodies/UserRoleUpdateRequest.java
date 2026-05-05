@@ -1,4 +1,4 @@
-package com.Banking_app.dto;
+package com.Banking_app.dto.requestBodies;
 import com.Banking_app.models.enums.UserRole;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

@@ -15,7 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,7 +26,10 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-@Table(name = "transactions")
+@Table(name = "transactions",uniqueConstraints = {
+        @UniqueConstraint(name = "uk_transactions_reference", columnNames = "reference"),
+        @UniqueConstraint(name = "uk_transactions_idempotency_key", columnNames = "idempotency_key")
+        })
 public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,10 +58,14 @@ public class Transaction {
     private String description;
     @Column(name = "created_at")
     private Instant createdAt;
+    @Column(name = "success_at")
+    private Instant successAt;
+    @Column(name = "idempotency_key", nullable = false, length = 100, unique = true)
+    private String idempotencyKey;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true )
-    private List<Ledger> ledgers;
-    public Transaction(Long id,String referenceNumber,Account fromAccount, Account toAccount, BigDecimal amount, TransactionStatus status, String description, Instant createdAt){
+    private List<LedgerEntry> ledgerEntries;
+    public Transaction(Long id,String referenceNumber,Account fromAccount, Account toAccount, BigDecimal amount, TransactionStatus status, String description, Instant createdAt, Instant successAt){
         this.id = id;
         this.referenceNumber = referenceNumber;
         this.fromAccount = fromAccount;
@@ -67,6 +74,7 @@ public class Transaction {
         this.status = status;
         this.description = description;
         this.createdAt = createdAt;
+        this.successAt = successAt;
     }
 
     public Transaction(){}

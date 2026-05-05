@@ -1,5 +1,4 @@
 package com.Banking_app.serviceImpl;
-import com.Banking_app.dto.UserProfileMapper;
 import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.models.UserProfile;
 import com.Banking_app.models.enums.UserRole;

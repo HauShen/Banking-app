@@ -1,6 +1,8 @@
 package com.Banking_app.controllers;
 
-import com.Banking_app.dto.*;
+import com.Banking_app.dto.mappers.UserProfileMapper;
+import com.Banking_app.dto.requestBodies.UserProfileRequestBody;
+import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
 import com.Banking_app.models.UserProfile;
 import com.Banking_app.models.enums.UserRole;
 import com.Banking_app.service.MyUserDetailsService;
@@ -32,7 +34,8 @@ class UserProfileControllerTest {
     @Autowired ObjectMapper objectMapper;
 
     @MockitoBean UserProfileService userProfileService;
-    @MockitoBean UserProfileMapper userProfileMapper;
+    @MockitoBean
+    UserProfileMapper userProfileMapper;
     @MockitoBean MyUserDetailsService myUserDetailsService;
 
     @Test

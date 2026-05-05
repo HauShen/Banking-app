@@ -15,11 +15,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.Data;
 import jakarta.persistence.CascadeType;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -46,8 +46,10 @@ public class Account {
     private AccountStatus accountStatus;
     @Column(name = "created_at")
     private Instant createdAt;
+    @Column(name = "current_balance")
+    private BigDecimal currentBalance;
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true )
-    private List<Ledger> ledgers;
+    private List<LedgerEntry> ledgerEntries;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "fromAccount", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Transaction> outgoingTransactions;
@@ -55,13 +57,14 @@ public class Account {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "toAccount", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Transaction> incomingTransactions;
 
-    public Account(Long accountId, UserProfile user, String accountNumber, AccountType accountType, AccountStatus accountStatus, Instant createdAt){
+    public Account(Long accountId, UserProfile user, String accountNumber, AccountType accountType, AccountStatus accountStatus, Instant createdAt, BigDecimal currentBalance){
         this.accountId = accountId;
         this.user = user;
         this.accountNumber = accountNumber;
         this.accountType = accountType;
         this.accountStatus = accountStatus;
         this.createdAt = createdAt;
+        this.currentBalance = currentBalance;
     }
     public Account(){}
 }

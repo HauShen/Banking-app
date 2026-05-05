@@ -1,4 +1,4 @@
-package com.Banking_app.dto;
+package com.Banking_app.dto.requestBodies;
 
 import lombok.Data;
 import lombok.Getter;

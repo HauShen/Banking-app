@@ -1,17 +1,16 @@
 package com.Banking_app.controllers;
 
-import com.Banking_app.dto.UserProfileMapper;
-import com.Banking_app.dto.UserProfileRequestBody;
-import com.Banking_app.dto.UserProfileResponseBody;
-import com.Banking_app.dto.UserProfileUpdateRequestBody;
-import com.Banking_app.dto.UserRoleUpdateRequest;
+import com.Banking_app.dto.mappers.UserProfileMapper;
+import com.Banking_app.dto.requestBodies.UserProfileRequestBody;
+import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
+import com.Banking_app.dto.requestBodies.UserProfileUpdateRequestBody;
+import com.Banking_app.dto.requestBodies.UserRoleUpdateRequest;
 import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.models.UserProfile;
 import com.Banking_app.service.UserProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;

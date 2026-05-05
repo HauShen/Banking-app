@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +23,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @Table(name = "ledgers")
-public class Ledger {
+public class LedgerEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -48,16 +47,16 @@ public class Ledger {
     @Column(name = "balance_after")
     private BigDecimal balanceAfter;
     @Column(name = "created_at")
-    private Instant createdAt;
-    public Ledger(Long id, Account account, Transaction transaction, LedgerType ledgerType, BigDecimal amount, BigDecimal balanceAfter, Instant createdAt){
+    private Instant postedAt;
+    public LedgerEntry(Long id, Account account, Transaction transaction, LedgerType ledgerType, BigDecimal amount, BigDecimal balanceAfter, Instant postedAt){
         this.id = id;
         this.account = account;
         this.transaction = transaction;
         this.ledgerType = ledgerType;
         this.amount =amount;
         this.balanceAfter = balanceAfter;
-        this.createdAt = createdAt;
+        this.postedAt = postedAt;
     }
 
-    public Ledger(){}
+    public LedgerEntry(){}
 }
