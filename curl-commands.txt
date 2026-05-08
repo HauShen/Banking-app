@@ -2,22 +2,19 @@
 docker compose up -d
 docker compose down
 
-I am building a banking simulator for strengthen my portfolio.
-So I might have higner chance to get Junior Developver job in Malaysia.
+I want to build a React frontend for my banking simulator
+So I can use this app for strengthen my portfolio, then I might have higher chance to get Junior Developer job in Malaysia.
+
+I am building a banking simulator,  so I might have higher chance to get Junior Developer job in Malaysia.
+Here is my UserProfile controller, I wish updateRole() and delete() can only for ADMIN use.
+Should I implement JWT Authentication?
 Look at my Banking-app repository.
 What should I build service,DTO, and business logic between Transaction and Ledger?
 
+Generate Base64 secret:
+openssl rand -base64 64
 
-In SecurityConfig
-/*       http.csrf(AbstractHttpConfigurer::disable) // Disable CSRF
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/authenticate").permitAll() // Allow authentication endpoint
-                        .anyRequest().authenticated() // All other requests need authentication
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) ;// Use stateless sessions
 
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);// Add the JWT filter before the standard username/password filter
-
-        return http.build();*/
 
 
 
@@ -25,41 +22,47 @@ curl -X POST http://localhost:8080/authenticate \
 -H "Content-Type: application/json" \
 -d '{"username":"user","password":"password"}'
 
-Create User
-curl -i -X POST "http://localhost:8080/api/users/create" \
+Create User:
+curl -i -v -X POST "http://localhost:8080/api/auth/register" \
   -H "Content-Type: application/json" \
-  -d '{"username":"Hau1","fullName":"HauShen","email":"xax@gmail.com","role":"CUSTOMER","password":"12345678"}'
+  -d '{
+    "username": "alice3",
+    "fullName": "Alice Tan",
+    "email": "alice3@example.com",
+    "password": "Passw0rd123"
+  }'
 
-Login
-curl -i -X POST "http://localhost:8080/api/auth/authenticate" \
+User login:
+curl -s -X POST "http://localhost:8080/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"Hau","password":"$2a$10$3nhxqzBUuAICMqRNIwqVlOw9RGoYiZd2VMZkv0U9j4psFaHqF3ETK"}'
+  -d '{
+    "username": "alice3",
+    "password": "Passw0rd123"
+  }'
 
-Get by Username
+-You will get Bearer token when you login.
+
+Token response example:
+  {"accessToken":"eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiQ1VTVE9NRVIiLCJzdWIiOiJhbGljZTM
+                  iLCJpYXQiOjE3NzgwNTg0MjMsImV4cCI6MTc3ODA2MjAyM30.4d-Bj_nuzWoyqMRIgHNYrYn0GKu11js
+                  Ypg_2Z5Vls9o","tokenType":"Bearer","expiresIn":3600}* Connection #0 to host localhost left intact
+
+Get By UserId: (Use Bearer token you obtained before. )
+curl -i -X GET "http://localhost:8080/api/users/get-by-id/388a6de9-100e-4046-b18a-b917b957744c" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiQ1VTVE9NRVIiLCJzdWIiOiJhbGljZTMiLCJpYXQiOjE3NzgwNTg2NzgsImV4cCI6MTc3ODA2MjI3OH0.qTIg1mB9ERYv6ghnw4kUS0ZISqXwhnlOYSp-DtwtoEM"
+
+Get By UserName
+curl -i -X GET "http://localhost:8080/api/users/get-by-username/alice3" \
 
 
-Get user with User name
- curl -i -X GET "http://localhost:8080/api/users/by-username/Hau" \
-     -u Hau:$2a$10$GZ64s2xO/hi6ypIW1hitYOeTSFLqMqAgg7fcr5OO7tig5PBLOnyRi \
-     -H "Content-Type: application/json" \
+Update UserProfile with UserId
+curl -i -X PUT "http://localhost:8080/api/users/388a6de9-100e-4046-b18a-b917b957744c" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiQ1VTVE9NRVIiLCJzdWIiOiJhbGljZTMiLCJpYXQiOjE3NzgwNTg2NzgsImV4cCI6MTc3ODA2MjI3OH0.qTIg1mB9ERYv6ghnw4kUS0ZISqXwhnlOYSp-DtwtoEM" \
+  -d '{"fullName": "Alice","email": "alice3.updated@example.com"}'
 
 
- Create account with UserId
-  curl -i -X POST "http://localhost:8080/api/accounts/create" \
-    -u Hau:$2a$10$GZ64s2xO/hi6ypIW1hitYOeTSFLqMqAgg7fcr5OO7tig5PBLOnyRi \
-    -H "Content-Type: application/json" \
-    -d '{"userId":"ecd1f7b2-322f-47b7-ae83-e14e37430795","accountType":"SAVINGS"}'
-
-
-//Get User By UserId
-curl -v -X GET http://localhost:8080/user/get/e1e031f3-0f27-4524-a2cb-934c9648d132
-
-//Edit User Profile By UserId
-curl -v -X PUT -H "Content-Type: application/json" -d '{"name":"Hau", "age":15, "role": "NEWS_POSTER"}'  http://localhost:8080/user/update/e1e031f3-0f27-4524-a2cb-934c9648d132
-
-//Delete User by userId
-curl -X DELETE http://localhost:8080/article/delete/301
-
+-Remember, change these Bearer token everytime when you login.
 
 com.bankapp
  ├── auth

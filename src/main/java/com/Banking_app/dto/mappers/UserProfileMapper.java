@@ -5,7 +5,7 @@ import com.Banking_app.models.UserProfile;
 import org.springframework.stereotype.Component;
 @Component
 public class UserProfileMapper {
-    private UserProfileMapper(){}
+    public UserProfileMapper(){}
 
     public UserProfileResponseBody toResponse(UserProfile user){
         return UserProfileResponseBody.builder()

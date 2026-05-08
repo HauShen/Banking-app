@@ -47,7 +47,7 @@ public class UserProfileServiceImplTest {
         saved.setRole(UserRole.CUSTOMER);
 
         when(userProfileRepository.save(any(UserProfile.class))).thenReturn(saved);
-        UserProfile result = userProfileService.register("john", "John Doe", "john@mail.com", "1234", null);
+        UserProfile result = userProfileService.register("john", "John Doe", "john@mail.com", "1234");
         assertEquals("john", result.getUsername());
         assertEquals(UserRole.CUSTOMER, result.getRole());
         verify(passwordEncoder).encode("1234");

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,7 +30,7 @@ public class AccountController {
         this.accountService = accountService;
     }
     @PostMapping("/create")
-    public ResponseEntity<AccountResponseBody>createAccount(@Valid @RequestBody AccountRequestBody request){
+    public ResponseEntity<AccountResponseBody>createAccountByUserId(@Valid @RequestBody AccountRequestBody request){
         AccountResponseBody created = accountService.createAccountWithUserId(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -48,10 +49,12 @@ public class AccountController {
     public ResponseEntity<AccountResponseBody>getByAccountNumber(@PathVariable String accountNumber){
         return ResponseEntity.ok(accountService.getByAccountNumber(accountNumber));
     }
+    @PreAuthorize("hasRole('ADMIN')") // Only for Admin use.
     @PatchMapping("/{id}/status")
     public ResponseEntity<AccountResponseBody>updateStatus(@PathVariable Long id, @RequestParam AccountStatus status){
         return ResponseEntity.ok(accountService.updateAccountStatus(id, status));
     }
+    @PreAuthorize("hasRole('ADMIN')") // Only for Admin use.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         accountService.deleteAccount(id);

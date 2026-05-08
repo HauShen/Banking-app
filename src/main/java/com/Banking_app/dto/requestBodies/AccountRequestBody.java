@@ -13,8 +13,6 @@ public class AccountRequestBody {
     @NotNull(message = "accountType is required")
     private AccountType accountType; //SAVINGS or CURRENT
 
-    // Optional from API caller; defaults to ACTIVE in service if null
-    private AccountStatus accountStatus;
     public AccountRequestBody(){}
 
 }
