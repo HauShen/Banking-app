@@ -11,6 +11,7 @@ import com.Banking_app.service.UserProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,7 +21,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -38,10 +44,15 @@ public class UserProfileController {
                 userProfileRequestBody.getUsername(),
                 userProfileRequestBody.getFullName(),
                 userProfileRequestBody.getEmail(),
-                userProfileRequestBody.getPassword(),
-                userProfileRequestBody.getRole()
+                userProfileRequestBody.getPassword()
                         );
         return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
+    }
+    @GetMapping("get_all")
+    public ResponseEntity<Page<UserProfileResponseBody>> getAllUser(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int elements){
+        Page<UserProfile> users = userProfileService.findAllUsers(page,elements);
+        Page<UserProfileResponseBody> response = users.map(userProfileMapper::toResponse);
+        return ResponseEntity.ok(response);
     }
     @GetMapping("/get-by-id/{id}")
     public ResponseEntity<UserProfileResponseBody> getById(@PathVariable String id){
@@ -58,12 +69,14 @@ public class UserProfileController {
         UserProfile updatedUser = userProfileService.updateProfile(id, userProfileUpdateRequestBody.getFullName(), userProfileUpdateRequestBody.getEmail());
         return ResponseEntity.ok(userProfileMapper.toResponse(updatedUser));
     }
-    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/role")     // Only for Admin use.
     public ResponseEntity<UserProfileResponseBody> updateRole(@PathVariable String id, @Valid @RequestBody UserRoleUpdateRequest userRoleUpdateRequest){
         UserProfile updatedRole = userProfileService.updateRole(id,userRoleUpdateRequest.getRole());
         return ResponseEntity.ok(userProfileMapper.toResponse(updatedRole));
     }
-    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}") // Only for Admin use.
     public ResponseEntity<Void> delete(@PathVariable String id){
         userProfileService.deleteById(id);
         return ResponseEntity.noContent().build();

@@ -20,7 +20,6 @@ public class UserProfileRequestBody {
     @Email(message = "Invalid email format")
     private String email;
     // Optional from API, default in service if null
-    private UserRole role;
     @NotBlank(message = "Password is required")
     @Size(min = 8, max = 100, message = "Password must be 8-100 characters")
     private String password;

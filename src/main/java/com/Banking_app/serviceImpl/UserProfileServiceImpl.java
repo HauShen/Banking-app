@@ -4,6 +4,9 @@ import com.Banking_app.models.UserProfile;
 import com.Banking_app.models.enums.UserRole;
 import com.Banking_app.repositories.UserProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import com.Banking_app.service.UserProfileService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,7 +25,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         this.passwordEncoder = passwordEncoder;
     }
     @Override
-    public UserProfile register (String username, String fullName, String email, String rawPassword, UserRole role){
+    public UserProfile register (String username, String fullName, String email, String rawPassword){
         if (userProfileRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
         }
@@ -36,11 +39,16 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setFullName(fullName);
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(rawPassword));
-        user.setRole(role == null ? UserRole.CUSTOMER : role);
+        user.setRole(UserRole.CUSTOMER);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
         return userProfileRepository.save(user);
+    }
+    @Override
+    public Page<UserProfile> findAllUsers(int page, int elements){
+        Pageable tenUsersPerPage = PageRequest.of(page, elements);
+        return userProfileRepository.findAll(tenUsersPerPage);
     }
     @Override
     public Optional<UserProfile> getById(String id) {

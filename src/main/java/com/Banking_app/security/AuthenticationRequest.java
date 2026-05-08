@@ -1,24 +1,22 @@
 package com.Banking_app.security;
 import java.io.Serializable;
 
-public class AuthenticationRequest implements Serializable {
+import com.Banking_app.models.enums.UserRole;
+import lombok.Getter;
+import lombok.Setter;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+@Getter
+@Setter
+public class AuthenticationRequest {
+    @NotBlank
     private String username;
+    @NotBlank
+    private String fullName;
+    @Email
+    @NotBlank
+    private String email;
+    @NotBlank
     private String password;
-
-    // getters and setters
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    private UserRole role;
 }

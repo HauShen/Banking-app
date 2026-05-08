@@ -5,7 +5,7 @@ import com.Banking_app.dto.requestBodies.UserProfileRequestBody;
 import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
 import com.Banking_app.models.UserProfile;
 import com.Banking_app.models.enums.UserRole;
-import com.Banking_app.service.MyUserDetailsService;
+import com.Banking_app.security.CustomUserDetailsService;
 import com.Banking_app.service.UserProfileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,8 @@ class UserProfileControllerTest {
     @MockitoBean UserProfileService userProfileService;
     @MockitoBean
     UserProfileMapper userProfileMapper;
-    @MockitoBean MyUserDetailsService myUserDetailsService;
+    @MockitoBean
+    CustomUserDetailsService customUserDetailsService;
 
     @Test
     void register_shouldReturn201() throws Exception {
@@ -56,7 +57,7 @@ class UserProfileControllerTest {
                 .role(UserRole.CUSTOMER).createdAt(Instant.now()).updatedAt(Instant.now())
                 .build();
 
-        when(userProfileService.register(any(), any(), any(), any(), any())).thenReturn(created);
+        when(userProfileService.register(any(), any(), any(), any())).thenReturn(created);
         when(userProfileMapper.toResponse(created)).thenReturn(res);
 
         mockMvc.perform(post("/api/users/create")

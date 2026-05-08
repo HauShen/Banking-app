@@ -44,7 +44,7 @@ public class AccountServiceImpl implements AccountService {
         Account account = new Account();
         account.setUser(user);
         account.setAccountType(accountRequestBody.getAccountType());
-        account.setAccountStatus(accountRequestBody.getAccountStatus() != null ? accountRequestBody.getAccountStatus() : AccountStatus.ACTIVE);
+        account.setAccountStatus(AccountStatus.ACTIVE);
         account.setCurrentBalance(new BigDecimal("20.00"));
         account.setCreatedAt(Instant.now());
         account.setAccountNumber(generateUniqueAccountNumber()); // Generate unique account number in service

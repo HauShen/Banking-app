@@ -1,12 +1,17 @@
 package com.Banking_app.security;
-import java.io.Serializable;
-public class AuthenticationResponse implements Serializable{
-    private final String jwt;
+import lombok.Getter;
+import lombok.Setter;
 
-    public AuthenticationResponse(String jwt) {
-        this.jwt = jwt;
+import java.io.Serializable;
+@Getter
+public class AuthenticationResponse{
+    private String accessToken;
+    private String tokenType;
+    private long expiresIn;
+    public AuthenticationResponse(String accessToken, String tokenType, long expiresIn) {
+        this.accessToken = accessToken;
+        this.tokenType = tokenType;
+        this.expiresIn = expiresIn;
     }
-    public String getJwt() {
-        return jwt;
-    }
+    public AuthenticationResponse(){}
 }
