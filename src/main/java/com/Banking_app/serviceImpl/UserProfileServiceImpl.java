@@ -70,7 +70,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     public Page<UserProfile> findAllUsers(int page, int elements){
         Pageable pageable = PageRequest.of(page, elements, Sort.by(Sort.Direction.ASC, "username"));
-        return userProfileRepository.findAll(pageable );
+        return userProfileRepository.findAll(pageable);
     }
     @Override
     public Optional<UserProfile> getById(String id) {

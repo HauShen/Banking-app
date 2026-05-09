@@ -14,9 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.Banking_app.dto.mappers.AccountMapper;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -34,7 +36,7 @@ public class AccountServiceImpl implements AccountService {
         do {
             // Example: 10-digit random number
             accountNumber = String.valueOf((long)(1000000000L + Math.random() * 9000000000L));
-        } while (accountRepository.existsByAccountNumber(accountNumber));
+        } while (accountRepository.existsByAccountNumber(accountNumber)); //AccountNumber will not be duplicated.
         return accountNumber;
     }
     @Override
@@ -47,20 +49,13 @@ public class AccountServiceImpl implements AccountService {
         account.setAccountStatus(AccountStatus.ACTIVE);
         account.setCurrentBalance(new BigDecimal("20.00"));
         account.setCreatedAt(Instant.now());
-        account.setAccountNumber(generateUniqueAccountNumber()); // Generate unique account number in service
+
+        account.setAccountNumber(generateUniqueAccountNumber()); // Generate unique account number.
 
         Account savedAccount = accountRepository.save(account);
 
         // Map entity -> response DTO
-        AccountResponseBody response = new AccountResponseBody();
-        response.setAccountId(savedAccount.getAccountId());
-        response.setUserId(savedAccount.getUser().getId());
-        response.setAccountNumber(savedAccount.getAccountNumber());
-        response.setAccountType(savedAccount.getAccountType());
-        response.setAccountStatus(savedAccount.getAccountStatus());
-        response.setCreatedAt(savedAccount.getCreatedAt());
-
-    return response;
+    return AccountMapper.toResponse(savedAccount);
     }
     @Override
     @Transactional
@@ -83,9 +78,21 @@ public class AccountServiceImpl implements AccountService {
     }
     @Override
     @Transactional(readOnly = true)
+    public List<AccountResponseBody>getAllAccountsByUserId(String userId){
+        UserProfile user = userProfileRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+        List<Account> userAccounts = accountRepository.findAllByUserId(userId);
+        List<AccountResponseBody> userAccountsResponse = new ArrayList<>();
+        for(Account account : userAccounts){
+            userAccountsResponse.add(AccountMapper.toResponse(account));
+        }
+        return userAccountsResponse;
+    }
+    @Override
+    @Transactional(readOnly = true)
     public List<AccountResponseBody> getAccountsByStatus(AccountStatus status){
         return accountRepository.findByAccountStatus(status).stream().map(AccountMapper :: toResponse).toList();
     }
+
     @Override
     public AccountResponseBody updateAccountStatus(Long accountId,AccountStatus status){
         Account account = accountRepository.findById(accountId)

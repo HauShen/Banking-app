@@ -4,8 +4,7 @@ docker compose down
 
 I want to build a React frontend for my banking simulator
 So I can use this app for strengthen my portfolio, then I might have higher chance to get Junior Developer job in Malaysia.
-But first, some methods in controllers are only allowed to use by ADMIN.
-Can you give me guide me how to register ADMIN, then tell me how to create React frontend?
+Can you give me guide me to build React frontend step-by-step?
 
 I am building a banking simulator,  so I might have higher chance to get Junior Developer job in Malaysia.
 Here is my UserProfile controller, I wish updateRole() and delete() can only for ADMIN use.
