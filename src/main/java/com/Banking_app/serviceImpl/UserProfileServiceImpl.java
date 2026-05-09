@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import com.Banking_app.service.UserProfileService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -47,8 +48,8 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
     @Override
     public Page<UserProfile> findAllUsers(int page, int elements){
-        Pageable tenUsersPerPage = PageRequest.of(page, elements);
-        return userProfileRepository.findAll(tenUsersPerPage);
+        Pageable pageable = PageRequest.of(page, elements, Sort.by(Sort.Direction.ASC, "username"));
+        return userProfileRepository.findAll(pageable );
     }
     @Override
     public Optional<UserProfile> getById(String id) {
