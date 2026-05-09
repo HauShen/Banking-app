@@ -11,10 +11,10 @@ import jakarta.validation.constraints.Pattern;
 @Data
 @Builder
 public class TransferRequestBody {
-    @NotNull(message = "fromAccountId is required")
-    private Long fromAccountId;
-    @NotNull(message = "toAccountId is required")
-    private Long toAccountId;
+    @NotNull(message = "fromAccountNumber is required")
+    private String fromAccountNumber;
+    @NotNull(message = "fromAccountNumber is required")
+    private String toAccountNumber;
     @NotNull(message = "amount is required")
     @DecimalMin(value = "0.01", inclusive = true, message = "amount must be greater than 0")
     private BigDecimal amount;
@@ -24,9 +24,9 @@ public class TransferRequestBody {
     private String description;
     @NotBlank(message = "idempotencyKey is required")
     private String idempotencyKey;
-    public TransferRequestBody(Long fromAccountId, Long toAccountId, BigDecimal amount, BigDecimal currency, String description, String idempotencyKey){
-        this.fromAccountId = fromAccountId;
-        this.toAccountId = toAccountId;
+    public TransferRequestBody(String fromAccountNumber, String toAccountNumber, BigDecimal amount, BigDecimal currency, String description, String idempotencyKey){
+        this.fromAccountNumber = fromAccountNumber;
+        this.toAccountNumber = toAccountNumber;
         this.amount = amount;
         this.currency = currency;
         this.description = description;

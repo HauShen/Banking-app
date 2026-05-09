@@ -7,22 +7,24 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-@Data
 @Getter
 @Setter
 public class TransactionResponseBody {
     private String reference;
-    private Long fromAccountId;
-    private Long toAccountId;
+    private String fromAccountNumber;
+    private String toAccountNumber;
+    private String toAccountUserName;
     private BigDecimal amount;
     private String currency;
     private String status;
     private String description;
     private Instant createdAt;
     private Instant postedAt;
-    public TransactionResponseBody(String reference, Long fromAccountId, Long toAccountId, BigDecimal amount, String currency, String status, String description, Instant createdAt, Instant postedAt){
+    public TransactionResponseBody(String reference, String fromAccountNumber, String toAccountNumber,String toAccountUserName, BigDecimal amount, String currency, String status, String description, Instant createdAt, Instant postedAt){
         this.reference = reference;
-        this.fromAccountId = fromAccountId;
+        this.fromAccountNumber = fromAccountNumber;
+        this.toAccountNumber = toAccountNumber;
+        this.toAccountUserName = toAccountUserName;
         this.amount = amount;
         this.currency = currency;
         this.status = status;

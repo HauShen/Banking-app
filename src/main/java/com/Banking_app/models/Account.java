@@ -47,7 +47,7 @@ public class Account {
     private AccountStatus accountStatus;
     @Enumerated(EnumType.STRING)
     @Column(name = "account_currency",nullable = false, length = 3)
-    private AccountCurrency accountCurrency = AccountCurrency.MYR;;
+    private AccountCurrency accountCurrency = AccountCurrency.MYR;
     @Column(name = "created_at",nullable = false)
     private Instant createdAt;
     @Column(name = "current_balance",nullable = false, precision = 19, scale = 2)

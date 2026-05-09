@@ -1,4 +1,5 @@
 package com.Banking_app.serviceImpl;
+import com.Banking_app.dto.mappers.TransactionMapper;
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
@@ -13,12 +14,18 @@ import com.Banking_app.repositories.TransactionRepository;
 import com.Banking_app.service.TransactionService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,7 +45,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public TransferResponseBody transfer(TransferRequestBody transferRequestBody){
-        if(transferRequestBody.getFromAccountId().equals(transferRequestBody.getToAccountId())){
+        if(transferRequestBody.getFromAccountNumber().equals(transferRequestBody.getToAccountNumber())){
             throw new IllegalArgumentException("Cannot transfer to the same account");
         }
         // 1) Idempotency guard: if same key already processed, return old result
@@ -55,8 +62,8 @@ public class TransactionServiceImpl implements TransactionService {
 
 
         // Starting transfer.
-        Account from = accountRepository.findById(transferRequestBody.getFromAccountId()).orElseThrow(() -> new EntityNotFoundException("From account not found"));
-        Account to = accountRepository.findById(transferRequestBody.getToAccountId()) .orElseThrow(() -> new EntityNotFoundException("To account not found"));
+        Account from = accountRepository.findByAccountNumber(transferRequestBody.getFromAccountNumber()).orElseThrow(() -> new EntityNotFoundException("From account not found"));
+        Account to = accountRepository.findByAccountNumber(transferRequestBody.getToAccountNumber()) .orElseThrow(() -> new EntityNotFoundException("To account not found"));
 
         BigDecimal minimumRemainingBalance = minimumBalance();
         BigDecimal remainingBalance = from.getCurrentBalance().subtract(transferRequestBody.getAmount());
@@ -127,17 +134,21 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionResponseBody getTransactionByReferenceNumber(String reference){
         Transaction transaction = transactionRepository.findByReferenceNumber(reference).orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
 
-        TransactionResponseBody currentTransactionResponseBody = new TransactionResponseBody();
-        currentTransactionResponseBody.setReference(transaction.getReferenceNumber());
-        currentTransactionResponseBody.setFromAccountId(transaction.getFromAccount().getAccountId());
-        currentTransactionResponseBody.setToAccountId(transaction.getToAccount().getAccountId());
-        currentTransactionResponseBody.setAmount(transaction.getAmount());
-        currentTransactionResponseBody.setStatus(transaction.getStatus().name());
-        currentTransactionResponseBody.setDescription(transaction.getDescription());
-        currentTransactionResponseBody.setCreatedAt(transaction.getCreatedAt());
-        currentTransactionResponseBody.setPostedAt(transaction.getSuccessAt());
+        return TransactionMapper.toResponse(transaction);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseBody> findAllTransactionsByAccountNumber(String accountNumber){
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new EntityNotFoundException("Account not found"));
+        List<Transaction> transactions = transactionRepository.findAllByAccountId(account.getAccountId());
+        List<TransactionResponseBody> transactionResponses = new ArrayList<>();
+        for (Transaction transaction: transactions){
+            transactionResponses.add(TransactionMapper.toResponse(transaction));
+        }
+        return transactionResponses;
 
-        return currentTransactionResponseBody;
+
+
     }
 
 

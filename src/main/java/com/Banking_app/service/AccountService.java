@@ -11,6 +11,7 @@ public interface AccountService {
     AccountResponseBody getAccountByAccountId(Long accountId);
     AccountResponseBody getByAccountNumber(String accountNumber);
     List<AccountResponseBody> getAllAccounts();
+    List<AccountResponseBody>getAllAccountsByUserId(String UserId);
     List<AccountResponseBody> getAccountsByStatus(AccountStatus status);
     AccountResponseBody updateAccountStatus(Long accountId,AccountStatus status);
     void deleteAccount(Long accountId);
