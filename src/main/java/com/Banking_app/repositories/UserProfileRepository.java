@@ -1,11 +1,13 @@
 package com.Banking_app.repositories;
 
 import com.Banking_app.models.UserProfile;
+import com.Banking_app.models.enums.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, String> {
+    long countByRole(UserRole role);
     Optional<UserProfile> findByUsername(String userName);
 
     boolean existsByUsername(String userName);
