@@ -49,7 +49,7 @@ public class UserProfileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/create_admin") // Only for ADMIN use
+    @PostMapping("/admin/create") // Only for ADMIN use
     public ResponseEntity<UserProfileResponseBody> registerAsAdmin(@Valid  @RequestBody UserProfileRequestBody userProfileRequestBody){
         UserProfile createUser = userProfileService.register(
                 userProfileRequestBody.getUsername(),
@@ -59,7 +59,8 @@ public class UserProfileController {
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
     }
-    @GetMapping("get_all")
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/get_all") // Only for ADMIN use
     public ResponseEntity<Page<UserProfileResponseBody>> getAllUser(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int elements){
         Page<UserProfile> users = userProfileService.findAllUsers(page,elements);
         Page<UserProfileResponseBody> response = users.map(userProfileMapper::toResponse);
@@ -81,13 +82,13 @@ public class UserProfileController {
         return ResponseEntity.ok(userProfileMapper.toResponse(updatedUser));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/{id}/role")     // Only for Admin use.
+    @PatchMapping("/admin/{id}/role")     // Only for Admin use.
     public ResponseEntity<UserProfileResponseBody> updateRole(@PathVariable String id, @Valid @RequestBody UserRoleUpdateRequest userRoleUpdateRequest){
         UserProfile updatedRole = userProfileService.updateRole(id,userRoleUpdateRequest.getRole());
         return ResponseEntity.ok(userProfileMapper.toResponse(updatedRole));
     }
     @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}") // Only for Admin use.
+    @DeleteMapping("/admin/{id}") // Only for Admin use.
     public ResponseEntity<Void> delete(@PathVariable String id){
         userProfileService.deleteById(id);
         return ResponseEntity.noContent().build();
