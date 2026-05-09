@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface UserProfileService {
     UserProfile register(String username, String fullName, String email, String rawPassword);
+    UserProfile registerAsAdmin(String username, String fullName, String email, String rawPassword);
     Page<UserProfile> findAllUsers(int page, int elements);
     Optional<UserProfile> getById(String id);
     Optional<UserProfile> getByUsername(String username);

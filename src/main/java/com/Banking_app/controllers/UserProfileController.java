@@ -48,6 +48,17 @@ public class UserProfileController {
                         );
         return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
     }
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create_admin") // Only for ADMIN use
+    public ResponseEntity<UserProfileResponseBody> registerAsAdmin(@Valid  @RequestBody UserProfileRequestBody userProfileRequestBody){
+        UserProfile createUser = userProfileService.register(
+                userProfileRequestBody.getUsername(),
+                userProfileRequestBody.getFullName(),
+                userProfileRequestBody.getEmail(),
+                userProfileRequestBody.getPassword()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
+    }
     @GetMapping("get_all")
     public ResponseEntity<Page<UserProfileResponseBody>> getAllUser(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int elements){
         Page<UserProfile> users = userProfileService.findAllUsers(page,elements);
