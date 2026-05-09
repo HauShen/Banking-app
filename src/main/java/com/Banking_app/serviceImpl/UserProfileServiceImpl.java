@@ -47,6 +47,27 @@ public class UserProfileServiceImpl implements UserProfileService {
         return userProfileRepository.save(user);
     }
     @Override
+    public UserProfile registerAsAdmin(String username, String fullName, String email, String rawPassword){
+        if (userProfileRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        if (userProfileRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+        Instant now  = Instant.now();
+        UserProfile user = new UserProfile();
+        user.setId(UUID.randomUUID().toString());
+        user.setUsername(username);
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setRole(UserRole.ADMIN);
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+
+        return userProfileRepository.save(user);
+    }
+    @Override
     public Page<UserProfile> findAllUsers(int page, int elements){
         Pageable pageable = PageRequest.of(page, elements, Sort.by(Sort.Direction.ASC, "username"));
         return userProfileRepository.findAll(pageable );
