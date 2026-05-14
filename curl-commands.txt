@@ -15,7 +15,9 @@ What should I build service,DTO, and business logic between Transaction and Ledg
 Generate Base64 secret:
 openssl rand -base64 64
 
-
+cd banking-frontend
+npm install
+npm run dev
 
 
 
