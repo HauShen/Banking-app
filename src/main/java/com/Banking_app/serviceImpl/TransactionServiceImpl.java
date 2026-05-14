@@ -136,7 +136,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         return TransactionMapper.toResponse(transaction);
     }
-    @Override
+   /* @Override
     @Transactional(readOnly = true)
     public List<TransactionResponseBody> findAllTransactionsByAccountNumber(String accountNumber){
         Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new EntityNotFoundException("Account not found"));
@@ -145,11 +145,11 @@ public class TransactionServiceImpl implements TransactionService {
         for (Transaction transaction: transactions){
             transactionResponses.add(TransactionMapper.toResponse(transaction));
         }
-        return transactionResponses;
+        return transactionResponses;*/
 
 
 
-    }
+
 
 
 }

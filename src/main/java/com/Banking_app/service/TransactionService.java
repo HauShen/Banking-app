@@ -12,5 +12,5 @@ public interface TransactionService {
     TransferResponseBody transfer(TransferRequestBody transferRequestBody);
     TransactionResponseBody getTransactionByReferenceNumber(String referenceNumber);
 
-    List<TransactionResponseBody> findAllTransactionsByAccountNumber(String accountNumber);
+    //List<TransactionResponseBody> findAllTransactionsByAccountNumber(String accountNumber);
 }

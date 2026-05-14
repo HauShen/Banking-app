@@ -37,11 +37,11 @@ public class TransferController {
     public ResponseEntity<TransactionResponseBody> getByReference(@PathVariable String reference){
         return ResponseEntity.ok(transactionService.getTransactionByReferenceNumber(reference));
     }
-    @GetMapping("/{get_all/account_number}")
+   /* @GetMapping("/{get_all/account_number}")
     public ResponseEntity<List<TransactionResponseBody>> getTransactionsByAccountNumber(@PathVariable("account_number") String accountNumber){
         return ResponseEntity.ok(transactionService.findAllTransactionsByAccountNumber(accountNumber));
 
-    }
+    }*/
 
 
 }
