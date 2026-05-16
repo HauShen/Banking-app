@@ -1,6 +1,9 @@
-export default function Input(props) {
+import React from "react";
+
+const Input = React.forwardRef(function Input(props, ref) {
   return (
     <input
+      ref={ref}
       {...props}
       style={{
         width: "100%",
@@ -10,4 +13,6 @@ export default function Input(props) {
       }}
     />
   );
-}
+});
+
+export default Input;

@@ -1,4 +1,5 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+
+import React, { createContext, useEffect, useMemo, useState } from "react";
 import { getMe, login as loginApi, register as registerApi } from "../api/authApi";
 
 export const AuthContext = createContext(null);
@@ -7,12 +8,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const isAuthenticated = !!localStorage.getItem("token");
-
   useEffect(() => {
     async function bootstrap() {
       try {
-        if (!localStorage.getItem("token")) return;
+        if (!localStorage.getItem("token")) {
+          setLoading(false);
+          return;
+        }
         const me = await getMe();
         setUser(me);
       } catch (err) {
@@ -27,7 +29,7 @@ export function AuthProvider({ children }) {
 
   const login = async (payload) => {
     const data = await loginApi(payload);
-    localStorage.setItem("token", data.token);
+    localStorage.setItem("token", data.accessToken);
     const me = await getMe();
     setUser(me);
     return me;
@@ -35,7 +37,7 @@ export function AuthProvider({ children }) {
 
   const register = async (payload) => {
     const data = await registerApi(payload);
-    localStorage.setItem("token", data.token);
+    localStorage.setItem("token", data.accessToken);
     const me = await getMe();
     setUser(me);
     return me;

@@ -1,3 +1,4 @@
+import React from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
@@ -12,11 +13,12 @@ export default function LoginPage() {
 
   const onSubmit = async (values) => {
     try {
-      await auth.login(values);
+      await auth.login(values); // { username, password }
       const redirectTo = location.state?.from?.pathname || "/dashboard";
       navigate(redirectTo, { replace: true });
     } catch (e) {
-      alert("Login failed");
+      console.error("Login error:", e?.response?.status, e?.response?.data);
+      alert(e?.response?.data?.message || "Login failed");
     }
   };
 
@@ -24,8 +26,8 @@ export default function LoginPage() {
     <div style={{ maxWidth: 400, margin: "80px auto" }}>
       <h1>Login</h1>
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
-        <Input placeholder="Email" {...register("email")} />
-        <Input placeholder="Password" type="password" {...register("password")} />
+        <Input placeholder="Username" {...register("username", { required: true })} />
+        <Input placeholder="Password" type="password" {...register("password", { required: true })} />
         <Button type="submit">Login</Button>
       </form>
       <p style={{ marginTop: 12 }}>
