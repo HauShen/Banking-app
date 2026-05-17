@@ -7,16 +7,9 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   return (
-    <header style={{ borderBottom: "1px solid #eee", padding: 16, display: "flex", justifyContent: "space-between" }}>
+    <header className="navbar navbar-light bg-light border-bottom px-3 d-flex justify-content-between align-items-center">
       <strong>Welcome, {user?.name || "User"}</strong>
-      <button
-        onClick={() => {
-          logout();
-          navigate("/login");
-        }}
-      >
-        Logout
-      </button>
+      <button className="btn btn-outline-secondary btn-sm" onClick={...}>Logout</button>
     </header>
   );
 }

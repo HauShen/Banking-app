@@ -12,10 +12,22 @@ export default function DashboardPage() {
   if (isError) return <p>Failed to load dashboard.</p>;
 
   return (
-    <div>
-      <h1>Dashboard</h1>
-      <p>Balance: RM {data?.balance ?? 0}</p>
-      <p>Account Type: {data?.accountType ?? "Savings"}</p>
+    <div className="container mt-4">
+      <h2 className="mb-4">Dashboard</h2>
+      <div className="row g-3">
+        <div className="col-md-4">
+          <div className="card p-3 shadow-sm">
+            <h6 className="text-muted">Balance</h6>
+            <h4>{formatCurrency(data?.balance ?? 0)}</h4>
+          </div>
+        </div>
+        <div className="col-md-4">
+          <div className="card p-3 shadow-sm">
+            <h6 className="text-muted">Account Type</h6>
+            <h4>{data?.accountType ?? "Savings"}</h4>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
