@@ -1,6 +1,6 @@
 
 import React, { createContext, useEffect, useMemo, useState } from "react";
-import { getMe, login as loginApi, register as registerApi } from "../api/authApi";
+import { getMe, login as loginApi, register as registerApi } from "../api/authAPI";
 
 export const AuthContext = createContext(null);
 

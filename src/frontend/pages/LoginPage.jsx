@@ -23,16 +23,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto" }}>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
-        <Input placeholder="Username" {...register("username", { required: true })} />
-        <Input placeholder="Password" type="password" {...register("password", { required: true })} />
-        <Button type="submit">Login</Button>
-      </form>
-      <p style={{ marginTop: 12 }}>
-        No account? <Link to="/register">Register</Link>
-      </p>
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
+      <div className="card p-4 shadow-sm" style={{ width: "100%", maxWidth: 400 }}>
+        <h2 className="mb-3">Login</h2>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="mb-3">
+            <Input placeholder="Username" {...register("username", { required: true })} />
+          </div>
+          <div className="mb-3">
+            <Input placeholder="Password" type="password" {...register("password", { required: true })} />
+          </div>
+          <Button type="submit" className="w-100">Login</Button>
+        </form>
+        <p className="mt-3 mb-0">No account? <Link to="/register">Register</Link></p>
+      </div>
     </div>
   );
 }

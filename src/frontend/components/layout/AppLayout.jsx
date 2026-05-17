@@ -5,11 +5,11 @@ import Sidebar from "./Sidebar";
 
 export default function AppLayout() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", minHeight: "100vh" }}>
+    <div className="d-flex" style={{ minHeight: "100vh" }}>
       <Sidebar />
-      <div>
+      <div className="flex-grow-1">
         <Navbar />
-        <main style={{ padding: 16 }}>
+        <main className="p-3">
           <Outlet />
         </main>
       </div>

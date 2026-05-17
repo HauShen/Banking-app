@@ -24,29 +24,13 @@ export default function TransferPage() {
   };
 
   return (
-    <div style={{ maxWidth: 520, margin: "24px auto" }}>
-      <h1>Transfer</h1>
-
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
-        <Input
-          placeholder="Recipient account number"
-          {...register("toAccount", { required: true })}
-        />
-
-        <Input
-          placeholder="Amount (RM)"
-          type="number"
-          step="0.01"
-          min="0"
-          {...register("amount", { required: true, min: 0.01 })}
-        />
-
-        <Input
-          placeholder="Note (optional)"
-          {...register("note")}
-        />
-
-        <Button type="submit">Send Transfer</Button>
+    <div className="container mt-4" style={{ maxWidth: 520 }}>
+      <h2 className="mb-3">Transfer</h2>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="mb-3"><Input placeholder="Recipient account number" {...register("toAccount", { required: true })} /></div>
+        <div className="mb-3"><Input placeholder="Amount (RM)" type="number" step="0.01" min="0" {...register("amount", { required: true, min: 0.01 })} /></div>
+        <div className="mb-3"><Input placeholder="Note (optional)" {...register("note")} /></div>
+        <Button type="submit" className="w-100">Send Transfer</Button>
       </form>
     </div>
   );

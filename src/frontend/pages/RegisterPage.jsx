@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
-import { getBootstrapStatus, registerBootstrapAdmin } from "../api/authApi";
+import { getBootstrapStatus, registerBootstrapAdmin } from "../api/authAPI";
 
 export default function RegisterPage() {
   const { register, handleSubmit, watch } = useForm({
@@ -69,34 +69,30 @@ export default function RegisterPage() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "80px auto" }}>
-      <h1>Register</h1>
+    <div className="container d-flex justify-content-center align-items-center min-vh-100">
+      <div className="card p-4 shadow-sm" style={{ width: "100%", maxWidth: 420 }}>
+        <h2 className="mb-3">Register</h2>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="mb-3"><Input placeholder="Username" {...register("username", { required: true })} /></div>
+          <div className="mb-3"><Input placeholder="Full name" {...register("fullName", { required: true })} /></div>
+          <div className="mb-3"><Input placeholder="Email" type="email" {...register("email", { required: true })} /></div>
+          <div className="mb-3"><Input placeholder="Password" type="password" {...register("password", { required: true, minLength: 6 })} /></div>
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
-        <Input placeholder="Username" {...register("username", { required: true })} />
-        <Input placeholder="Full name" {...register("fullName", { required: true })} />
-        <Input placeholder="Email" type="email" {...register("email", { required: true })} />
-        <Input
-          placeholder="Password"
-          type="password"
-          {...register("password", { required: true, minLength: 6 })}
-        />
+          {!loadingStatus && bootstrapAllowed && (
+            <div className="form-check mb-3">
+              <input className="form-check-input" type="checkbox" {...register("asBootstrapAdmin")} id="bootstrapCheck" />
+              <label className="form-check-label" htmlFor="bootstrapCheck">
+                Create first admin account (bootstrap)
+              </label>
+            </div>
+          )}
 
-        {!loadingStatus && bootstrapAllowed && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input type="checkbox" {...register("asBootstrapAdmin")} />
-            Create first admin account (bootstrap)
-          </label>
-        )}
-
-        <Button type="submit">
-          {bootstrapAllowed && asBootstrapAdmin ? "Create Admin Account" : "Create Account"}
-        </Button>
-      </form>
-
-      <p style={{ marginTop: 12 }}>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+          <Button type="submit" className="w-100">
+            {bootstrapAllowed && asBootstrapAdmin ? "Create Admin Account" : "Create Account"}
+          </Button>
+        </form>
+        <p className="mt-3 mb-0">Already have an account? <Link to="/login">Login</Link></p>
+      </div>
     </div>
   );
 }

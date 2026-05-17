@@ -13,13 +13,25 @@ export default function TransactionsPage() {
   return (
     <div>
       <h1>Transactions</h1>
-      <ul>
-        {(data?.items || []).map((tx) => (
-          <li key={tx.id}>
-            {tx.type} - RM {tx.amount} - {tx.description}
-          </li>
-        ))}
-      </ul>
+      <div className="container mt-4">
+        <h2 className="mb-3">Transactions</h2>
+        <table className="table table-striped table-hover">
+          <thead className="table-dark">
+            <tr>
+              <th>Type</th><th>Amount</th><th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(data?.items || []).map((tx) => (
+              <tr key={tx.id}>
+                <td>{tx.type}</td>
+                <td>{formatCurrency(tx.amount)}</td>
+                <td>{tx.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
