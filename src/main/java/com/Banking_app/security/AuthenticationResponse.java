@@ -4,6 +4,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 @Getter
+@Setter
 public class AuthenticationResponse{
     private String accessToken;
     private String tokenType;

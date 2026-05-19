@@ -15,9 +15,7 @@ What should I build service,DTO, and business logic between Transaction and Ledg
 Generate Base64 secret:
 openssl rand -base64 64
 
-cd banking-frontend
-npm install
-npm run dev
+
 
 
 
@@ -82,6 +80,19 @@ com.bankapp
  ├── exception
  └── config
 
-V1__user_table_create
+./gradlew clean build
+
+ http://localhost:3000
+shen1098mon@gmail.com
+./gradlew bootRun
+
+cd src/frontend
+npm install
+npm run dev
 
 
+Username: hau
+Full name: haushen
+Email:xxx@gmail.com
+Password:123456
+I enter these details, but I got this response: "Registration failed". Do you know the reason?
