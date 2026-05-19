@@ -28,13 +28,13 @@ public class TransferController {
     public TransferController(TransactionService transactionService){
         this.transactionService = transactionService;
     }
-    @PostMapping("/{transfer}")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<TransferResponseBody> transfer(@Valid @RequestBody TransferRequestBody transferRequestBody){
+    public ResponseEntity<TransferResponseBody> transfer(@Valid @RequestBody TransferRequestBody transferRequestBody) {
         return ResponseEntity.ok(transactionService.transfer(transferRequestBody));
     }
-    @GetMapping("/{get_reference}")
-    public ResponseEntity<TransactionResponseBody> getByReference(@PathVariable String reference){
+    @GetMapping("/{reference}")
+    public ResponseEntity<TransactionResponseBody> getByReference(@PathVariable String reference) {
         return ResponseEntity.ok(transactionService.getTransactionByReferenceNumber(reference));
     }
    /* @GetMapping("/{get_all/account_number}")

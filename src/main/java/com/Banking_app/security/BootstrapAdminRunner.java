@@ -53,8 +53,8 @@ public class BootstrapAdminRunner implements CommandLineRunner{
             return;
         }
         // 4) Prevent duplicate by username
-        if (userProfileRepository.existsByEmail(email)) {
-            log.warn("Bootstrap admin skipped: user email already exists: {}", email);
+        if (userProfileRepository.existsByUsername(username)) {
+            log.warn("Bootstrap admin skipped: username already exists: {}", username);
             return;
         }
 
