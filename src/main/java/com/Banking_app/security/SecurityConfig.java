@@ -28,11 +28,11 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig{
     private final JwtRequestFilter jwtRequestFilter;
-    private final CustomUserDetailsService customUserDetailsService;
+
     @Autowired
-    public SecurityConfig(@Lazy JwtRequestFilter jwtRequestFilter, CustomUserDetailsService customUserDetailsService){
+    public SecurityConfig(@Lazy JwtRequestFilter jwtRequestFilter){
         this.jwtRequestFilter = jwtRequestFilter;
-        this.customUserDetailsService = customUserDetailsService;
+
     }
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
@@ -51,7 +51,7 @@ public class SecurityConfig{
                         .requestMatchers(HttpMethod.DELETE, "/api/users/*").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider())
+
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -71,13 +71,8 @@ public class SecurityConfig{
         return source;
     }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(customUserDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
+
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
