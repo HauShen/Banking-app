@@ -16,11 +16,11 @@ export async function getMe() {
 }
 
 export async function getBootstrapStatus() {
-  const { data } = await client.get("/auth/bootstrap-status");
+  const { data } = await client.get("/auth/bootstrap/status");  // ← was /auth/bootstrap-status
   return data;
 }
 
 export async function registerBootstrapAdmin(payload) {
-  const { data } = await client.post("/auth/bootstrap-admin/register", payload);
+  const { data } = await client.post("/auth/bootstrap/register", payload);  // ← was /auth/bootstrap-admin/register
   return data;
 }
