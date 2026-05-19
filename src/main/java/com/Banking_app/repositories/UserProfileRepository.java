@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, String> {
+    boolean existsByRole(UserRole role);
     long countByRole(UserRole role);
     Optional<UserProfile> findByUsername(String userName);
 
