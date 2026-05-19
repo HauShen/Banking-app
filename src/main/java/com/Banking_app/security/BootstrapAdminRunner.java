@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -60,12 +61,14 @@ public class BootstrapAdminRunner implements CommandLineRunner{
 
         // 5) Create ADMIN
         UserProfile admin = new UserProfile();
+        admin.setId(UUID.randomUUID().toString());
         admin.setUsername(username);
+        admin.setFullName(username);
         admin.setEmail(email.trim().toLowerCase());
         admin.setPassword(passwordEncoder.encode(rawPassword));
         admin.setRole(UserRole.ADMIN);
         admin.setCreatedAt(Instant.now());
-
+        admin.setUpdatedAt(Instant.now());
         userProfileRepository.save(admin);
         log.info("Bootstrap admin created successfully for Username={}", admin.getUsername());
 
