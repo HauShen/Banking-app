@@ -19,12 +19,14 @@ export default function TransferPage() {
   });
   const accounts = summary?.accounts ?? [];
 
+ const selectedAccount = accounts.find(a => a.accountNumber === values.fromAccount);
   const onSubmit = async (values) => {
     try {
       await createTransfer({
         fromAccountNumber: values.fromAccount,
         toAccountNumber:   values.toAccount,
         amount:            parseFloat(values.amount),
+        currency:          selectedAccount?.accountCurrency ?? "MYR",
         description:       values.note || "",
         idempotencyKey:    uuidv4(),   // unique per submission
       });
