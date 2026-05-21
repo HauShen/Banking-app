@@ -8,16 +8,14 @@ export default function Navbar() {
 
   return (
     <header className="navbar navbar-light bg-light border-bottom px-3 d-flex justify-content-between align-items-center">
-          <strong>Welcome, {user?.name || "User"}</strong>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            onClick={() => {        // ✅ real handler, not ...
-              logout();
-              navigate("/login");
-            }}
-          >
-            Logout
-          </button>
-        </header>
+      {/* ✅ fixed: user?.name → user?.fullName */}
+      <strong>Welcome, {user?.fullName ?? user?.username ?? "User"}</strong>
+      <button
+        className="btn btn-outline-secondary btn-sm"
+        onClick={() => { logout(); navigate("/login"); }}
+      >
+        Logout
+      </button>
+    </header>
   );
 }
