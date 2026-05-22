@@ -10,25 +10,28 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function TransferPage() {
   const navigate = useNavigate();
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
 
-  // Load user's own accounts to populate "From" dropdown
   const { data: summary } = useQuery({
     queryKey: ["account-summary"],
     queryFn: getAccountSummary,
   });
   const accounts = summary?.accounts ?? [];
 
- const selectedAccount = accounts.find(a => a.accountNumber === values.fromAccount);
+  // ✅ watch the dropdown value so we can read it at render time
+  const selectedAccountNumber = watch("fromAccount");
+  const selectedAccount = accounts.find(a => a.accountNumber === selectedAccountNumber);
+
   const onSubmit = async (values) => {
     try {
       await createTransfer({
         fromAccountNumber: values.fromAccount,
         toAccountNumber:   values.toAccount,
         amount:            parseFloat(values.amount),
+        // ✅ selectedAccount is now correctly in scope
         currency:          selectedAccount?.accountCurrency ?? "MYR",
         description:       values.note || "",
-        idempotencyKey:    uuidv4(),   // unique per submission
+        idempotencyKey:    uuidv4(),
       });
       alert("Transfer successful!");
       reset();
@@ -43,7 +46,6 @@ export default function TransferPage() {
       <h2 className="mb-3">New Transfer</h2>
       <form onSubmit={handleSubmit(onSubmit)}>
 
-        {/* From account dropdown */}
         <div className="mb-3">
           <label className="form-label">From Account</label>
           <select className="form-select" {...register("fromAccount", { required: true })}>
@@ -70,7 +72,7 @@ export default function TransferPage() {
         </div>
 
         <div className="mb-3">
-          <Input placeholder="Description (optional)" {...register("note")} />
+          <Input placeholder="Description" {...register("note")} />
         </div>
 
         <Button type="submit" className="w-100" disabled={isSubmitting}>
