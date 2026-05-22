@@ -107,6 +107,26 @@ public class AccountServiceImpl implements AccountService {
                 .orElseThrow(() -> new EntityNotFoundException("Account not found with id: " + AccountId));
         accountRepository.delete(account);
     }
+    @Override
+    @Transactional
+    public AccountResponseBody topUp(Long accountId, BigDecimal amount, String requestingUserId){
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Top-up amount must be greater than zero");
+        }
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException("Account not found: " + accountId));
+
+        // Ensure the account belongs to the requesting user
+        if (!account.getUser().getId().equals(requestingUserId)) {
+            throw new IllegalArgumentException("You can only top up your own accounts");
+        }
+        if (account.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new IllegalArgumentException("Cannot top up a non-active account");
+        }
+
+        account.setCurrentBalance(account.getCurrentBalance().add(amount));
+        return AccountMapper.toResponse(accountRepository.save(account));
+    }
 
 
 

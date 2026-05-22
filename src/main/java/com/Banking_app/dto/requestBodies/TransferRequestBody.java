@@ -19,12 +19,12 @@ public class TransferRequestBody {
     @DecimalMin(value = "0.01", inclusive = true, message = "amount must be greater than 0")
     private BigDecimal amount;
     @Pattern(regexp = "^[A-Z]{3}$", message = "currency must be a valid 3-letter ISO code (e.g. MYR)")
-    private BigDecimal currency;
+    private String currency;
     @NotBlank(message = "description is required")
     private String description;
     @NotBlank(message = "idempotencyKey is required")
     private String idempotencyKey;
-    public TransferRequestBody(String fromAccountNumber, String toAccountNumber, BigDecimal amount, BigDecimal currency, String description, String idempotencyKey){
+    public TransferRequestBody(String fromAccountNumber, String toAccountNumber, BigDecimal amount, String currency, String description, String idempotencyKey){
         this.fromAccountNumber = fromAccountNumber;
         this.toAccountNumber = toAccountNumber;
         this.amount = amount;
