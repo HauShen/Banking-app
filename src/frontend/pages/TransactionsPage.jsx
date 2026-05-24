@@ -2,18 +2,17 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { getTransactionsByAccount } from "../api/transactionApi";
-import { useAuth } from "../hooks/useAuth";
 
 function formatCurrency(amount, currency = "USD") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount ?? 0);
 }
-
 function formatDate(instant) {
   return instant ? new Date(instant).toLocaleString() : "—";
 }
 
+const CDM = "Cash Deposit Machine";
+
 export default function TransactionsPage() {
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const accountNumber = searchParams.get("account");
   const [page, setPage] = useState(0);
@@ -64,18 +63,27 @@ export default function TransactionsPage() {
               </thead>
               <tbody>
                 {transactions.map((tx) => {
-                  const isOutgoing = tx.fromAccountNumber === accountNumber;
+                  const isCDM      = tx.fromAccountNumber === CDM;
+                  const isOutgoing = !isCDM && tx.fromAccountNumber === accountNumber;
+
                   return (
                     <tr key={tx.reference}>
-                      {/* Direction indicator */}
                       <td>
-                        {isOutgoing
-                          ? <span className="text-danger fw-bold">▼ Out</span>
-                          : <span className="text-success fw-bold">▲ In</span>}
+                        {isCDM
+                          // ✅ Special label for CDM top-ups
+                          ? <span className="text-success fw-bold">⬆ Top Up</span>
+                          : isOutgoing
+                            ? <span className="text-danger fw-bold">▼ Out</span>
+                            : <span className="text-success fw-bold">▲ In</span>
+                        }
                       </td>
-                      <td className="font-monospace small">{tx.fromAccountNumber}</td>
+                      <td className="small">
+                        {isCDM
+                          ? <span className="text-muted fst-italic">{CDM}</span>
+                          : <span className="font-monospace">{tx.fromAccountNumber}</span>
+                        }
+                      </td>
                       <td className="font-monospace small">{tx.toAccountNumber}</td>
-                      {/* Amount: red for outgoing, green for incoming */}
                       <td className={isOutgoing ? "text-danger fw-semibold" : "text-success fw-semibold"}>
                         {isOutgoing ? "−" : "+"}{formatCurrency(tx.amount, tx.currency)}
                       </td>
@@ -97,15 +105,13 @@ export default function TransactionsPage() {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="d-flex justify-content-between align-items-center mt-3">
             <span className="text-muted small">
               Page {page + 1} of {totalPages} &nbsp;|&nbsp; {data?.totalElements} transactions
             </span>
             <div className="btn-group">
               <button className="btn btn-sm btn-outline-secondary"
-                onClick={() => setPage(p => Math.max(p - 1, 0))}
-                disabled={page === 0}>
+                onClick={() => setPage(p => Math.max(p - 1, 0))} disabled={page === 0}>
                 ← Previous
               </button>
               <button className="btn btn-sm btn-outline-secondary"

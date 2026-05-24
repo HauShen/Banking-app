@@ -15,6 +15,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
     boolean existsByIdempotencyKey(String idempotencyKey);
 
-    @Query("SELECT t FROM Transaction t WHERE t.fromAccount.accountNumber = :accountNumber OR t.toAccount.accountNumber = :accountNumber ORDER BY t.createdAt DESC")
-    Page<Transaction> findAllByAccountNumber(@Param("accountNumber") String accountNumber, Pageable pageable);
+    @Query("""
+        SELECT t FROM Transaction t
+        LEFT JOIN t.fromAccount fa
+        JOIN t.toAccount ta
+        WHERE fa.accountNumber = :accountNumber
+           OR ta.accountNumber = :accountNumber
+        ORDER BY t.createdAt DESC
+        """)    Page<Transaction> findAllByAccountNumber(@Param("accountNumber") String accountNumber, Pageable pageable);
 }
