@@ -40,7 +40,7 @@ public class Transaction {
     private String referenceNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_account_id", nullable = false)
+    @JoinColumn(name = "from_account_id", nullable = true)
     @JsonIgnore
     Account fromAccount;
 

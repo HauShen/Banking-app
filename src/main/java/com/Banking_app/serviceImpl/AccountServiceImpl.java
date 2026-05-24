@@ -3,10 +3,16 @@ package com.Banking_app.serviceImpl;
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
 import com.Banking_app.models.Account;
+import com.Banking_app.models.LedgerEntry;
+import com.Banking_app.models.Transaction;
 import com.Banking_app.models.UserProfile;
 import com.Banking_app.models.enums.AccountCurrency;
 import com.Banking_app.models.enums.AccountStatus;
+import com.Banking_app.models.enums.LedgerType;
+import com.Banking_app.models.enums.TransactionStatus;
 import com.Banking_app.repositories.AccountRepository;
+import com.Banking_app.repositories.LedgerRepository;
+import com.Banking_app.repositories.TransactionRepository;
 import com.Banking_app.repositories.UserProfileRepository;
 import com.Banking_app.service.AccountService;
 import jakarta.persistence.EntityNotFoundException;
@@ -20,16 +26,21 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
 public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final UserProfileRepository userProfileRepository;
+    private final TransactionRepository transactionRepository;
+    private final LedgerRepository ledgerRepository;
     @Autowired
-    public AccountServiceImpl(AccountRepository accountRepository,UserProfileRepository userProfileRepository){
+    public AccountServiceImpl(AccountRepository accountRepository,UserProfileRepository userProfileRepository, TransactionRepository transactionRepository, LedgerRepository ledgerRepository){
         this.accountRepository = accountRepository;
         this.userProfileRepository = userProfileRepository;
+        this.transactionRepository = transactionRepository;
+        this.ledgerRepository = ledgerRepository;
     }
     private String generateUniqueAccountNumber() {
         String accountNumber;
@@ -124,8 +135,35 @@ public class AccountServiceImpl implements AccountService {
             throw new IllegalArgumentException("Cannot top up a non-active account");
         }
 
+        // 1) Update balance
         account.setCurrentBalance(account.getCurrentBalance().add(amount));
-        return AccountMapper.toResponse(accountRepository.save(account));
+        accountRepository.save(account);
+
+        // 2)  Create a Transaction record — fromAccount = null (CDM)
+        String reference = "CDM-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+        Transaction tx = new Transaction();
+        tx.setReferenceNumber(reference);
+        tx.setFromAccount(null);                             //  null = Cash Deposit Machine
+        tx.setToAccount(account);
+        tx.setAmount(amount);
+        tx.setDescription("Cash Deposit Machine top-up");
+        tx.setStatus(TransactionStatus.SUCCESS);
+        tx.setCreatedAt(Instant.now());
+        tx.setSuccessAt(Instant.now());
+        tx.setIdempotencyKey("CDM-" + UUID.randomUUID());   // unique per top-up
+        tx = transactionRepository.save(tx);
+
+        // 3)  Create a CREDIT ledger entry for the account
+        LedgerEntry credit = new LedgerEntry();
+        credit.setTransaction(tx);
+        credit.setAccount(account);
+        credit.setLedgerType(LedgerType.CREDIT);
+        credit.setAmount(amount);
+        credit.setBalanceAfter(account.getCurrentBalance());
+        credit.setPostedAt(Instant.now());
+        ledgerRepository.save(credit);
+
+        return AccountMapper.toResponse(account);
     }
 
 
