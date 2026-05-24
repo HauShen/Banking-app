@@ -2,17 +2,6 @@
 docker compose up -d
 docker compose down
 
-I want to build a React frontend for my banking simulator
-So I can use this app for strengthen my portfolio, then I might have higher chance to get Junior Developer job in Malaysia.
-Can you give me guide me to build React frontend step-by-step?
-
-I built a banking simulator, so I might have higher chance to get Entry-Level/Junior Developer job in Malaysia.
-Help me do a research in Malaysia markets. Such as Linkedin, JobStreet, and Indeed etc.
-Read my application backend and frontend except node_modules, is this application enough for strengthen my portfolio, and looking for  Entry-Level/Junior Developer job?
-Here is my UserProfile controller, I wish updateRole() and delete() can only for ADMIN use.
-Should I implement JWT Authentication?
-Look at my Banking-app repository.
-What should I build service,DTO, and business logic between Transaction and Ledger?
 
 Generate Base64 secret:
 openssl rand -base64 64
@@ -67,20 +56,6 @@ curl -i -X PUT "http://localhost:8080/api/users/388a6de9-100e-4046-b18a-b917b957
 
 -Remember, change these Bearer token everytime when you login.
 
-com.bankapp
- ├── auth
- │    ├── controller
- │    ├── service
- │    ├── security
- │    └── dto
- │
- ├── user
- ├── account
- ├── transaction
- ├── ledger
- │
- ├── exception
- └── config
 
 ./gradlew clean build
 
