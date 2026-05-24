@@ -188,9 +188,3 @@ Authorization: Bearer <your-jwt-token>
 | `TransactionServiceImplTest` | Fund transfers, idempotency, error handling |
 | `AuthServiceTest` | JWT registration, login, bad credentials |
 | `BootstrapServiceImplTest` | Admin bootstrap flow and guards |
-
----
-
-## 📄 License
-
-This project is built for portfolio purposes.
