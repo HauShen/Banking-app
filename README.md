@@ -172,7 +172,6 @@ Authorization: Bearer <your-jwt-token>
 
 > \* Bootstrap endpoint auto-disables once the first admin is created.
 
-> See [`curl-commands.txt`](./curl-commands.txt) for full request examples.
 
 ---
 
