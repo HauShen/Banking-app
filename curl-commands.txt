@@ -67,6 +67,8 @@ cd src/frontend
 npm install
 npm run dev
 
+---
+Example:
 
 Username: hau
 Full name: haushen
