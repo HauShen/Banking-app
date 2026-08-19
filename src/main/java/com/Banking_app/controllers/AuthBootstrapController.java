@@ -2,7 +2,7 @@ package com.Banking_app.controllers;
 import com.Banking_app.dto.mappers.UserProfileMapper;
 import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileRequestBody;
 import com.Banking_app.dto.responseBodies.BootstrapStatusResponse;
-import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
+import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileResponseBody;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import com.Banking_app.service.BootstrapService;
 import org.springframework.beans.factory.annotation.Autowired;

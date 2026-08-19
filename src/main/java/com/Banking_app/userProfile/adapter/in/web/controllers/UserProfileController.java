@@ -2,12 +2,15 @@ package com.Banking_app.userProfile.adapter.in.web.controllers;
 
 import com.Banking_app.dto.mappers.UserProfileMapper;
 import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileRequestBody;
-import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
+import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileResponseBody;
 import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileUpdateRequestBody;
 import com.Banking_app.dto.requestBodies.UserRoleUpdateRequest;
 import com.Banking_app.exception.ResourceNotFoundException;
+import com.Banking_app.userProfile.adapter.in.web.mapper.UserProfileWebMapper;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
+import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
+import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,64 +31,26 @@ import org.springframework.data.domain.Page;
 @RequestMapping("/api/users")
 public class UserProfileController {
 
-    private final UserProfileMapper userProfileMapper;
-    @Autowired
-    public UserProfileController(UserProfileMapper userProfileMapper){
-        this.userProfileMapper = userProfileMapper;
+    private final RegisterUserProfileUseCase registerUserProfileUseCase;
+    private final UserProfileWebMapper webMapper;
+
+    public UserProfileController(RegisterUserProfileUseCase registerUserProfileUseCase,
+                                 UserProfileWebMapper webMapper) {
+        this.registerUserProfileUseCase = registerUserProfileUseCase;
+        this.webMapper = webMapper;
     }
+
     @PostMapping("/create")
-    public ResponseEntity<UserProfileResponseBody> register(@Valid  @RequestBody UserProfileRequestBody userProfileRequestBody){
-        UserProfileJpaEntity createUser = userProfileService.register(
-                userProfileRequestBody.getUsername(),
-                userProfileRequestBody.getFullName(),
-                userProfileRequestBody.getEmail(),
-                userProfileRequestBody.getPassword()
-                        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
+    public ResponseEntity<UserProfileResponseBody> register(
+            @Valid @RequestBody UserProfileRequestBody requestBody) {
+
+        RegisterUserProfileCommand command = webMapper.toCommand(requestBody);
+
+        UserProfile registered = registerUserProfileUseCase.register(command);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(webMapper.toResponse(registered));
     }
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/admin/create") // Only for ADMIN use
-    public ResponseEntity<UserProfileResponseBody> registerAsAdmin(@Valid  @RequestBody UserProfileRequestBody userProfileRequestBody){
-        UserProfileJpaEntity createUser = userProfileService.register(
-                userProfileRequestBody.getUsername(),
-                userProfileRequestBody.getFullName(),
-                userProfileRequestBody.getEmail(),
-                userProfileRequestBody.getPassword()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(userProfileMapper.toResponse(createUser));
-    }
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/admin/get_all") // Only for ADMIN use
-    public ResponseEntity<Page<UserProfileResponseBody>> getAllUser(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int elements){
-        Page<UserProfileJpaEntity> users = userProfileService.findAllUsers(page,elements);
-        Page<UserProfileResponseBody> response = users.map(userProfileMapper::toResponse);
-        return ResponseEntity.ok(response);
-    }
-    @GetMapping("/get-by-id/{id}")
-    public ResponseEntity<UserProfileResponseBody> getById(@PathVariable String id){
-        UserProfileJpaEntity user = userProfileService.getById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return ResponseEntity.ok(userProfileMapper.toResponse(user));
-    }
-    @GetMapping("/get-by-username/{username}")
-    public ResponseEntity<UserProfileResponseBody> getByUsername(@PathVariable String username){
-        UserProfileJpaEntity user = userProfileService.getByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return ResponseEntity.ok(userProfileMapper.toResponse(user));
-    }
-    @PutMapping("/{id}")
-    public ResponseEntity<UserProfileResponseBody> updateProfile(@PathVariable String id, @Valid @RequestBody UserProfileUpdateRequestBody userProfileUpdateRequestBody){
-        UserProfileJpaEntity updatedUser = userProfileService.updateProfile(id, userProfileUpdateRequestBody.getFullName(), userProfileUpdateRequestBody.getEmail());
-        return ResponseEntity.ok(userProfileMapper.toResponse(updatedUser));
-    }
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/admin/{id}/role")     // Only for Admin use.
-    public ResponseEntity<UserProfileResponseBody> updateRole(@PathVariable String id, @Valid @RequestBody UserRoleUpdateRequest userRoleUpdateRequest){
-        UserProfileJpaEntity updatedRole = userProfileService.updateRole(id,userRoleUpdateRequest.getRole());
-        return ResponseEntity.ok(userProfileMapper.toResponse(updatedRole));
-    }
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/admin/{id}") // Only for Admin use.
-    public ResponseEntity<Void> delete(@PathVariable String id){
-        userProfileService.deleteById(id);
-        return ResponseEntity.noContent().build();
-    }
+
 }

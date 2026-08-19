@@ -1,6 +1,6 @@
 package com.Banking_app.dto.mappers;
 
-import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
+import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileResponseBody;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import org.springframework.stereotype.Component;
 @Component
