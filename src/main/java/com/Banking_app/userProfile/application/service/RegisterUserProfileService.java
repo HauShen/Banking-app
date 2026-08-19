@@ -1,7 +1,10 @@
-package com.Banking_app.userProfile.application.serviceImpl;
+package com.Banking_app.userProfile.application.service;
 import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import com.Banking_app.userProfile.application.service.UserProfileService;
+import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
+import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
+import com.Banking_app.userProfile.application.port.out.PasswordHasherPort;
+import com.Banking_app.userProfile.application.port.out.SaveUserProfilePort;
 import com.Banking_app.userProfile.domain.enums.UserRole;
 import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,21 +14,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Sort;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Clock;
 
 @Service
-public class UserProfileServiceImpl implements UserProfileService {
-    private final UserProfileJpaRepository userProfileJpaRepository;
-    private final PasswordEncoder passwordEncoder;
+public class UserProfileService implements RegisterUserProfileUseCase
+{
+    private final LoadUserProfilePort loadUserProfilePort;
+    private final SaveUserProfilePort saveUserProfilePort;
+    private final PasswordHasherPort passwordHasher;
+    private final Clock clock;
     @Autowired
-    public UserProfileServiceImpl(UserProfileJpaRepository userProfileJpaRepository, PasswordEncoder passwordEncoder){
+    public UserProfileService(UserProfileJpaRepository userProfileJpaRepository, PasswordEncoder passwordEncoder){
         this.userProfileJpaRepository = userProfileJpaRepository;
         this.passwordEncoder = passwordEncoder;
     }
-    @Override
+
     public UserProfileJpaEntity register(String username, String fullName, String email, String rawPassword){
         if (userProfileJpaRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
@@ -46,7 +53,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         return userProfileJpaRepository.save(user);
     }
-    @Override
+
     public UserProfileJpaEntity registerAsAdmin(String username, String fullName, String email, String rawPassword){
         if (userProfileJpaRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
@@ -67,20 +74,20 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         return userProfileJpaRepository.save(user);
     }
-    @Override
+
     public Page<UserProfileJpaEntity> findAllUsers(int page, int elements){
         Pageable pageable = PageRequest.of(page, elements, Sort.by(Sort.Direction.ASC, "username"));
         return userProfileJpaRepository.findAll(pageable);
     }
-    @Override
+
     public Optional<UserProfileJpaEntity> getById(String id) {
         return userProfileJpaRepository.findById(id);
     }
-    @Override
+
     public Optional<UserProfileJpaEntity> getByUsername(String username) {
         return userProfileJpaRepository.findByUsername(username);
     }
-    @Override
+
     public UserProfileJpaEntity updateProfile(String id, String fullName, String email) {
         UserProfileJpaEntity user = userProfileJpaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -91,7 +98,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         return userProfileJpaRepository.save(user);
     }
-    @Override
+
     public UserProfileJpaEntity updateRole(String id, UserRole role) {
         UserProfileJpaEntity user = userProfileJpaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -100,7 +107,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setUpdatedAt(Instant.now());
         return userProfileJpaRepository.save(user);
     }
-    @Override
+
     public void deleteById(String id) {
         if (!userProfileJpaRepository.existsById(id)) {
             throw new ResourceNotFoundException("User not found");
