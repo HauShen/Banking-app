@@ -7,7 +7,6 @@ import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileUpdateRequestBo
 import com.Banking_app.dto.requestBodies.UserRoleUpdateRequest;
 import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import com.Banking_app.userProfile.application.service.UserProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,11 +27,10 @@ import org.springframework.data.domain.Page;
 @RestController
 @RequestMapping("/api/users")
 public class UserProfileController {
-    private final UserProfileService userProfileService;
+
     private final UserProfileMapper userProfileMapper;
     @Autowired
-    public UserProfileController(UserProfileService userProfileService,UserProfileMapper userProfileMapper){
-        this.userProfileService = userProfileService;
+    public UserProfileController(UserProfileMapper userProfileMapper){
         this.userProfileMapper = userProfileMapper;
     }
     @PostMapping("/create")

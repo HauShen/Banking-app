@@ -1,12 +1,15 @@
 package com.Banking_app.userProfile.application.service;
 import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.userProfile.application.exception.DuplicateUserException;
+import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import com.Banking_app.userProfile.application.port.out.PasswordHasherPort;
 import com.Banking_app.userProfile.application.port.out.SaveUserProfilePort;
 import com.Banking_app.userProfile.domain.enums.UserRole;
 import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
+import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,98 +24,41 @@ import java.util.UUID;
 import java.time.Clock;
 
 @Service
-public class UserProfileService implements RegisterUserProfileUseCase
+public class RegisterUserProfileService implements RegisterUserProfileUseCase
 {
     private final LoadUserProfilePort loadUserProfilePort;
     private final SaveUserProfilePort saveUserProfilePort;
     private final PasswordHasherPort passwordHasher;
     private final Clock clock;
-    @Autowired
-    public UserProfileService(UserProfileJpaRepository userProfileJpaRepository, PasswordEncoder passwordEncoder){
-        this.userProfileJpaRepository = userProfileJpaRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
-    public UserProfileJpaEntity register(String username, String fullName, String email, String rawPassword){
-        if (userProfileJpaRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("Username already exists");
+    public RegisterUserProfileService(LoadUserProfilePort loadUserProfilePort,
+                                      SaveUserProfilePort saveUserProfilePort,
+                                      PasswordHasherPort passwordHasher,
+                                      Clock clock) {
+        this.loadUserProfilePort = loadUserProfilePort;
+        this.saveUserProfilePort = saveUserProfilePort;
+        this.passwordHasher = passwordHasher;
+        this.clock = clock;
+    }
+    @Override
+    @Transactional
+    public UserProfile register(RegisterUserProfileCommand command){
+        if (loadUserProfilePort.existsByUsername(command.username())) {
+            throw new DuplicateUserException("Username already exists");
         }
-        if (userProfileJpaRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
+        if (loadUserProfilePort.existsByEmail(command.email())) {
+            throw new DuplicateUserException("Email already exists");
         }
-        Instant now  = Instant.now();
-        UserProfileJpaEntity user = new UserProfileJpaEntity();
-        user.setId(UUID.randomUUID().toString());
-        user.setUsername(username);
-        user.setFullName(fullName);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        user.setRole(UserRole.CUSTOMER);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
+        String passwordHash = passwordHasher.hash(command.rawPassword());
 
-        return userProfileJpaRepository.save(user);
+        UserProfile newUser = UserProfile.register(
+                UUID.randomUUID().toString(),
+                command.username(),
+                command.fullName(),
+                command.email(),
+                passwordHash,
+                clock.instant());
+
+        return saveUserProfilePort.save(newUser);
     }
-
-    public UserProfileJpaEntity registerAsAdmin(String username, String fullName, String email, String rawPassword){
-        if (userProfileJpaRepository.existsByUsername(username)) {
-            throw new IllegalArgumentException("Username already exists");
-        }
-        if (userProfileJpaRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
-        }
-        Instant now  = Instant.now();
-        UserProfileJpaEntity user = new UserProfileJpaEntity();
-        user.setId(UUID.randomUUID().toString());
-        user.setUsername(username);
-        user.setFullName(fullName);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        user.setRole(UserRole.ADMIN);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-
-        return userProfileJpaRepository.save(user);
-    }
-
-    public Page<UserProfileJpaEntity> findAllUsers(int page, int elements){
-        Pageable pageable = PageRequest.of(page, elements, Sort.by(Sort.Direction.ASC, "username"));
-        return userProfileJpaRepository.findAll(pageable);
-    }
-
-    public Optional<UserProfileJpaEntity> getById(String id) {
-        return userProfileJpaRepository.findById(id);
-    }
-
-    public Optional<UserProfileJpaEntity> getByUsername(String username) {
-        return userProfileJpaRepository.findByUsername(username);
-    }
-
-    public UserProfileJpaEntity updateProfile(String id, String fullName, String email) {
-        UserProfileJpaEntity user = userProfileJpaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        user.setFullName(fullName);
-        user.setEmail(email);
-        user.setUpdatedAt(Instant.now());
-
-        return userProfileJpaRepository.save(user);
-    }
-
-    public UserProfileJpaEntity updateRole(String id, UserRole role) {
-        UserProfileJpaEntity user = userProfileJpaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        user.setRole(role);
-        user.setUpdatedAt(Instant.now());
-        return userProfileJpaRepository.save(user);
-    }
-
-    public void deleteById(String id) {
-        if (!userProfileJpaRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        userProfileJpaRepository.deleteById(id);
-    }
-
 }

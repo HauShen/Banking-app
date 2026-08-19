@@ -3,7 +3,7 @@ import com.Banking_app.exception.ResourceNotFoundException;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import com.Banking_app.userProfile.domain.enums.UserRole;
 import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
-import com.Banking_app.userProfile.application.serviceImpl.UserProfileServiceImpl;
+import com.Banking_app.userProfile.application.service.RegisterUserProfileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,7 +30,7 @@ public class UserProfileJpaEntityServiceImplTest {
     private PasswordEncoder passwordEncoder;
 
     @InjectMocks
-    private UserProfileServiceImpl userProfileService;
+    private RegisterUserProfileService registerUserProfileService;
 
     // ---------------------------------------------------------------
     // register – duplicate username
@@ -41,7 +41,7 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.existsByUsername("john")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class,
-                () -> userProfileService.register("john", "John Doe", "john@mail.com", "pass"));
+                () -> registerUserProfileService.register("john", "John Doe", "john@mail.com", "pass"));
         verify(userProfileJpaRepository, never()).save(any());
     }
 
@@ -55,7 +55,7 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.existsByEmail("john@mail.com")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class,
-                () -> userProfileService.register("john", "John Doe", "john@mail.com", "pass"));
+                () -> registerUserProfileService.register("john", "John Doe", "john@mail.com", "pass"));
         verify(userProfileJpaRepository, never()).save(any());
     }
 
@@ -75,7 +75,7 @@ public class UserProfileJpaEntityServiceImplTest {
         saved.setRole(UserRole.ADMIN);
         when(userProfileJpaRepository.save(any(UserProfileJpaEntity.class))).thenReturn(saved);
 
-        UserProfileJpaEntity result = userProfileService.registerAsAdmin("admin", "Admin User", "admin@mail.com", "adminPass");
+        UserProfileJpaEntity result = registerUserProfileService.registerAsAdmin("admin", "Admin User", "admin@mail.com", "adminPass");
 
         assertEquals(UserRole.ADMIN, result.getRole());
         verify(passwordEncoder).encode("adminPass");
@@ -90,7 +90,7 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.existsByUsername("admin")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class,
-                () -> userProfileService.registerAsAdmin("admin", "Admin User", "admin@mail.com", "pass"));
+                () -> registerUserProfileService.registerAsAdmin("admin", "Admin User", "admin@mail.com", "pass"));
     }
 
     // ---------------------------------------------------------------
@@ -105,7 +105,7 @@ public class UserProfileJpaEntityServiceImplTest {
 
         when(userProfileJpaRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        Page<UserProfileJpaEntity> result = userProfileService.findAllUsers(0, 10);
+        Page<UserProfileJpaEntity> result = registerUserProfileService.findAllUsers(0, 10);
 
         assertEquals(1, result.getTotalElements());
         verify(userProfileJpaRepository).findAll(any(Pageable.class));
@@ -121,7 +121,7 @@ public class UserProfileJpaEntityServiceImplTest {
         user.setUsername("john");
         when(userProfileJpaRepository.findByUsername("john")).thenReturn(Optional.of(user));
 
-        Optional<UserProfileJpaEntity> result = userProfileService.getByUsername("john");
+        Optional<UserProfileJpaEntity> result = registerUserProfileService.getByUsername("john");
 
         assertTrue(result.isPresent());
         assertEquals("john", result.get().getUsername());
@@ -131,7 +131,7 @@ public class UserProfileJpaEntityServiceImplTest {
     void getByUsername_notFound_returnsEmpty() {
         when(userProfileJpaRepository.findByUsername("nobody")).thenReturn(Optional.empty());
 
-        Optional<UserProfileJpaEntity> result = userProfileService.getByUsername("nobody");
+        Optional<UserProfileJpaEntity> result = registerUserProfileService.getByUsername("nobody");
 
         assertTrue(result.isEmpty());
     }
@@ -149,7 +149,7 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.findById("user-1")).thenReturn(Optional.of(user));
         when(userProfileJpaRepository.save(any(UserProfileJpaEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UserProfileJpaEntity result = userProfileService.updateRole("user-1", UserRole.ADMIN);
+        UserProfileJpaEntity result = registerUserProfileService.updateRole("user-1", UserRole.ADMIN);
 
         assertEquals(UserRole.ADMIN, result.getRole());
         assertNotNull(result.getUpdatedAt());
@@ -160,7 +160,7 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.findById("missing")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> userProfileService.updateRole("missing", UserRole.ADMIN));
+                () -> registerUserProfileService.updateRole("missing", UserRole.ADMIN));
     }
 
     // ---------------------------------------------------------------
@@ -171,7 +171,7 @@ public class UserProfileJpaEntityServiceImplTest {
     void deleteById_success() {
         when(userProfileJpaRepository.existsById("user-1")).thenReturn(true);
 
-        userProfileService.deleteById("user-1");
+        registerUserProfileService.deleteById("user-1");
 
         verify(userProfileJpaRepository).deleteById("user-1");
     }
@@ -185,6 +185,6 @@ public class UserProfileJpaEntityServiceImplTest {
         when(userProfileJpaRepository.findById("missing")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> userProfileService.updateProfile("missing", "Name", "email@mail.com"));
+                () -> registerUserProfileService.updateProfile("missing", "Name", "email@mail.com"));
     }
 }
