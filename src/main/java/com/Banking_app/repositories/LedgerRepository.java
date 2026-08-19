@@ -1,6 +1,6 @@
 package com.Banking_app.repositories;
 
-import com.Banking_app.models.LedgerEntry;
+import com.Banking_app.jpaentities.LedgerEntry;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

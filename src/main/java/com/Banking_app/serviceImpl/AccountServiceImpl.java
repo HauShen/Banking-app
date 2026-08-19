@@ -2,25 +2,23 @@ package com.Banking_app.serviceImpl;
 
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.Account;
-import com.Banking_app.models.LedgerEntry;
-import com.Banking_app.models.Transaction;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.AccountCurrency;
-import com.Banking_app.models.enums.AccountStatus;
-import com.Banking_app.models.enums.LedgerType;
-import com.Banking_app.models.enums.TransactionStatus;
+import com.Banking_app.jpaentities.Account;
+import com.Banking_app.jpaentities.LedgerEntry;
+import com.Banking_app.jpaentities.Transaction;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.enums.LedgerType;
+import com.Banking_app.enums.TransactionStatus;
 import com.Banking_app.repositories.AccountRepository;
 import com.Banking_app.repositories.LedgerRepository;
 import com.Banking_app.repositories.TransactionRepository;
-import com.Banking_app.repositories.UserProfileRepository;
+import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import com.Banking_app.service.AccountService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.Banking_app.dto.mappers.AccountMapper;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -32,13 +30,13 @@ import java.util.UUID;
 @Transactional
 public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserProfileJpaRepository userProfileJpaRepository;
     private final TransactionRepository transactionRepository;
     private final LedgerRepository ledgerRepository;
     @Autowired
-    public AccountServiceImpl(AccountRepository accountRepository,UserProfileRepository userProfileRepository, TransactionRepository transactionRepository, LedgerRepository ledgerRepository){
+    public AccountServiceImpl(AccountRepository accountRepository, UserProfileJpaRepository userProfileJpaRepository, TransactionRepository transactionRepository, LedgerRepository ledgerRepository){
         this.accountRepository = accountRepository;
-        this.userProfileRepository = userProfileRepository;
+        this.userProfileJpaRepository = userProfileJpaRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerRepository = ledgerRepository;
     }
@@ -52,7 +50,7 @@ public class AccountServiceImpl implements AccountService {
     }
     @Override
     public AccountResponseBody createAccountWithUserId(AccountRequestBody accountRequestBody){
-        UserProfile user = userProfileRepository.findById(accountRequestBody.getUserId())
+        UserProfileJpaEntity user = userProfileJpaRepository.findById(accountRequestBody.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + accountRequestBody.getUserId()));
         Account account = new Account();
         account.setUser(user);
@@ -90,7 +88,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(readOnly = true)
     public List<AccountResponseBody>getAllAccountsByUserId(String userId){
-        UserProfile user = userProfileRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+        UserProfileJpaEntity user = userProfileJpaRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
         List<Account> userAccounts = accountRepository.findAllByUserId(userId);
         List<AccountResponseBody> userAccountsResponse = new ArrayList<>();
         for(Account account : userAccounts){

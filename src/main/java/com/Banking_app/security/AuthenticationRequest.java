@@ -1,7 +1,6 @@
 package com.Banking_app.security;
 import java.io.Serializable;
 
-import com.Banking_app.models.enums.UserRole;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.Email;
@@ -18,5 +17,6 @@ public class AuthenticationRequest {
     private String email;
     @NotBlank
     private String password;
-    private UserRole role;
+    // NOTE: deliberately no `role` field. This DTO backs the public /api/auth/register
+    // endpoint, and a client must not be able to influence the role it is granted.
 }

@@ -1,7 +1,7 @@
 package com.Banking_app.security;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.UserRole;
-import com.Banking_app.repositories.UserProfileRepository;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.userProfile.domain.enums.UserRole;
+import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -16,13 +16,13 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class BootstrapAdminRunner implements CommandLineRunner{
-    private final UserProfileRepository userProfileRepository;
+    private final UserProfileJpaRepository userProfileJpaRepository;
     private final PasswordEncoder passwordEncoder;
     private final Environment env;
     private final BootstrapAdminProperties props;
     @Autowired
-    public BootstrapAdminRunner(UserProfileRepository userProfileRepository, PasswordEncoder passwordEncoder,Environment env, BootstrapAdminProperties props){
-        this.userProfileRepository = userProfileRepository;
+    public BootstrapAdminRunner(UserProfileJpaRepository userProfileJpaRepository, PasswordEncoder passwordEncoder, Environment env, BootstrapAdminProperties props){
+        this.userProfileJpaRepository = userProfileJpaRepository;
         this.passwordEncoder = passwordEncoder;
         this.env = env;
         this.props = props;
@@ -35,7 +35,7 @@ public class BootstrapAdminRunner implements CommandLineRunner{
         }
 
         // 1) If admin already exists, skip
-        if (userProfileRepository.countByRole(UserRole.ADMIN) > 0) {
+        if (userProfileJpaRepository.countByRole(UserRole.ADMIN) > 0) {
             log.info("Bootstrap admin skipped: ADMIN already exists.");
             return;
         }
@@ -49,18 +49,18 @@ public class BootstrapAdminRunner implements CommandLineRunner{
             return;
         }
         // 3) Prevent duplicate by email
-        if (userProfileRepository.existsByEmail(email)) {
+        if (userProfileJpaRepository.existsByEmail(email)) {
             log.warn("Bootstrap admin skipped: user email already exists: {}", email);
             return;
         }
         // 4) Prevent duplicate by username
-        if (userProfileRepository.existsByUsername(username)) {
+        if (userProfileJpaRepository.existsByUsername(username)) {
             log.warn("Bootstrap admin skipped: username already exists: {}", username);
             return;
         }
 
         // 5) Create ADMIN
-        UserProfile admin = new UserProfile();
+        UserProfileJpaEntity admin = new UserProfileJpaEntity();
         admin.setId(UUID.randomUUID().toString());
         admin.setUsername(username);
         admin.setFullName(username);
@@ -69,7 +69,7 @@ public class BootstrapAdminRunner implements CommandLineRunner{
         admin.setRole(UserRole.ADMIN);
         admin.setCreatedAt(Instant.now());
         admin.setUpdatedAt(Instant.now());
-        userProfileRepository.save(admin);
+        userProfileJpaRepository.save(admin);
         log.info("Bootstrap admin created successfully for Username={}", admin.getUsername());
 
     }

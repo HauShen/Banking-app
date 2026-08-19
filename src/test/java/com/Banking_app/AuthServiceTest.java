@@ -1,7 +1,7 @@
 package com.Banking_app;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.UserRole;
-import com.Banking_app.repositories.UserProfileRepository;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.userProfile.domain.enums.UserRole;
+import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import com.Banking_app.security.AuthService;
 import com.Banking_app.security.AuthenticationRequest;
 import com.Banking_app.security.AuthenticationResponse;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class AuthServiceTest {
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private UserProfileJpaRepository userProfileJpaRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -68,15 +68,15 @@ public class AuthServiceTest {
     void register_success_returnsJwtToken() {
         AuthenticationRequest req = buildRegisterRequest("john", "john@mail.com");
 
-        when(userProfileRepository.existsByUsername("john")).thenReturn(false);
-        when(userProfileRepository.existsByEmail("john@mail.com")).thenReturn(false);
+        when(userProfileJpaRepository.existsByUsername("john")).thenReturn(false);
+        when(userProfileJpaRepository.existsByEmail("john@mail.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
 
-        UserProfile savedUser = new UserProfile();
+        UserProfileJpaEntity savedUser = new UserProfileJpaEntity();
         savedUser.setId("user-1");
         savedUser.setUsername("john");
         savedUser.setRole(UserRole.CUSTOMER);
-        when(userProfileRepository.save(any(UserProfile.class))).thenReturn(savedUser);
+        when(userProfileJpaRepository.save(any(UserProfileJpaEntity.class))).thenReturn(savedUser);
         when(jwtService.generateToken(savedUser)).thenReturn("mock.jwt.token");
         when(jwtService.getExpirationMs()).thenReturn(86400000L);
 
@@ -86,7 +86,7 @@ public class AuthServiceTest {
         assertEquals("mock.jwt.token",  response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());
         verify(passwordEncoder).encode("password123");
-        verify(userProfileRepository).save(any(UserProfile.class));
+        verify(userProfileJpaRepository).save(any(UserProfileJpaEntity.class));
     }
 
     @Test
@@ -94,18 +94,18 @@ public class AuthServiceTest {
         AuthenticationRequest req = buildRegisterRequest("john", "john@mail.com");
         req.setRole(null); // no role provided
 
-        when(userProfileRepository.existsByUsername("john")).thenReturn(false);
-        when(userProfileRepository.existsByEmail("john@mail.com")).thenReturn(false);
+        when(userProfileJpaRepository.existsByUsername("john")).thenReturn(false);
+        when(userProfileJpaRepository.existsByEmail("john@mail.com")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded");
 
-        when(userProfileRepository.save(argThat(u -> u.getRole() == UserRole.CUSTOMER)))
+        when(userProfileJpaRepository.save(argThat(u -> u.getRole() == UserRole.CUSTOMER)))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(jwtService.generateToken(any())).thenReturn("token");
         when(jwtService.getExpirationMs()).thenReturn(3600000L);
 
         authService.register(req);
 
-        verify(userProfileRepository).save(argThat(u -> u.getRole() == UserRole.CUSTOMER));
+        verify(userProfileJpaRepository).save(argThat(u -> u.getRole() == UserRole.CUSTOMER));
     }
 
     // ---------------------------------------------------------------
@@ -115,10 +115,10 @@ public class AuthServiceTest {
     @Test
     void register_duplicateUsername_throwsIllegalArgumentException() {
         AuthenticationRequest req = buildRegisterRequest("john", "john@mail.com");
-        when(userProfileRepository.existsByUsername("john")).thenReturn(true);
+        when(userProfileJpaRepository.existsByUsername("john")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () -> authService.register(req));
-        verify(userProfileRepository, never()).save(any());
+        verify(userProfileJpaRepository, never()).save(any());
     }
 
     // ---------------------------------------------------------------
@@ -128,11 +128,11 @@ public class AuthServiceTest {
     @Test
     void register_duplicateEmail_throwsIllegalArgumentException() {
         AuthenticationRequest req = buildRegisterRequest("john", "john@mail.com");
-        when(userProfileRepository.existsByUsername("john")).thenReturn(false);
-        when(userProfileRepository.existsByEmail("john@mail.com")).thenReturn(true);
+        when(userProfileJpaRepository.existsByUsername("john")).thenReturn(false);
+        when(userProfileJpaRepository.existsByEmail("john@mail.com")).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () -> authService.register(req));
-        verify(userProfileRepository, never()).save(any());
+        verify(userProfileJpaRepository, never()).save(any());
     }
 
     // ---------------------------------------------------------------
@@ -143,13 +143,13 @@ public class AuthServiceTest {
     void login_validCredentials_returnsJwtToken() {
         LoginRequest req = buildLoginRequest("john", "password123");
 
-        UserProfile user = new UserProfile();
+        UserProfileJpaEntity user = new UserProfileJpaEntity();
         user.setUsername("john");
         user.setRole(UserRole.CUSTOMER);
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(null); // authenticate() returns Authentication, we don't need it here
-        when(userProfileRepository.findByUsername("john")).thenReturn(Optional.of(user));
+        when(userProfileJpaRepository.findByUsername("john")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(user)).thenReturn("mock.jwt.token");
         when(jwtService.getExpirationMs()).thenReturn(86400000L);
 
@@ -173,7 +173,7 @@ public class AuthServiceTest {
                 .thenThrow(new BadCredentialsException("Invalid credentials"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(req));
-        verify(userProfileRepository, never()).findByUsername(any());
+        verify(userProfileJpaRepository, never()).findByUsername(any());
     }
 
     // ---------------------------------------------------------------
@@ -185,7 +185,7 @@ public class AuthServiceTest {
         LoginRequest req = buildLoginRequest("ghost", "password123");
 
         when(authenticationManager.authenticate(any())).thenReturn(null);
-        when(userProfileRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+        when(userProfileJpaRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
         assertThrows(BadCredentialsException.class, () -> authService.login(req));
     }

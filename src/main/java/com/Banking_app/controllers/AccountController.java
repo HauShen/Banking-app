@@ -2,8 +2,8 @@ package com.Banking_app.controllers;
 
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.AccountStatus;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.enums.AccountStatus;
 import com.Banking_app.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ public class AccountController {
         this.accountService = accountService;
     }
     @GetMapping("/summary")
-    public ResponseEntity<Map<String, Object>> getSummary(@AuthenticationPrincipal UserProfile user) {
+    public ResponseEntity<Map<String, Object>> getSummary(@AuthenticationPrincipal UserProfileJpaEntity user) {
         List<AccountResponseBody> accounts = accountService.getAllAccountsByUserId(user.getId());
         double totalBalance = accounts.stream()
                 .mapToDouble(a -> a.getBalance() != null ? a.getBalance().doubleValue() : 0)
@@ -55,7 +55,7 @@ public class AccountController {
     public ResponseEntity<AccountResponseBody> topUp(
             @PathVariable Long id,
             @RequestParam BigDecimal amount,
-            @AuthenticationPrincipal UserProfile user) {
+            @AuthenticationPrincipal UserProfileJpaEntity user) {
         return ResponseEntity.ok(accountService.topUp(id, amount, user.getId()));
     }
 

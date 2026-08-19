@@ -1,9 +1,9 @@
 package com.Banking_app.controllers;
 import com.Banking_app.dto.mappers.UserProfileMapper;
-import com.Banking_app.dto.requestBodies.UserProfileRequestBody;
+import com.Banking_app.userProfile.adapter.in.web.dto.UserProfileRequestBody;
 import com.Banking_app.dto.responseBodies.BootstrapStatusResponse;
 import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
-import com.Banking_app.models.UserProfile;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import com.Banking_app.service.BootstrapService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,7 +26,7 @@ public class AuthBootstrapController {
     }
     @PostMapping("/bootstrap-admin/register")
     public ResponseEntity<UserProfileResponseBody> registerBootstrapAdmin(@Valid @RequestBody UserProfileRequestBody body) {
-        UserProfile created = bootstrapService.registerFirstAdmin(
+        UserProfileJpaEntity created = bootstrapService.registerFirstAdmin(
                 body.getUsername(),
                 body.getFullName(),
                 body.getEmail(),

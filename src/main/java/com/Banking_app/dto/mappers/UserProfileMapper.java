@@ -1,13 +1,13 @@
 package com.Banking_app.dto.mappers;
 
 import com.Banking_app.dto.responseBodies.UserProfileResponseBody;
-import com.Banking_app.models.UserProfile;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import org.springframework.stereotype.Component;
 @Component
 public class UserProfileMapper {
     public UserProfileMapper(){}
 
-    public UserProfileResponseBody toResponse(UserProfile user){
+    public UserProfileResponseBody toResponse(UserProfileJpaEntity user){
         return UserProfileResponseBody.builder()
                 .id(user.getId())
                 .username(user.getUsername())

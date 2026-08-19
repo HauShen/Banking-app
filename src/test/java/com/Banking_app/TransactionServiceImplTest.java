@@ -2,10 +2,10 @@ package com.Banking_app;
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
-import com.Banking_app.models.Account;
-import com.Banking_app.models.Transaction;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.TransactionStatus;
+import com.Banking_app.jpaentities.Account;
+import com.Banking_app.jpaentities.Transaction;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.enums.TransactionStatus;
 import com.Banking_app.repositories.AccountRepository;
 import com.Banking_app.repositories.LedgerRepository;
 import com.Banking_app.repositories.TransactionRepository;
@@ -46,7 +46,7 @@ public class TransactionServiceImplTest {
     // ---------------------------------------------------------------
 
     private Account buildAccount(String accountNumber, BigDecimal balance) {
-        UserProfile user = new UserProfile();
+        UserProfileJpaEntity user = new UserProfileJpaEntity();
         user.setId(UUID.randomUUID().toString());
 
         Account account = new Account();

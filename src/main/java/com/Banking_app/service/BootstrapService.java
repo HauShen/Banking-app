@@ -1,10 +1,10 @@
 package com.Banking_app.service;
 
 import com.Banking_app.dto.responseBodies.BootstrapStatusResponse;
-import com.Banking_app.models.UserProfile;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 
 public interface BootstrapService {
     BootstrapStatusResponse getStatus();
-    UserProfile registerFirstAdmin(String username, String fullName, String email, String rawPassword);
+    UserProfileJpaEntity registerFirstAdmin(String username, String fullName, String email, String rawPassword);
 
 }

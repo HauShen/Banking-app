@@ -2,7 +2,7 @@ package com.Banking_app.service;
 
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.enums.AccountStatus;
+import com.Banking_app.enums.AccountStatus;
 
 import java.math.BigDecimal;
 import java.util.List;

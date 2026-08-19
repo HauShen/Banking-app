@@ -1,9 +1,6 @@
 package com.Banking_app.dto.responseBodies;
-import com.Banking_app.models.enums.UserRole;
-import lombok.AllArgsConstructor;
+import com.Banking_app.userProfile.domain.enums.UserRole;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.Value;
 
 import java.time.Instant;

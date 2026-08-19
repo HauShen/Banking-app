@@ -1,7 +1,5 @@
 package com.Banking_app.security;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.UserRole;
-import com.Banking_app.repositories.UserProfileRepository;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +32,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal UserProfile user) {
+    public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal UserProfileJpaEntity user) {
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         return ResponseEntity.ok(Map.of(
                 "id",       user.getId(),

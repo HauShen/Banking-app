@@ -1,9 +1,7 @@
 package com.Banking_app.dto.mappers;
 
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.Account;
-import org.springframework.stereotype.Component;
-
+import com.Banking_app.jpaentities.Account;
 
 
 public class AccountMapper {

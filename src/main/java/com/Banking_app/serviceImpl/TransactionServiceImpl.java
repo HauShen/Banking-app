@@ -3,12 +3,12 @@ import com.Banking_app.dto.mappers.TransactionMapper;
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
-import com.Banking_app.models.Account;
-import com.Banking_app.models.LedgerEntry;
-import com.Banking_app.models.Transaction;
-import com.Banking_app.models.enums.AccountStatus;
-import com.Banking_app.models.enums.LedgerType;
-import com.Banking_app.models.enums.TransactionStatus;
+import com.Banking_app.jpaentities.Account;
+import com.Banking_app.jpaentities.LedgerEntry;
+import com.Banking_app.jpaentities.Transaction;
+import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.enums.LedgerType;
+import com.Banking_app.enums.TransactionStatus;
 import com.Banking_app.repositories.AccountRepository;
 import com.Banking_app.repositories.LedgerRepository;
 import com.Banking_app.repositories.TransactionRepository;
@@ -21,12 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Service

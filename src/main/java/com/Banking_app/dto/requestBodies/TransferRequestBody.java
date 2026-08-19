@@ -1,6 +1,5 @@
 package com.Banking_app.dto.requestBodies;
 
-import com.Banking_app.models.Account;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.Data;
 import lombok.Builder;

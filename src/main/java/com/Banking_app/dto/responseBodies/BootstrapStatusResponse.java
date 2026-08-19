@@ -1,12 +1,6 @@
 package com.Banking_app.dto.responseBodies;
 
-import com.Banking_app.models.enums.UserRole;
-import com.Banking_app.service.BootstrapService;
-import lombok.Builder;
 import lombok.Data;
-import lombok.Value;
-
-import java.time.Instant;
 
 @Data
 public class BootstrapStatusResponse {

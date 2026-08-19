@@ -1,9 +1,7 @@
 package com.Banking_app.repositories;
 
-import com.Banking_app.dto.requestBodies.AccountRequestBody;
-import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.Account;
-import com.Banking_app.models.enums.AccountStatus;
+import com.Banking_app.jpaentities.Account;
+import com.Banking_app.enums.AccountStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

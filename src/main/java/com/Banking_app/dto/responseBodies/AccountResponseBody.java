@@ -1,8 +1,8 @@
 package com.Banking_app.dto.responseBodies;
 
-import com.Banking_app.models.enums.AccountCurrency;
-import com.Banking_app.models.enums.AccountStatus;
-import com.Banking_app.models.enums.AccountType;
+import com.Banking_app.enums.AccountCurrency;
+import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.enums.AccountType;
 import lombok.Data;
 
 import java.math.BigDecimal;

@@ -1,7 +1,7 @@
 package com.Banking_app.dto.mappers;
 
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
-import com.Banking_app.models.Transaction;
+import com.Banking_app.jpaentities.Transaction;
 
 public class TransactionMapper {
     public static TransactionResponseBody toResponse(Transaction transaction){

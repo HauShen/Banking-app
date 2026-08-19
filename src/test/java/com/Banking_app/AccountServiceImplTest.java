@@ -2,12 +2,12 @@ package com.Banking_app;
 
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.models.Account;
-import com.Banking_app.models.UserProfile;
-import com.Banking_app.models.enums.AccountStatus;
-import com.Banking_app.models.enums.AccountType;
+import com.Banking_app.jpaentities.Account;
+import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.enums.AccountType;
 import com.Banking_app.repositories.AccountRepository;
-import com.Banking_app.repositories.UserProfileRepository;
+import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import com.Banking_app.serviceImpl.AccountServiceImpl;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -31,7 +31,7 @@ public class AccountServiceImplTest {
     private AccountRepository accountRepository;
 
     @Mock
-    private UserProfileRepository userProfileRepository;
+    private UserProfileJpaRepository userProfileJpaRepository;
 
     @InjectMocks
     private AccountServiceImpl accountService;
@@ -40,14 +40,14 @@ public class AccountServiceImplTest {
     // Helpers
     // ---------------------------------------------------------------
 
-    private UserProfile buildUser(String id) {
-        UserProfile user = new UserProfile();
+    private UserProfileJpaEntity buildUser(String id) {
+        UserProfileJpaEntity user = new UserProfileJpaEntity();
         user.setId(id);
         user.setUsername("user_" + id);
         return user;
     }
 
-    private Account buildAccount(Long id, String accountNumber, UserProfile user) {
+    private Account buildAccount(Long id, String accountNumber, UserProfileJpaEntity user) {
         Account account = new Account();
         account.setAccountId(id);
         account.setAccountNumber(accountNumber);
@@ -64,13 +64,13 @@ public class AccountServiceImplTest {
 
     @Test
     void createAccount_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
 
         AccountRequestBody requestBody = new AccountRequestBody();
         requestBody.setUserId("user-1");
         requestBody.setAccountType(AccountType.SAVINGS);
 
-        when(userProfileRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(userProfileJpaRepository.findById("user-1")).thenReturn(Optional.of(user));
         when(accountRepository.existsByAccountNumber(anyString())).thenReturn(false);
 
         Account savedAccount = buildAccount(1L, "1234567890", user);
@@ -88,7 +88,7 @@ public class AccountServiceImplTest {
         AccountRequestBody requestBody = new AccountRequestBody();
         requestBody.setUserId("missing-user");
 
-        when(userProfileRepository.findById("missing-user")).thenReturn(Optional.empty());
+        when(userProfileJpaRepository.findById("missing-user")).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class,
                 () -> accountService.createAccountWithUserId(requestBody));
@@ -101,7 +101,7 @@ public class AccountServiceImplTest {
 
     @Test
     void getAccountByAccountId_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         Account account = buildAccount(1L, "1234567890", user);
 
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
@@ -126,7 +126,7 @@ public class AccountServiceImplTest {
 
     @Test
     void getByAccountNumber_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         Account account = buildAccount(1L, "ACC-001", user);
 
         when(accountRepository.findByAccountNumber("ACC-001")).thenReturn(Optional.of(account));
@@ -150,7 +150,7 @@ public class AccountServiceImplTest {
 
     @Test
     void getAllAccounts_returnsAllAccounts() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         List<Account> accounts = List.of(
                 buildAccount(1L, "ACC-001", user),
                 buildAccount(2L, "ACC-002", user)
@@ -179,10 +179,10 @@ public class AccountServiceImplTest {
 
     @Test
     void getAllAccountsByUserId_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         List<Account> accounts = List.of(buildAccount(1L, "ACC-001", user));
 
-        when(userProfileRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(userProfileJpaRepository.findById("user-1")).thenReturn(Optional.of(user));
         when(accountRepository.findAllByUserId("user-1")).thenReturn(accounts);
 
         List<AccountResponseBody> result = accountService.getAllAccountsByUserId("user-1");
@@ -192,7 +192,7 @@ public class AccountServiceImplTest {
 
     @Test
     void getAllAccountsByUserId_userNotFound_throwsEntityNotFoundException() {
-        when(userProfileRepository.findById("missing")).thenReturn(Optional.empty());
+        when(userProfileJpaRepository.findById("missing")).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class,
                 () -> accountService.getAllAccountsByUserId("missing"));
@@ -204,7 +204,7 @@ public class AccountServiceImplTest {
 
     @Test
     void getAccountsByStatus_returnsFilteredAccounts() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         Account account = buildAccount(1L, "ACC-001", user);
 
         when(accountRepository.findByAccountStatus(AccountStatus.ACTIVE))
@@ -222,7 +222,7 @@ public class AccountServiceImplTest {
 
     @Test
     void updateAccountStatus_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         Account account = buildAccount(1L, "ACC-001", user);
         account.setAccountStatus(AccountStatus.ACTIVE);
 
@@ -249,7 +249,7 @@ public class AccountServiceImplTest {
 
     @Test
     void deleteAccount_success() {
-        UserProfile user = buildUser("user-1");
+        UserProfileJpaEntity user = buildUser("user-1");
         Account account = buildAccount(1L, "ACC-001", user);
 
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
