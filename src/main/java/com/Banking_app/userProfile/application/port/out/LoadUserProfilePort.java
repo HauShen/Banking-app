@@ -12,4 +12,12 @@ public interface LoadUserProfilePort {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    /**Admin only
+
+    /** True if at least one ADMIN exists. Used to make bootstrap a one-time operation. */
+    boolean existsAnyAdmin();
+
+    /** How many ADMIN accounts exist. Used to refuse the removal of the last one. */
+    long countAdmins();
 }

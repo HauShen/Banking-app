@@ -5,6 +5,7 @@ import com.Banking_app.userProfile.adapter.out.persistence.mappers.UserProfilePe
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import com.Banking_app.userProfile.application.port.out.SaveUserProfilePort;
+import com.Banking_app.userProfile.domain.enums.UserRole;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -61,5 +62,15 @@ public class UserProfilePersistenceAdapter implements LoadUserProfilePort,SaveUs
     @Override
     public void deleteById(String id) {
         repository.deleteById(id);
+    }
+
+    @Override
+    public boolean existsAnyAdmin() {
+        return repository.existsByRole(UserRole.ADMIN);
+    }
+
+    @Override
+    public long countAdmins() {
+        return repository.countByRole(UserRole.ADMIN);
     }
 }
