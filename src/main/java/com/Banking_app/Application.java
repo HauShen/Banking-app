@@ -1,6 +1,6 @@
 package com.Banking_app;
 
-import com.Banking_app.security.BootstrapAdminProperties;
+import com.Banking_app.userProfile.adapter.in.startup.BootstrapAdminProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
