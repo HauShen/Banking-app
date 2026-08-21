@@ -1,5 +1,9 @@
 package com.Banking_app.security;
-import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
+import com.Banking_app.userProfile.adapter.out.security.AuthenticationRequest;
+import com.Banking_app.userProfile.adapter.out.security.AuthenticationResponse;
+import com.Banking_app.userProfile.adapter.out.security.LoginRequest;
+import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
+import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -32,15 +36,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal UserProfileJpaEntity user) {
-        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal SecurityUserDetails principal) {
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        UserProfile user = principal.getUserProfile();
         return ResponseEntity.ok(Map.of(
-                "id",       user.getId(),
+                "id", user.getId(),
                 "username", user.getUsername(),
                 "fullName", user.getFullName(),
-                "email",    user.getEmail(),
-                "role",     user.getRole().name()
-        ));
+                "email", user.getEmail(),
+                "role", user.getRole().name()));
     }
 
 }

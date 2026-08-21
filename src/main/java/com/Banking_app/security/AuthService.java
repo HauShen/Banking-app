@@ -1,71 +1,48 @@
 package com.Banking_app.security;
-import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import com.Banking_app.userProfile.domain.enums.UserRole;
-import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
+import com.Banking_app.userProfile.adapter.out.security.AuthenticationRequest;
+import com.Banking_app.userProfile.adapter.out.security.AuthenticationResponse;
+import com.Banking_app.userProfile.adapter.out.security.LoginRequest;
+import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
+import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
+import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
+import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
+import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.*;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.time.Instant;
-import java.util.UUID;
 
 @Service
-public class AuthService {
-    private final UserProfileJpaRepository userProfileJpaRepository;
-    private final PasswordEncoder passwordEncoder;
+public class AuthService  {
+
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final RegisterUserProfileUseCase registerUserProfileUseCase;
+    private final LoadUserProfilePort loadUserProfilePort;
+
     @Autowired
-    public AuthService(UserProfileJpaRepository userProfileJpaRepository, PasswordEncoder passwordEncoder, @Lazy AuthenticationManager authenticationManager, JwtService jwtService){
-        this.userProfileJpaRepository = userProfileJpaRepository;
-        this.passwordEncoder = passwordEncoder;
+    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort){
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.registerUserProfileUseCase = registerUserProfileUseCase;
+        this.loadUserProfilePort = loadUserProfilePort;
     }
     public AuthenticationResponse register(AuthenticationRequest request) {
-        if (userProfileJpaRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username already exists");
-        }
-        if (userProfileJpaRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
-        }
+        UserProfile registered = registerUserProfileUseCase.register(new RegisterUserProfileCommand(
+                request.getUsername(), request.getFullName(), request.getEmail(), request.getPassword()));
 
-        Instant now = Instant.now();
-
-        UserProfileJpaEntity user = new UserProfileJpaEntity();
-        user.setId(UUID.randomUUID().toString());
-        user.setUsername(request.getUsername());
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword())); // critical
-        // Public self-registration always produces a CUSTOMER. The role must never be taken
-        // from the request body: /api/auth/register is unauthenticated, so honouring a
-        // client-supplied role would let anyone mint themselves an admin account.
-        // Elevating a user is an admin-only operation (PATCH /api/users/admin/{id}/role).
-        user.setRole(UserRole.CUSTOMER);
-        user.setCreatedAt(now);
-        user.setUpdatedAt(now);
-
-        UserProfileJpaEntity saved = userProfileJpaRepository.save(user);
-
-        String jwt = jwtService.generateToken(saved);
+        String jwt = jwtService.generateToken(new SecurityUserDetails(registered));
         return new AuthenticationResponse(jwt, "Bearer", jwtService.getExpirationMs() / 1000);
     }
 
     public AuthenticationResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                request.getUsername(), request.getPassword()));
 
-        UserDetails user = userProfileJpaRepository.findByUsername(request.getUsername())
+        UserProfile user = loadUserProfilePort.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        String jwt = jwtService.generateToken(user);
+        String jwt = jwtService.generateToken(new SecurityUserDetails(user));
         return new AuthenticationResponse(jwt, "Bearer", jwtService.getExpirationMs() / 1000);
     }
 }

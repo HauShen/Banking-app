@@ -10,11 +10,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService{
-    private final UserProfileJpaRepository userProfileJpaRepository;
     private final LoadUserProfilePort loadUserProfilePort;
     @Autowired
-    public CustomUserDetailsService(UserProfileJpaRepository userProfileJpaRepository, LoadUserProfilePort loadUserProfilePort){
-        this.userProfileJpaRepository = userProfileJpaRepository;
+    public CustomUserDetailsService(LoadUserProfilePort loadUserProfilePort){
         this.loadUserProfilePort = loadUserProfilePort;
     }
     @Override
