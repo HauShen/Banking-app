@@ -4,5 +4,6 @@ public enum AuditAction{
     ADMIN_CREATED,
     ADMIN_BOOTSTRAPPED,
     ROLE_CHANGED,
-    USER_DELETED
+    USER_DELETED,
+    PROFILE_UPDATED
 }

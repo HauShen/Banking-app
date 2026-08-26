@@ -33,7 +33,8 @@ public class AuthController {
     public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
-    @GetMapping("/me")
+
+    /*@GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal SecurityUserDetails principal) {
         if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         UserProfile user = principal.getUserProfile();
@@ -43,6 +44,6 @@ public class AuthController {
                 "fullName", user.getFullName(),
                 "email", user.getEmail(),
                 "role", user.getRole().name()));
-    }
+    }*/
 
 }
