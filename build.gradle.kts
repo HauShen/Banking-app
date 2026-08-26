@@ -25,6 +25,7 @@ dependencies {
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
 	compileOnly("org.projectlombok:lombok:1.18.32")
 	annotationProcessor("org.projectlombok:lombok:1.18.32")
 	testCompileOnly("org.projectlombok:lombok:1.18.32")
