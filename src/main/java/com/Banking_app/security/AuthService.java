@@ -1,7 +1,4 @@
 package com.Banking_app.security;
-import com.Banking_app.userProfile.adapter.out.security.AuthenticationRequest;
-import com.Banking_app.userProfile.adapter.out.security.AuthenticationResponse;
-import com.Banking_app.userProfile.adapter.out.security.LoginRequest;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;

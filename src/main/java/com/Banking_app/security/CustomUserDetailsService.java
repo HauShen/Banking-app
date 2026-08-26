@@ -1,5 +1,4 @@
 package com.Banking_app.security;
-import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import org.springframework.beans.factory.annotation.Autowired;
