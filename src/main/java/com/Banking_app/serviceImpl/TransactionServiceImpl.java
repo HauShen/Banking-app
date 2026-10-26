@@ -6,7 +6,7 @@ import com.Banking_app.dto.responseBodies.TransferResponseBody;
 import com.Banking_app.jpaentities.Account;
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
-import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.enums.LedgerType;
 import com.Banking_app.enums.TransactionStatus;
 import com.Banking_app.repositories.AccountRepository;

@@ -3,7 +3,7 @@ package com.Banking_app.controllers;
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

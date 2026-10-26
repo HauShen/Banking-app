@@ -1,6 +1,6 @@
 package com.Banking_app.dto.requestBodies;
 
-import com.Banking_app.enums.AccountType;
+import com.Banking_app.account.domain.enums.AccountType;
 import lombok.Data;
 import jakarta.validation.constraints.NotNull;
 @Data

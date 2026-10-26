@@ -1,7 +1,7 @@
 package com.Banking_app.repositories;
 
 import com.Banking_app.jpaentities.Account;
-import com.Banking_app.enums.AccountStatus;
+import com.Banking_app.account.domain.enums.AccountStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

@@ -1,9 +1,9 @@
 package com.Banking_app.jpaentities;
 
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
-import com.Banking_app.enums.AccountCurrency;
-import com.Banking_app.enums.AccountStatus;
-import com.Banking_app.enums.AccountType;
+import com.Banking_app.account.domain.enums.AccountCurrency;
+import com.Banking_app.account.domain.enums.AccountStatus;
+import com.Banking_app.account.domain.enums.AccountType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
