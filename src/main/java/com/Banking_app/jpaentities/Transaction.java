@@ -1,5 +1,6 @@
 package com.Banking_app.jpaentities;
 
+import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.enums.TransactionStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
@@ -42,12 +43,12 @@ public class Transaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_account_id", nullable = true)
     @JsonIgnore
-    Account fromAccount;
+    AccountJpaEntity fromAccount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "to_account_id", nullable = false)
     @JsonIgnore
-    Account toAccount;
+    AccountJpaEntity toAccount;
     @Column(name = "amount")
     private BigDecimal amount;
     @Enumerated(EnumType.STRING)
@@ -65,7 +66,7 @@ public class Transaction {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true )
     private List<LedgerEntry> ledgerEntries;
-    public Transaction(Long id,String referenceNumber,Account fromAccount, Account toAccount, BigDecimal amount, TransactionStatus status, String description, Instant createdAt, Instant successAt){
+    public Transaction(Long id,String referenceNumber,AccountJpaEntity fromAccount, AccountJpaEntity toAccount, BigDecimal amount, TransactionStatus status, String description, Instant createdAt, Instant successAt){
         this.id = id;
         this.referenceNumber = referenceNumber;
         this.fromAccount = fromAccount;

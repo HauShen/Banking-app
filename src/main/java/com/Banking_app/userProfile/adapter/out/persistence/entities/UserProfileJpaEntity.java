@@ -1,20 +1,16 @@
 package com.Banking_app.userProfile.adapter.out.persistence.entities;
-import com.Banking_app.jpaentities.Account;
 import com.Banking_app.userProfile.domain.enums.UserRole;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Column;
-import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.persistence.Table;
 
 
 import java.time.Instant;
-import java.util.List;
 
 @Entity
 @Getter
@@ -42,10 +38,8 @@ public class UserProfileJpaEntity{
     @Column(name = "updated_at",nullable = false)
     private Instant updatedAt;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", orphanRemoval = true )
-    private List<Account> accounts;
-
-
+    // accounts list removed (Account hexagonal step 7): the user module no longer knows about accounts.
+    // accounts.user_id still has its DB foreign key to users.id (ON DELETE RESTRICT).
 
 
     public UserProfileJpaEntity(String id, String username, UserRole role, String fullName, String email, String password, Instant createdAt, Instant updatedAt){

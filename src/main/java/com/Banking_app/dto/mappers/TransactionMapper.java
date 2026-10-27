@@ -18,7 +18,7 @@ public class TransactionMapper {
                 transaction.getReferenceNumber(),
                 fromAccountNumber,                              //  use safe variable
                 transaction.getToAccount().getAccountNumber(),
-                transaction.getToAccount().getUser().getId(),
+                transaction.getToAccount().getUserId(),
                 transaction.getAmount(),
                 currency,                                       //  use safe variable
                 transaction.getStatus().name(),

@@ -1,5 +1,6 @@
 package com.Banking_app.jpaentities;
 
+import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.enums.LedgerType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
@@ -32,7 +33,7 @@ public class LedgerEntry {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     @JsonIgnore
-    private Account account;
+    private AccountJpaEntity account;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id", nullable = false)
@@ -48,7 +49,7 @@ public class LedgerEntry {
     private BigDecimal balanceAfter;
     @Column(name = "created_at")
     private Instant postedAt;
-    public LedgerEntry(Long id, Account account, Transaction transaction, LedgerType ledgerType, BigDecimal amount, BigDecimal balanceAfter, Instant postedAt){
+    public LedgerEntry(Long id, AccountJpaEntity account, Transaction transaction, LedgerType ledgerType, BigDecimal amount, BigDecimal balanceAfter, Instant postedAt){
         this.id = id;
         this.account = account;
         this.transaction = transaction;

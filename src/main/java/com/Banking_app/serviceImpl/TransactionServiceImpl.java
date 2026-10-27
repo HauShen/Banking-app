@@ -3,13 +3,13 @@ import com.Banking_app.dto.mappers.TransactionMapper;
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
-import com.Banking_app.jpaentities.Account;
+import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
 import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.enums.LedgerType;
 import com.Banking_app.enums.TransactionStatus;
-import com.Banking_app.repositories.AccountRepository;
+import com.Banking_app.account.adapter.out.persistence.jparepositories.AccountJpaRepository;
 import com.Banking_app.repositories.LedgerRepository;
 import com.Banking_app.repositories.TransactionRepository;
 import com.Banking_app.service.TransactionService;
@@ -30,9 +30,9 @@ import java.util.UUID;
 public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final LedgerRepository ledgerRepository;
-    private final AccountRepository accountRepository;
+    private final AccountJpaRepository accountRepository;
     @Autowired
-    public TransactionServiceImpl(TransactionRepository transactionRepository, LedgerRepository ledgerRepository, AccountRepository accountRepository){
+    public TransactionServiceImpl(TransactionRepository transactionRepository, LedgerRepository ledgerRepository, AccountJpaRepository accountRepository){
         this.transactionRepository = transactionRepository;
         this.ledgerRepository = ledgerRepository;
         this.accountRepository = accountRepository;
@@ -59,9 +59,9 @@ public class TransactionServiceImpl implements TransactionService {
             return duplicatedResponse;
         }
 
-        Account from = accountRepository.findByAccountNumber(transferRequestBody.getFromAccountNumber())
+        AccountJpaEntity from = accountRepository.findByAccountNumber(transferRequestBody.getFromAccountNumber())
                 .orElseThrow(() -> new EntityNotFoundException("From account not found"));
-        Account to = accountRepository.findByAccountNumber(transferRequestBody.getToAccountNumber())
+        AccountJpaEntity to = accountRepository.findByAccountNumber(transferRequestBody.getToAccountNumber())
                 .orElseThrow(() -> new EntityNotFoundException("To account not found"));
 
 

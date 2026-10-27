@@ -2,14 +2,14 @@ package com.Banking_app.serviceImpl;
 
 import com.Banking_app.dto.requestBodies.AccountRequestBody;
 import com.Banking_app.dto.responseBodies.AccountResponseBody;
-import com.Banking_app.jpaentities.Account;
+import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
 import com.Banking_app.userProfile.adapter.out.persistence.entities.UserProfileJpaEntity;
 import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.enums.LedgerType;
 import com.Banking_app.enums.TransactionStatus;
-import com.Banking_app.repositories.AccountRepository;
+import com.Banking_app.account.adapter.out.persistence.jparepositories.AccountJpaRepository;
 import com.Banking_app.repositories.LedgerRepository;
 import com.Banking_app.repositories.TransactionRepository;
 import com.Banking_app.userProfile.adapter.out.persistence.jparepositories.UserProfileJpaRepository;
@@ -29,12 +29,12 @@ import java.util.UUID;
 @Service
 @Transactional
 public class AccountServiceImpl implements AccountService {
-    private final AccountRepository accountRepository;
+    private final AccountJpaRepository accountRepository;
     private final UserProfileJpaRepository userProfileJpaRepository;
     private final TransactionRepository transactionRepository;
     private final LedgerRepository ledgerRepository;
     @Autowired
-    public AccountServiceImpl(AccountRepository accountRepository, UserProfileJpaRepository userProfileJpaRepository, TransactionRepository transactionRepository, LedgerRepository ledgerRepository){
+    public AccountServiceImpl(AccountJpaRepository accountRepository, UserProfileJpaRepository userProfileJpaRepository, TransactionRepository transactionRepository, LedgerRepository ledgerRepository){
         this.accountRepository = accountRepository;
         this.userProfileJpaRepository = userProfileJpaRepository;
         this.transactionRepository = transactionRepository;
@@ -52,8 +52,8 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponseBody createAccountWithUserId(AccountRequestBody accountRequestBody){
         UserProfileJpaEntity user = userProfileJpaRepository.findById(accountRequestBody.getUserId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + accountRequestBody.getUserId()));
-        Account account = new Account();
-        account.setUser(user);
+        AccountJpaEntity account = new AccountJpaEntity();
+        account.setUserId(user.getId());
         account.setAccountType(accountRequestBody.getAccountType());
         account.setAccountStatus(AccountStatus.ACTIVE);
         account.setCurrentBalance(new BigDecimal("20.00"));
@@ -61,7 +61,7 @@ public class AccountServiceImpl implements AccountService {
 
         account.setAccountNumber(generateUniqueAccountNumber()); // Generate unique account number.
 
-        Account savedAccount = accountRepository.save(account);
+        AccountJpaEntity savedAccount = accountRepository.save(account);
 
         // Map entity -> response DTO
     return AccountMapper.toResponse(savedAccount);
@@ -69,13 +69,13 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponseBody getAccountByAccountId(Long accountId){
-        Account account = accountRepository.findById(accountId).orElseThrow(() -> new EntityNotFoundException("Account not found with id: " + accountId));
+        AccountJpaEntity account = accountRepository.findById(accountId).orElseThrow(() -> new EntityNotFoundException("Account not found with id: " + accountId));
         return AccountMapper.toResponse(account);
     }
     @Override
     @Transactional(readOnly = true)
     public AccountResponseBody getByAccountNumber(String accountNumber){
-        Account account = accountRepository.findByAccountNumber(accountNumber)
+        AccountJpaEntity account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found with account number: " + accountNumber));
         return AccountMapper.toResponse(account);
 
@@ -89,9 +89,9 @@ public class AccountServiceImpl implements AccountService {
     @Transactional(readOnly = true)
     public List<AccountResponseBody>getAllAccountsByUserId(String userId){
         UserProfileJpaEntity user = userProfileJpaRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-        List<Account> userAccounts = accountRepository.findAllByUserId(userId);
+        List<AccountJpaEntity> userAccounts = accountRepository.findAllByUserId(userId);
         List<AccountResponseBody> userAccountsResponse = new ArrayList<>();
-        for(Account account : userAccounts){
+        for(AccountJpaEntity account : userAccounts){
             userAccountsResponse.add(AccountMapper.toResponse(account));
         }
         return userAccountsResponse;
@@ -104,15 +104,15 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponseBody updateAccountStatus(Long accountId,AccountStatus status){
-        Account account = accountRepository.findById(accountId)
+        AccountJpaEntity account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found with account id: " + accountId));
         account.setAccountStatus(status);
-        Account updated = accountRepository.save(account);
+        AccountJpaEntity updated = accountRepository.save(account);
         return AccountMapper.toResponse(updated);
     }
     @Override
     public void deleteAccount(Long AccountId) {
-        Account account = accountRepository.findById(AccountId)
+        AccountJpaEntity account = accountRepository.findById(AccountId)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found with id: " + AccountId));
         accountRepository.delete(account);
     }
@@ -122,11 +122,11 @@ public class AccountServiceImpl implements AccountService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Top-up amount must be greater than zero");
         }
-        Account account = accountRepository.findById(accountId)
+        AccountJpaEntity account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new EntityNotFoundException("Account not found: " + accountId));
 
         // Ensure the account belongs to the requesting user
-        if (!account.getUser().getId().equals(requestingUserId)) {
+        if (!account.getUserId().equals(requestingUserId)) {
             throw new IllegalArgumentException("You can only top up your own accounts");
         }
         if (account.getAccountStatus() != AccountStatus.ACTIVE) {
