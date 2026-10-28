@@ -6,9 +6,10 @@ import com.Banking_app.account.application.port.in.usecase.ChangeAccountStatusUs
 import com.Banking_app.account.application.port.out.LoadAccountPort;
 import com.Banking_app.account.application.port.out.SaveAccountPort;
 import com.Banking_app.account.domain.models.account.Account;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// @Service is added in step 8, once every port has an adapter (otherwise Spring would fail to start).
+@Service
 @Transactional
 public class ChangeAccountStatusService implements ChangeAccountStatusUseCase {
 

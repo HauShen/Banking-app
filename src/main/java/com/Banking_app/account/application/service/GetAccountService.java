@@ -4,9 +4,10 @@ import com.Banking_app.account.application.exception.AccountNotFoundException;
 import com.Banking_app.account.application.port.in.usecase.GetAccountUseCase;
 import com.Banking_app.account.application.port.out.LoadAccountPort;
 import com.Banking_app.account.domain.models.account.Account;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// @Service is added in step 8, once every port has an adapter (otherwise Spring would fail to start).
+@Service
 @Transactional(readOnly = true)
 public class GetAccountService implements GetAccountUseCase {
 

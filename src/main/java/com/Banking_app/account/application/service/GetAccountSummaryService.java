@@ -5,12 +5,13 @@ import com.Banking_app.account.application.port.in.usecase.GetAccountSummaryUseC
 import com.Banking_app.account.application.port.out.AccountOwnerLookupPort;
 import com.Banking_app.account.application.port.out.LoadAccountPort;
 import com.Banking_app.account.domain.models.account.Account;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-// @Service is added in step 8, once every port has an adapter (otherwise Spring would fail to start).
+@Service
 @Transactional(readOnly = true)
 public class GetAccountSummaryService implements GetAccountSummaryUseCase {
 

@@ -5,9 +5,10 @@ import com.Banking_app.account.application.port.in.command.DeleteAccountCommand;
 import com.Banking_app.account.application.port.in.usecase.DeleteAccountUseCase;
 import com.Banking_app.account.application.port.out.DeleteAccountPort;
 import com.Banking_app.account.application.port.out.LoadAccountPort;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// @Service is added in step 8, once every port has an adapter (otherwise Spring would fail to start).
+@Service
 @Transactional
 public class DeleteAccountService implements DeleteAccountUseCase {
 
