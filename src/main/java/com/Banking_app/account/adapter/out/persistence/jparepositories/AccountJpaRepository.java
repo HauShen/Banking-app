@@ -15,11 +15,4 @@ public interface AccountJpaRepository extends JpaRepository<AccountJpaEntity, Lo
     List<AccountJpaEntity> findAllByUserId(String userId);
 
     List<AccountJpaEntity> findAllByAccountStatus(AccountStatus accountStatus);
-
-    /**
-     * @deprecated Old AccountServiceImpl only. Fails when 2+ accounts share a status.
-     * Removed in step 10 together with AccountServiceImpl; use findAllByAccountStatus.
-     */
-    @Deprecated
-    Optional<AccountJpaEntity> findByAccountStatus(AccountStatus accountStatus);
 }
