@@ -1,5 +1,6 @@
 package com.Banking_app.exception;
 
+import com.Banking_app.account.application.exception.AccountAccessDeniedException;
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.exception.LastAdminException;
 import org.springframework.http.HttpStatus;
@@ -107,6 +108,22 @@ public class GlobalExceptionHandler {
      * Same reasoning for failed logins: without this, a wrong password returns 500.
      * The message is deliberately generic so it does not reveal whether the username exists.
      */
+    /**
+     * Logged in, but the account belongs to someone else (view or top-up). 403, with the
+     * use case's message, e.g. "You can only view your own accounts".
+     */
+    @ExceptionHandler(AccountAccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccountAccessDenied(AccountAccessDeniedException ex, HttpServletRequest request){
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error(HttpStatus.FORBIDDEN.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, HttpServletRequest request){
         ApiError error = ApiError.builder()

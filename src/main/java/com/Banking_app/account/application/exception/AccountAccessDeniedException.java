@@ -1,11 +1,10 @@
 package com.Banking_app.account.application.exception;
 
 /**
- * Caller is not the owner of the account.
- * Temporarily extends IllegalArgumentException so the existing GlobalExceptionHandler
- * still returns 400 (behaviour unchanged). Phase 3, step 13 maps it to 403.
+ * Caller is logged in but is neither the owner of the account nor an admin.
+ * GlobalExceptionHandler maps it to 403 Forbidden.
  */
-public class AccountAccessDeniedException extends IllegalArgumentException {
+public class AccountAccessDeniedException extends RuntimeException {
     public AccountAccessDeniedException(String message) {
         super(message);
     }
