@@ -29,6 +29,11 @@ public class AccountPersistenceAdapter implements LoadAccountPort, SaveAccountPo
     }
 
     @Override
+    public Optional<Account> loadForUpdate(Long accountId) {
+        return accountJpaRepository.findByIdForUpdate(accountId).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<Account> findByAccountNumber(String accountNumber) {
         return accountJpaRepository.findByAccountNumber(accountNumber).map(mapper::toDomain);
     }

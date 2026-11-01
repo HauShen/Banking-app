@@ -32,7 +32,8 @@ public class TopUpAccountService implements TopUpAccountUseCase {
 
     @Override
     public Account topUp(TopUpAccountCommand command) {
-        Account account = loadAccountPort.findById(command.accountId())
+        // Lock the row first: a concurrent top-up or transfer on this account waits until we commit.
+        Account account = loadAccountPort.loadForUpdate(command.accountId())
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + command.accountId()));
 
         if (!account.isOwnedBy(command.requestingUserId())) {

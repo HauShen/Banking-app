@@ -1,6 +1,7 @@
 package com.Banking_app.exception;
 
 import com.Banking_app.account.application.exception.AccountAccessDeniedException;
+import com.Banking_app.account.application.exception.AccountHasTransactionsException;
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.exception.LastAdminException;
 import org.springframework.http.HttpStatus;
@@ -105,10 +106,6 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Same reasoning for failed logins: without this, a wrong password returns 500.
-     * The message is deliberately generic so it does not reveal whether the username exists.
-     */
-    /**
      * Logged in, but the account belongs to someone else (view or top-up). 403, with the
      * use case's message, e.g. "You can only view your own accounts".
      */
@@ -124,6 +121,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    /** Deleting an account that has transaction history: 409, the request conflicts with existing data. */
+    @ExceptionHandler(AccountHasTransactionsException.class)
+    public ResponseEntity<ApiError> handleAccountHasTransactions(AccountHasTransactionsException ex, HttpServletRequest request){
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error(HttpStatus.CONFLICT.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
+     * Same reasoning for failed logins: without this, a wrong password returns 500.
+     * The message is deliberately generic so it does not reveal whether the username exists.
+     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex, HttpServletRequest request){
         ApiError error = ApiError.builder()

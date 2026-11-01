@@ -14,6 +14,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
     boolean existsByIdempotencyKey(String idempotencyKey);
 
+    /**
+     * True if the account is the sender or receiver of any transaction (top-ups have no sender,
+     * hence the LEFT JOIN). Used to refuse deleting an account with history.
+     */
+    @Query("""
+        SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+        FROM Transaction t
+        LEFT JOIN t.fromAccount fa
+        JOIN t.toAccount ta
+        WHERE fa.accountId = :accountId
+           OR ta.accountId = :accountId
+        """)
+    boolean existsInvolvingAccount(@Param("accountId") Long accountId);
+
     @Query("""
         SELECT t FROM Transaction t
         LEFT JOIN t.fromAccount fa

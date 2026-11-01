@@ -23,7 +23,9 @@ public class ChangeAccountStatusService implements ChangeAccountStatusUseCase {
 
     @Override
     public Account changeStatus(ChangeAccountStatusCommand command) {
-        Account account = loadAccountPort.findById(command.accountId())
+        // Locked too: save() writes every column, so an unlocked read could put back an old balance
+        // if a top-up or transfer committed in between.
+        Account account = loadAccountPort.loadForUpdate(command.accountId())
                 .orElseThrow(() -> new AccountNotFoundException(
                         "Account not found with account id: " + command.accountId()));
         account.changeStatus(command.status());

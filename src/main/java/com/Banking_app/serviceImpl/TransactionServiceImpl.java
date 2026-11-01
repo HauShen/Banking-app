@@ -59,10 +59,22 @@ public class TransactionServiceImpl implements TransactionService {
             return duplicatedResponse;
         }
 
-        AccountJpaEntity from = accountRepository.findByAccountNumber(transferRequestBody.getFromAccountNumber())
-                .orElseThrow(() -> new EntityNotFoundException("From account not found"));
-        AccountJpaEntity to = accountRepository.findByAccountNumber(transferRequestBody.getToAccountNumber())
-                .orElseThrow(() -> new EntityNotFoundException("To account not found"));
+        // Lock both account rows (SELECT ... FOR UPDATE) until this transaction ends, so a concurrent
+        // top-up or transfer can't read the same old balance and overwrite ours.
+        // Always lock in the same order (lower account number first): otherwise A->B and B->A at the
+        // same moment could each hold one lock and wait for the other (deadlock), and PostgreSQL
+        // would abort one of them with an error.
+        String fromNumber = transferRequestBody.getFromAccountNumber();
+        String toNumber = transferRequestBody.getToAccountNumber();
+        AccountJpaEntity from;
+        AccountJpaEntity to;
+        if (fromNumber.compareTo(toNumber) < 0) {
+            from = lockAccount(fromNumber, "From account not found");
+            to = lockAccount(toNumber, "To account not found");
+        } else {
+            to = lockAccount(toNumber, "To account not found");
+            from = lockAccount(fromNumber, "From account not found");
+        }
 
 
         if(from.getAccountStatus().name().equals(AccountStatus.LOCKED.name())){
@@ -135,6 +147,11 @@ public class TransactionServiceImpl implements TransactionService {
             throw ex;
         }
     }
+    private AccountJpaEntity lockAccount(String accountNumber, String notFoundMessage) {
+        return accountRepository.findByAccountNumberForUpdate(accountNumber)
+                .orElseThrow(() -> new EntityNotFoundException(notFoundMessage));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TransactionResponseBody getTransactionByReferenceNumber(String reference){
