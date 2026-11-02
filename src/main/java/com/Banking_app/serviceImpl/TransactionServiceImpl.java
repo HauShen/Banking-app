@@ -4,6 +4,7 @@ import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
 import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
+import com.Banking_app.account.application.exception.AccountAccessDeniedException; // TODO Transaction module: own exception
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
 import com.Banking_app.account.domain.enums.AccountStatus;
@@ -42,21 +43,9 @@ public class TransactionServiceImpl implements TransactionService {
     }
     @Override
     @Transactional
-    public TransferResponseBody transfer(TransferRequestBody transferRequestBody) {
+    public TransferResponseBody transfer(TransferRequestBody transferRequestBody, String currentUserId) {
         if (transferRequestBody.getFromAccountNumber().equals(transferRequestBody.getToAccountNumber())) {
             throw new IllegalArgumentException("Cannot transfer to the same account");
-        }
-
-        // Idempotency guard
-        var existingOpt = transactionRepository.findByIdempotencyKey(transferRequestBody.getIdempotencyKey());
-        if (existingOpt.isPresent()) {
-            Transaction existing = existingOpt.get();
-            TransferResponseBody duplicatedResponse = new TransferResponseBody();
-            duplicatedResponse.setTransactionReference(existing.getReferenceNumber());
-            duplicatedResponse.setStatus(existing.getStatus().name());
-            duplicatedResponse.setCreatedAt(existing.getCreatedAt());
-            duplicatedResponse.setMessage("Duplicate request detected. Returning existing transaction.");
-            return duplicatedResponse;
         }
 
         // Lock both account rows (SELECT ... FOR UPDATE) until this transaction ends, so a concurrent
@@ -76,6 +65,29 @@ public class TransactionServiceImpl implements TransactionService {
             from = lockAccount(fromNumber, "From account not found");
         }
 
+        // Only the owner can send money from an account. No admin exception: staff must not be able
+        // to move a customer's money through the customer API (same rule as top-up).
+        if (!from.getUserId().equals(currentUserId)) {
+            throw new AccountAccessDeniedException("You can only transfer from your own accounts");
+        }
+
+        // Idempotency guard. Runs AFTER the ownership check, so a duplicate key can never be used to
+        // read someone else's transaction. The key must also belong to a transfer from this same
+        // account: reusing another account's key is rejected instead of returning that transaction.
+        var existingOpt = transactionRepository.findByIdempotencyKey(transferRequestBody.getIdempotencyKey());
+        if (existingOpt.isPresent()) {
+            Transaction existing = existingOpt.get();
+            AccountJpaEntity existingFrom = existing.getFromAccount();
+            if (existingFrom == null || !existingFrom.getAccountId().equals(from.getAccountId())) {
+                throw new IllegalArgumentException("idempotencyKey has already been used for a different transfer");
+            }
+            TransferResponseBody duplicatedResponse = new TransferResponseBody();
+            duplicatedResponse.setTransactionReference(existing.getReferenceNumber());
+            duplicatedResponse.setStatus(existing.getStatus().name());
+            duplicatedResponse.setCreatedAt(existing.getCreatedAt());
+            duplicatedResponse.setMessage("Duplicate request detected. Returning existing transaction.");
+            return duplicatedResponse;
+        }
 
         if(from.getAccountStatus().name().equals(AccountStatus.LOCKED.name())){
             throw new IllegalArgumentException("Cannot process transfer with an locked account.");

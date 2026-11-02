@@ -77,3 +77,28 @@ Password:12345678
 
 hau3 id: 04ba8309-da44-488d-9407-31efc3bc670d , account : 6728308974
 hau2 id :5aefbb05-36ce-450b-9549-26adb7ffe2ca , account : 9594495815
+
+// Swagger
+http://localhost:8080/swagger-ui/index.html
+
+// Current accessToken
+eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiUk9MRV9BRE1JTiIsInN1YiI6ImhhdSIsImlhdCI6MTc5MzY1NjY4MCwiZXhwIjoxNzkzNjYwMjgwfQ.BrCvqHgziey_yCoukeXLAbZW6U_rtFLnwxczb2XZLK8
+
+// Generatin JWT in GitBash
+openssl rand -base64 48
+
+// customer1
+{
+  "username": "john",
+  "fullName": "aa",
+  "email": "john@example.com",
+  "password": "abc123456"
+}
+
+// customer2
+{
+  "username": "sally",
+  "fullName": "aa",
+  "email": "sally@example.com",
+  "password": "abc123456"
+}
