@@ -88,6 +88,8 @@ eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiUk9MRV9BRE1JTiIsInN1YiI6ImhhdSIsImlhdCI6MTc5MzY
 openssl rand -base64 48
 
 // customer1
+userId: 1ab14300-d9af-423d-9fb1-3aa13d1ab1ab
+accountId: 6718367368
 {
   "username": "john",
   "fullName": "aa",
@@ -96,6 +98,8 @@ openssl rand -base64 48
 }
 
 // customer2
+userId: 3c7d2a97-bf7f-4178-a5c7-2ee7aeb2cb82
+accountId: 4402290345
 {
   "username": "sally",
   "fullName": "aa",
