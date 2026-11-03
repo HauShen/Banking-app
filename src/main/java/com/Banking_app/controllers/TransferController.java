@@ -1,5 +1,6 @@
 package com.Banking_app.controllers;
 
+import com.Banking_app.account.application.port.in.AccountRequester; // TODO Transaction module: shared requester type
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,15 +39,32 @@ public class TransferController {
                 .body(transactionService.transfer(transferRequestBody, currentUserId));
     }
     @GetMapping("/{reference}")
-    public ResponseEntity<TransactionResponseBody> getByReference(@PathVariable String reference) {
-        return ResponseEntity.ok(transactionService.getTransactionByReferenceNumber(reference));
+    public ResponseEntity<TransactionResponseBody> getByReference(
+            @PathVariable String reference,
+            @AuthenticationPrincipal(expression = "userId") String currentUserId,
+            Authentication authentication) {
+        return ResponseEntity.ok(transactionService.getTransactionByReferenceNumber(
+                reference, requester(currentUserId, authentication)));
     }
     @GetMapping("/account/{accountNumber}")
     public ResponseEntity<Page<TransactionResponseBody>> getByAccountNumber(
             @PathVariable String accountNumber,
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(transactionService.getTransactionsByAccountNumber(accountNumber, page, size));
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal(expression = "userId") String currentUserId,
+            Authentication authentication) {
+        return ResponseEntity.ok(transactionService.getTransactionsByAccountNumber(
+                accountNumber, page, size, requester(currentUserId, authentication)));
+    }
+
+    /**
+     * Logged-in user's id + whether they have ROLE_ADMIN.
+     * Temporary copy of AccountController's helper; step 2 (@CurrentRequester) replaces both.
+     */
+    private static AccountRequester requester(String currentUserId, Authentication authentication) {
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        return new AccountRequester(currentUserId, admin);
     }
 
 

@@ -5,6 +5,7 @@ import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
 import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.account.application.exception.AccountAccessDeniedException; // TODO Transaction module: own exception
+import com.Banking_app.account.application.port.in.AccountRequester; // TODO Transaction module: shared requester type
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
 import com.Banking_app.account.domain.enums.AccountStatus;
@@ -166,16 +167,31 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public TransactionResponseBody getTransactionByReferenceNumber(String reference){
+    public TransactionResponseBody getTransactionByReferenceNumber(String reference, AccountRequester requester){
         Transaction transaction = transactionRepository.findByReferenceNumber(reference).orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
+
+        // The sender and the recipient may both see a transfer; admins see everything.
+        // fromAccount is null for cash deposits (top-ups), so only the recipient side applies there.
+        AccountJpaEntity fromAccount = transaction.getFromAccount();
+        boolean isSender = fromAccount != null && fromAccount.getUserId().equals(requester.userId());
+        boolean isRecipient = transaction.getToAccount().getUserId().equals(requester.userId());
+        if (!requester.admin() && !isSender && !isRecipient) {
+            throw new AccountAccessDeniedException("You can only view your own transactions");
+        }
 
         return TransactionMapper.toResponse(transaction);
     }
    @Override
    @Transactional(readOnly = true)
-   public Page<TransactionResponseBody> getTransactionsByAccountNumber(String accountNumber, int page, int size) {
-       accountRepository.findByAccountNumber(accountNumber)
+   public Page<TransactionResponseBody> getTransactionsByAccountNumber(String accountNumber, int page, int size,
+                                                                       AccountRequester requester) {
+       AccountJpaEntity account = accountRepository.findByAccountNumber(accountNumber)
                .orElseThrow(() -> new EntityNotFoundException("Account not found: " + accountNumber));
+
+       // Same rule as GetAccountService: the owner or an admin.
+       if (!requester.canAccessAccountsOf(account.getUserId())) {
+           throw new AccountAccessDeniedException("You can only view the history of your own accounts");
+       }
 
        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
        Page<Transaction> transactions = transactionRepository.findAllByAccountNumber(accountNumber, pageable);

@@ -89,7 +89,8 @@ openssl rand -base64 48
 
 // customer1
 userId: 1ab14300-d9af-423d-9fb1-3aa13d1ab1ab
-accountId: 6718367368
+accountNumber: 6718367368
+accountId: 9
 {
   "username": "john",
   "fullName": "aa",
@@ -99,7 +100,8 @@ accountId: 6718367368
 
 // customer2
 userId: 3c7d2a97-bf7f-4178-a5c7-2ee7aeb2cb82
-accountId: 4402290345
+accountNumber: 4402290345
+accountId: 10
 {
   "username": "sally",
   "fullName": "aa",
