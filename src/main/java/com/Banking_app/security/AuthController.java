@@ -2,6 +2,7 @@ package com.Banking_app.security;
 
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -30,8 +31,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request,
+                                                        HttpServletRequest httpRequest) {
+        // getRemoteAddr(), never a client-supplied X-Forwarded-For header (anyone can fake that).
+        // Behind a reverse proxy, set server.forward-headers-strategy=native so Tomcat fills this in
+        // from the proxy's header, trusting only internal proxy addresses.
+        return ResponseEntity.ok(authService.login(request, httpRequest.getRemoteAddr()));
     }
 
     /*@GetMapping("/me")

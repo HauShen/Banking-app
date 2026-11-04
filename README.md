@@ -236,8 +236,12 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 | 401 | Not logged in: no token, or a token that is invalid, expired, or belongs to a deleted user |
 | 403 | Logged in, but not allowed (wrong role, or not your account) |
 | 401 + `Invalid credentials` | Failed login — the same message for a wrong password and an unknown user, so usernames can't be probed |
+| 429 + `Retry-After` | Too many failed logins for this username or from this IP — try again after the given number of seconds |
 
 ### Other protections
+- **Login brute-force protection:** 5 failed logins for one username within 15 minutes lock that username for
+  15 minutes (unknown usernames too, so a lockout reveals nothing); 20 failures from one IP block that IP.
+  While locked, even the correct password gets 429. Limits are configurable (`security.login.*`).
 - Registration has no `role` field: nobody can sign themselves up as admin.
 - Every error, including 401/403 from the security layer, uses the same JSON body
   (`timestamp`, `status`, `error`, `message`, `path`); unexpected errors are logged, never shown to the client.
@@ -251,7 +255,12 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   requests can't overwrite each other's balance or deadlock.
 
 ### Known limitations
-- No rate limiting or lockout on `/api/auth/login` (brute force).
+- Login throttling is in memory: it resets on restart and isn't shared between several instances
+  (production: Redis, or rate limiting at the API gateway).
+- A username lockout can be abused to lock someone out for 15 minutes by failing on purpose — the usual trade-off
+  of account lockout; real systems add CAPTCHA or progressive delays.
+- Behind a reverse proxy, enable `server.forward-headers-strategy=native`, otherwise every client shares the
+  proxy's IP for the per-IP limit.
 - No refresh tokens or logout/revocation: a token stays valid until it expires.
 - The frontend keeps the JWT in `localStorage`, which any XSS could read.
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
@@ -275,5 +284,7 @@ endpoints is refactored.
 |---|---|
 | `AuthenticationSecurityTest` | Missing, garbage, tampered, forged, expired and deleted-user tokens → 401; a stale token doesn't block login; failed logins look identical; the bootstrap admin exists |
 | `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; `role` in registration is ignored; viewing or topping up someone else's account → 403 |
+| `LoginThrottlingSecurityTest` | 5 failures lock a username → 429 with `Retry-After`, even with the right password; unknown usernames lock the same way; other users unaffected; a success resets the count; the lock expires |
+| `LoginIpThrottlingSecurityTest` | Failures spread over many usernames from one IP block that IP, then the block expires (own Spring context with a low limit) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
 | `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |

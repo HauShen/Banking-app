@@ -7,6 +7,7 @@ import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,13 +17,15 @@ public class AuthService  {
     private final JwtService jwtService;
     private final RegisterUserProfileUseCase registerUserProfileUseCase;
     private final LoadUserProfilePort loadUserProfilePort;
+    private final LoginAttemptService loginAttemptService;
 
     @Autowired
-    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort){
+    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService){
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.registerUserProfileUseCase = registerUserProfileUseCase;
         this.loadUserProfilePort = loadUserProfilePort;
+        this.loginAttemptService = loginAttemptService;
     }
     public AuthenticationResponse register(AuthenticationRequest request) {
         UserProfile registered = registerUserProfileUseCase.register(new RegisterUserProfileCommand(
@@ -32,9 +35,25 @@ public class AuthService  {
         return new AuthenticationResponse(jwt, "Bearer", jwtService.getExpirationMs() / 1000);
     }
 
-    public AuthenticationResponse login(LoginRequest request) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                request.getUsername(), request.getPassword()));
+    /**
+     * @param clientIp the caller's IP (request.getRemoteAddr()), used for the per-IP failure limit
+     * @throws TooManyLoginAttemptsException if the username or the IP is locked (checked before the password,
+     *                                       so a locked account can't be brute-forced in the meantime)
+     */
+    public AuthenticationResponse login(LoginRequest request, String clientIp) {
+        String username = request.getUsername();
+        loginAttemptService.blockedFor(username, clientIp).ifPresent(wait -> {
+            throw new TooManyLoginAttemptsException(wait);
+        });
+
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                    username, request.getPassword()));
+        } catch (AuthenticationException e) {   // wrong password or unknown user (both BadCredentialsException)
+            loginAttemptService.recordFailure(username, clientIp);
+            throw e;
+        }
+        loginAttemptService.recordSuccess(username);
 
         UserProfile user = loadUserProfilePort.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
