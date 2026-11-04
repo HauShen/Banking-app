@@ -164,9 +164,10 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 #### Authentication
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | Public | Register as a customer, returns a JWT |
-| POST | `/api/auth/login` | Public | Log in, returns a JWT |
-| POST | `/api/auth/logout` | Logged in | Log out on every device: all of your tokens stop working (204) |
+| POST | `/api/auth/register` | Public | Register as a customer: access token in the body, refresh token in a cookie |
+| POST | `/api/auth/login` | Public | Log in: access token in the body, refresh token in a cookie |
+| POST | `/api/auth/refresh` | Refresh cookie | New access token + new refresh cookie (the old one is used up) |
+| POST | `/api/auth/logout` | Logged in | Log out on every device: all access and refresh tokens stop working, cookie cleared (204) |
 | GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
 
 #### Users
@@ -212,14 +213,22 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 
 ### Authentication: stateless JWT
 1. `POST /api/auth/login` checks the password against its **BCrypt** hash and returns a JWT signed with
-   HS256 (`sub` = username, 1-hour expiry by default). The signing key comes from `JWT_SECRET`, never from Git.
+   HS256 (`sub` = username, **15-minute** expiry by default). The signing key comes from `JWT_SECRET`, never from Git.
 2. Every request sends `Authorization: Bearer <token>`. `JwtRequestFilter` verifies the signature and expiry,
    then **reloads the user from the database**, so a role change or deletion takes effect on the next request,
    not when the token expires.
-3. No server-side session (`SessionCreationPolicy.STATELESS`), so CSRF protection is not needed and is disabled.
+3. No server-side session (`SessionCreationPolicy.STATELESS`). API calls authenticate with the `Authorization`
+   header, which a browser never adds by itself, so CSRF protection is disabled. The one cookie (below) is
+   protected by `SameSite=Strict` instead.
 4. **Revocation without a blacklist:** every user has a token version (table `user_token_versions`) and every
    token carries the version it was issued with (claim `ver`). `POST /api/auth/logout` — or an admin via
    `/revoke-tokens` — increases the version, so all older tokens of that user are rejected immediately.
+5. **Refresh tokens:** login also sets a `refresh_token` cookie — `HttpOnly` (JavaScript can't read it),
+   `Secure`, `SameSite=Strict` (never sent from another site), `Path=/api/auth`, valid 7 days. When the access token
+   expires, `POST /api/auth/refresh` exchanges the cookie for a new access token and a **new** refresh token.
+   - Only a SHA-256 hash of each refresh token is stored (table `refresh_tokens`), so a database leak leaks no usable tokens.
+   - Each refresh token works **once** (rotation). Presenting a used one again means someone has a copy: the whole
+     token family is revoked and the user's token version increases, so the thief's access token dies too.
 
 A missing, garbage, tampered, expired, revoked or deleted-user token is ignored by the filter (the request continues
 as anonymous) — it never crashes the request, and a stale token never blocks `/api/auth/login`.
@@ -266,9 +275,12 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   of account lockout; real systems add CAPTCHA or progressive delays.
 - Behind a reverse proxy, enable `server.forward-headers-strategy=native`, otherwise every client shares the
   proxy's IP for the per-IP limit.
-- No refresh tokens: an access token lasts 1 hour, then the user logs in again.
-- Logout is "log out everywhere": there is no per-device logout, because tokens are not stored per device.
-- The frontend keeps the JWT in `localStorage`, which any XSS could read.
+- Logout is "log out everywhere": there is no per-device logout.
+- The frontend still keeps the access token in `localStorage`, which any XSS could read. With refresh cookies in
+  place it should keep the access token in memory only and call `/api/auth/refresh` on page load (frontend rewrite).
+- Two browser tabs refreshing at the same moment with the same cookie look like token reuse and log the user out —
+  the frontend should run one refresh at a time.
+- Used and expired refresh tokens stay in the table; a scheduled cleanup job is not implemented yet.
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
   exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
   real banks do. The defence against probing account numbers is rate limiting, not hiding the status code.
@@ -292,6 +304,7 @@ endpoints is refactored.
 | `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; `role` in registration is ignored; viewing or topping up someone else's account → 403 |
 | `LoginThrottlingSecurityTest` | 5 failures lock a username → 429 with `Retry-After`, even with the right password; unknown usernames lock the same way; other users unaffected; a success resets the count; the lock expires |
 | `LoginIpThrottlingSecurityTest` | Failures spread over many usernames from one IP block that IP, then the block expires (own Spring context with a low limit) |
+| `RefreshTokenSecurityTest` | Login/register set a hardened cookie (HttpOnly, Secure, SameSite=Strict, Path); refresh gives a working access token and rotates the cookie; reusing a used token revokes the family and the current access token; missing/garbage cookie → 401; logout and admin revoke-tokens kill refresh tokens; deleted user → 401 |
 | `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
 | `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |

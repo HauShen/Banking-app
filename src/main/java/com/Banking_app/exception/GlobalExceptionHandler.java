@@ -3,6 +3,7 @@ package com.Banking_app.exception;
 import com.Banking_app.account.application.exception.AccountAccessDeniedException;
 import com.Banking_app.account.application.exception.AccountHasTransactionsException;
 import com.Banking_app.security.TooManyLoginAttemptsException;
+import com.Banking_app.security.refresh.InvalidRefreshTokenException;
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.exception.LastAdminException;
 import org.slf4j.Logger;
@@ -151,6 +152,23 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.UNAUTHORIZED.value())
                 .error(HttpStatus.UNAUTHORIZED.getReasonPhrase())
                 .message("Invalid credentials")
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    /**
+     * Refresh failed (missing, unknown, expired, revoked or reused token). The client gets one generic message;
+     * the specific reason is only logged, so an attacker learns nothing from trying tokens.
+     */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ApiError> handleInvalidRefreshToken(InvalidRefreshTokenException ex, HttpServletRequest request){
+        log.debug("Refresh rejected: {}", ex.getMessage());
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error(HttpStatus.UNAUTHORIZED.getReasonPhrase())
+                .message("Invalid or expired refresh token")
                 .path(request.getRequestURI())
                 .build();
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);

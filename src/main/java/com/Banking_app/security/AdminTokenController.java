@@ -1,7 +1,6 @@
 package com.Banking_app.security;
 
 import com.Banking_app.exception.ResourceNotFoundException;
-import com.Banking_app.security.token.TokenVersionService;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,18 +18,18 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminTokenController {
 
-    private final TokenVersionService tokenVersionService;
+    private final AuthService authService;
     private final LoadUserProfilePort loadUserProfilePort;
 
-    public AdminTokenController(TokenVersionService tokenVersionService, LoadUserProfilePort loadUserProfilePort) {
-        this.tokenVersionService = tokenVersionService;
+    public AdminTokenController(AuthService authService, LoadUserProfilePort loadUserProfilePort) {
+        this.authService = authService;
         this.loadUserProfilePort = loadUserProfilePort;
     }
 
     @PostMapping("/{id}/revoke-tokens")
     public ResponseEntity<Void> revokeTokens(@PathVariable String id) {
         loadUserProfilePort.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        tokenVersionService.revokeAllTokens(id);
+        authService.endAllSessions(id);   // access tokens and refresh tokens
         return ResponseEntity.noContent().build();
     }
 }
