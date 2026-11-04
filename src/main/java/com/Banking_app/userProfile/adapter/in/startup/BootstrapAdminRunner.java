@@ -31,8 +31,8 @@ public class BootstrapAdminRunner implements ApplicationRunner {
         if (properties.getPassword() == null || properties.getPassword().isBlank()) {
             // Fail loudly rather than inventing a password or silently skipping.
             throw new IllegalStateException(
-                    "banking.bootstrap.admin.enabled=true but no password was supplied. "
-                            + "Set BANKING_BOOTSTRAP_ADMIN_PASSWORD in the environment.");
+                    "bootstrap.admin.enabled=true but no password was supplied. "
+                            + "Set BOOTSTRAP_ADMIN_PASSWORD in the environment.");
         }
 
         Optional<UserProfile> created = bootstrapFirstAdminUseCase.bootstrapIfNoAdminExists(

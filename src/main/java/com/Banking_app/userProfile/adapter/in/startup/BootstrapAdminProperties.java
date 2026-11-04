@@ -1,7 +1,7 @@
 package com.Banking_app.userProfile.adapter.in.startup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "banking.bootstrap.admin")
+@ConfigurationProperties(prefix = "bootstrap.admin")
 public class BootstrapAdminProperties {
     /** When false, the runner does nothing at all. Default off; switch on for first deployment. */
     private boolean enabled = false;
