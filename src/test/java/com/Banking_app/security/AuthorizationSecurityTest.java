@@ -21,7 +21,10 @@ class AuthorizationSecurityTest extends AbstractIntegrationTest {
     void customer_onAdminUrl_gets403() {
         String customer = register(uniqueName("cust"));
 
-        assertStatus(get("/api/admin/users", customer), 403);
+        ResponseEntity<String> response = get("/api/admin/users", customer);
+
+        assertStatus(response, 403);
+        assertThat(text(response, "message")).isEqualTo("You do not have permission to perform this action");
     }
 
     @Test

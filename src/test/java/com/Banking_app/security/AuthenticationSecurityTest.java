@@ -38,7 +38,12 @@ class AuthenticationSecurityTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("No token -> 401")
     void noToken_isRejected() {
-        assertStatus(get(PROTECTED, null), 401);
+        ResponseEntity<String> response = get(PROTECTED, null);
+
+        assertStatus(response, 401);
+        assertThat(json(response).get("status").asInt()).isEqualTo(401);
+        assertThat(text(response, "message")).isEqualTo("Authentication required");
+        assertThat(text(response, "path")).isEqualTo(PROTECTED);
     }
 
     @Test
