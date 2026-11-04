@@ -4,6 +4,8 @@ import com.Banking_app.account.application.exception.AccountAccessDeniedExceptio
 import com.Banking_app.account.application.exception.AccountHasTransactionsException;
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.exception.LastAdminException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +23,8 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex,HttpServletRequest request){
         ApiError error = ApiError.builder()
@@ -152,7 +156,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request){
-        ex.printStackTrace(); // temporary
+        // Full stack trace goes to the log; the client only gets a generic message (no internals leaked).
+        log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
         ApiError error = ApiError.builder()
                 .timestamp(Instant.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
