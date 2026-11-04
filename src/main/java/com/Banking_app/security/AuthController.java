@@ -39,6 +39,16 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request, httpRequest.getRemoteAddr()));
     }
 
+    /**
+     * Logs out on every device: all of this user's tokens stop working immediately (204).
+     * Needs a valid token - SecurityConfig makes this the one /api/auth endpoint that isn't public.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal SecurityUserDetails principal) {
+        authService.logout(principal.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     /*@GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal SecurityUserDetails principal) {
         if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

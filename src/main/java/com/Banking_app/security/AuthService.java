@@ -1,4 +1,5 @@
 package com.Banking_app.security;
+import com.Banking_app.security.token.TokenVersionService;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
@@ -18,21 +19,22 @@ public class AuthService  {
     private final RegisterUserProfileUseCase registerUserProfileUseCase;
     private final LoadUserProfilePort loadUserProfilePort;
     private final LoginAttemptService loginAttemptService;
+    private final TokenVersionService tokenVersionService;
 
     @Autowired
-    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService){
+    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService, TokenVersionService tokenVersionService){
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.registerUserProfileUseCase = registerUserProfileUseCase;
         this.loadUserProfilePort = loadUserProfilePort;
         this.loginAttemptService = loginAttemptService;
+        this.tokenVersionService = tokenVersionService;
     }
     public AuthenticationResponse register(AuthenticationRequest request) {
         UserProfile registered = registerUserProfileUseCase.register(new RegisterUserProfileCommand(
                 request.getUsername(), request.getFullName(), request.getEmail(), request.getPassword()));
 
-        String jwt = jwtService.generateToken(new SecurityUserDetails(registered));
-        return new AuthenticationResponse(jwt, "Bearer", jwtService.getExpirationMs() / 1000);
+        return issueToken(registered);
     }
 
     /**
@@ -58,7 +60,17 @@ public class AuthService  {
         UserProfile user = loadUserProfilePort.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        String jwt = jwtService.generateToken(new SecurityUserDetails(user));
+        return issueToken(user);
+    }
+
+    /** Logs the user out on every device: all tokens issued so far stop working. */
+    public void logout(String userId) {
+        tokenVersionService.revokeAllTokens(userId);
+    }
+
+    private AuthenticationResponse issueToken(UserProfile user) {
+        int tokenVersion = tokenVersionService.currentVersion(user.getId());
+        String jwt = jwtService.generateToken(new SecurityUserDetails(user), tokenVersion);
         return new AuthenticationResponse(jwt, "Bearer", jwtService.getExpirationMs() / 1000);
     }
 }

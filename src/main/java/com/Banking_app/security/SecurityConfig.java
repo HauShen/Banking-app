@@ -57,6 +57,7 @@ public class SecurityConfig{
                         // below). The original request was already authorized; without this the error
                         // request runs unauthenticated and turns every such 403 into a 401.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()   // before the permitAll below
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")   // URL-level, defence in depth

@@ -166,6 +166,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 |---|---|---|---|
 | POST | `/api/auth/register` | Public | Register as a customer, returns a JWT |
 | POST | `/api/auth/login` | Public | Log in, returns a JWT |
+| POST | `/api/auth/logout` | Logged in | Log out on every device: all of your tokens stop working (204) |
 | GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
 
 #### Users
@@ -180,6 +181,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | POST | `/api/admin/users` | ADMIN | Create another admin |
 | PUT | `/api/admin/users/{id}` | ADMIN | Update a user's profile (audited) |
 | PATCH | `/api/admin/users/{id}/role` | ADMIN | Change role (audited; not own role, not the last admin) |
+| POST | `/api/admin/users/{id}/revoke-tokens` | ADMIN | Log a user out of every device, e.g. a compromised account (204) |
 | DELETE | `/api/admin/users/{id}` | ADMIN | Delete a user (audited; not self, not the last admin) |
 
 #### Accounts
@@ -215,8 +217,11 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
    then **reloads the user from the database**, so a role change or deletion takes effect on the next request,
    not when the token expires.
 3. No server-side session (`SessionCreationPolicy.STATELESS`), so CSRF protection is not needed and is disabled.
+4. **Revocation without a blacklist:** every user has a token version (table `user_token_versions`) and every
+   token carries the version it was issued with (claim `ver`). `POST /api/auth/logout` — or an admin via
+   `/revoke-tokens` — increases the version, so all older tokens of that user are rejected immediately.
 
-A missing, garbage, tampered, expired or deleted-user token is ignored by the filter (the request continues
+A missing, garbage, tampered, expired, revoked or deleted-user token is ignored by the filter (the request continues
 as anonymous) — it never crashes the request, and a stale token never blocks `/api/auth/login`.
 
 ### Authorization: three layers
@@ -233,7 +238,7 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 ### Status codes
 | Code | Meaning |
 |---|---|
-| 401 | Not logged in: no token, or a token that is invalid, expired, or belongs to a deleted user |
+| 401 | Not logged in: no token, or a token that is invalid, expired, revoked (after logout), or belongs to a deleted user |
 | 403 | Logged in, but not allowed (wrong role, or not your account) |
 | 401 + `Invalid credentials` | Failed login — the same message for a wrong password and an unknown user, so usernames can't be probed |
 | 429 + `Retry-After` | Too many failed logins for this username or from this IP — try again after the given number of seconds |
@@ -261,7 +266,8 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   of account lockout; real systems add CAPTCHA or progressive delays.
 - Behind a reverse proxy, enable `server.forward-headers-strategy=native`, otherwise every client shares the
   proxy's IP for the per-IP limit.
-- No refresh tokens or logout/revocation: a token stays valid until it expires.
+- No refresh tokens: an access token lasts 1 hour, then the user logs in again.
+- Logout is "log out everywhere": there is no per-device logout, because tokens are not stored per device.
 - The frontend keeps the JWT in `localStorage`, which any XSS could read.
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
   exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
@@ -286,5 +292,6 @@ endpoints is refactored.
 | `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; `role` in registration is ignored; viewing or topping up someone else's account → 403 |
 | `LoginThrottlingSecurityTest` | 5 failures lock a username → 429 with `Retry-After`, even with the right password; unknown usernames lock the same way; other users unaffected; a success resets the count; the lock expires |
 | `LoginIpThrottlingSecurityTest` | Failures spread over many usernames from one IP block that IP, then the block expires (own Spring context with a low limit) |
+| `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
 | `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |

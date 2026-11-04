@@ -15,7 +15,7 @@ public class CustomUserDetailsService implements UserDetailsService{
         this.loadUserProfilePort = loadUserProfilePort;
     }
     @Override
-    public UserDetails loadUserByUsername(String username) {
+    public SecurityUserDetails loadUserByUsername(String username) {   // narrower return type: callers need getUserId()
         return loadUserProfilePort.findByUsername(username)
                 .map(SecurityUserDetails::new)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));

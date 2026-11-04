@@ -16,6 +16,9 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
+    /** Claim holding the user's token version at issue time (see TokenVersionService). */
+    static final String TOKEN_VERSION_CLAIM = "ver";
+
     @Value("${security.jwt.secret}")
     private String jwtSecret;
 
@@ -26,9 +29,11 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public String generateToken(UserDetails userDetails) {
+    /** @param tokenVersion the user's current token version; the token is valid only while it stays the same */
+    public String generateToken(UserDetails userDetails, int tokenVersion) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", userDetails.getAuthorities().stream().findFirst().map(Object::toString).orElse("CUSTOMER"));
+        claims.put(TOKEN_VERSION_CLAIM, tokenVersion);
         return generateToken(claims, userDetails);
     }
 
@@ -45,9 +50,21 @@ public class JwtService {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
+    /**
+     * Valid = signature OK (checked while parsing), same user, not expired, and issued with the user's
+     * current token version (a logout or an admin revocation increases it).
+     */
+    public boolean isTokenValid(String token, UserDetails userDetails, int currentTokenVersion) {
         String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        return username.equals(userDetails.getUsername())
+                && !isTokenExpired(token)
+                && extractTokenVersion(token) == currentTokenVersion;
+    }
+
+    /** Tokens issued before versions existed have no claim and count as version 0. */
+    int extractTokenVersion(String token) {
+        Integer version = extractClaim(token, claims -> claims.get(TOKEN_VERSION_CLAIM, Integer.class));
+        return version == null ? 0 : version;
     }
 
     public long getExpirationMs() {
