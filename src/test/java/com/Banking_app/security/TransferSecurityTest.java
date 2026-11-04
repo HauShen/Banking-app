@@ -123,7 +123,10 @@ class TransferSecurityTest extends AbstractIntegrationTest {
         String path = "/api/transfers/" + text(sent, "transactionReference");
 
         assertStatus(get(path, alice.token()), 200);
-        assertStatus(get(path, bob.token()), 200);
+        ResponseEntity<String> seenByRecipient = get(path, bob.token());
+        assertStatus(seenByRecipient, 200);
+        assertThat(json(seenByRecipient).has("toAccountUserName"))
+                .as("recipient's internal user id must not be exposed").isFalse();
         assertStatus(get(path, adminToken()), 200);
         assertStatus(get(path, carol.token()), 403);
     }

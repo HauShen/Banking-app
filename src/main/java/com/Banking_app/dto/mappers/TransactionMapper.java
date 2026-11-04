@@ -18,7 +18,7 @@ public class TransactionMapper {
                 transaction.getReferenceNumber(),
                 fromAccountNumber,                              //  use safe variable
                 transaction.getToAccount().getAccountNumber(),
-                transaction.getToAccount().getUserId(),
+                // No recipient user id: the sender must not learn another user's internal id.
                 transaction.getAmount(),
                 currency,                                       //  use safe variable
                 transaction.getStatus().name(),
