@@ -9,10 +9,9 @@ authentication, role-based access control, fund transfers, and an admin manageme
 
 ## 🎬 Demo
 
-### 🔐 Bootstrap — Register First Admin
-> First-time setup: register the first admin account when no admin exists.
-
-![Bootstrap Admin](screenshots/bootstrap-admin.png)
+### 🔐 First Admin (Bootstrap)
+> The first admin is created automatically at startup from configuration when no admin exists.
+> There is no public sign-up for admins — see [Getting Started](#3-configure-environment).
 
 ---
 
@@ -62,7 +61,8 @@ authentication, role-based access control, fund transfers, and an admin manageme
 | PostgreSQL | Relational database |
 | Flyway | Database schema migrations |
 | Lombok | Boilerplate reduction |
-| JUnit 5 + Mockito | Unit testing |
+| springdoc-openapi (Swagger UI) | Interactive API documentation |
+| JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL |
 
 ### Frontend
 | Technology | Purpose |
@@ -86,15 +86,17 @@ authentication, role-based access control, fund transfers, and an admin manageme
 ### 👤 Customer
 - Register & login with JWT authentication
 - View dashboard with account summary
-- Create bank accounts (Savings / Current)
-- Transfer funds between accounts with **idempotency protection** (no double transfers)
-- View transaction history
+- Top up own accounts (cash deposit)
+- Transfer funds **from own accounts only**, with **idempotency protection** (no double transfers)
+- View transaction history of own accounts
 - Update profile
 
 ### 🛡️ Admin
-- Manage all users — view, update role, delete
-- Manage all accounts — view, update status, delete
-- View individual user details and their linked accounts
+- Open bank accounts (Savings / Current) for customers
+- Manage all users — view, update profile, change role, delete
+- Manage all accounts — view, lock / unlock, delete (blocked when the account has transaction history)
+- Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
+- Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
 
 ---
 
@@ -117,21 +119,25 @@ docker compose up -d
 ```
 
 ### 3. Configure environment
-Edit `src/main/resources/application.properties`:
+Secrets are never committed. Create a `.env` file in the project root (it is git-ignored and loaded at startup):
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/banking_db
-spring.datasource.username=hau
-spring.datasource.password=abc123
-security.jwt.secret=<your-base64-secret>
-security.jwt.expiration=86400000
-bootstrap.admin.enabled=true
+POSTGRES_PASSWORD=abc123
+JWT_SECRET=<output of: openssl rand -base64 48>
 ```
+`abc123` is the default password in `docker-compose.yaml`. The JWT secret must be Base64 on a single line.
+
+The `dev` profile creates a demo admin on first start, when no admin exists yet:
+**`devadmin` / `DevAdmin123!`** (dev only — intentionally public). Outside dev, set
+`BOOTSTRAP_ADMIN_ENABLED=true` plus `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_FULLNAME`,
+`BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` for the first deployment.
 
 ### 4. Run the backend
 ```bash
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
-Backend runs on `http://localhost:8080`
+Backend runs on `http://localhost:8080`. Swagger UI (dev profile only): `http://localhost:8080/swagger-ui/index.html`
+(log in with `POST /api/auth/login`, then paste the `accessToken` into **Authorize**).
+If the frontend runs somewhere other than `http://localhost:5173`, set `CORS_ALLOWED_ORIGINS` (comma-separated).
 
 ### 5. Run the frontend
 ```bash
@@ -146,45 +152,128 @@ Frontend runs on `http://localhost:5173`
 
 ## 🔐 API Endpoints
 
-All protected endpoints require:
+All endpoints except `/api/auth/**` require:
 ```
 Authorization: Bearer <your-jwt-token>
 ```
+Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagger-ui/index.html`.
+
+**Access:** *Public* = no token · *Logged in* = any valid token · *Owner* = the logged-in user owns the account ·
+*ADMIN* = admin role. Rules marked *Owner* are enforced in the use cases, not just by role.
+
+#### Authentication
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Register as a customer, returns a JWT |
+| POST | `/api/auth/login` | Public | Log in, returns a JWT |
+| GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
+
+#### Users
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/users/me` | Logged in | Own profile |
+| PUT | `/api/users/me` | Logged in | Update own name / email |
+| POST | `/api/users/create` | Logged in | Create a customer profile (no token returned) |
+| GET | `/api/admin/users` | ADMIN | List users (paged, sortable) |
+| GET | `/api/admin/users/{id}` | ADMIN | User by id |
+| GET | `/api/admin/users/by-username/{username}` | ADMIN | User by username |
+| POST | `/api/admin/users` | ADMIN | Create another admin |
+| PUT | `/api/admin/users/{id}` | ADMIN | Update a user's profile (audited) |
+| PATCH | `/api/admin/users/{id}/role` | ADMIN | Change role (audited; not own role, not the last admin) |
+| DELETE | `/api/admin/users/{id}` | ADMIN | Delete a user (audited; not self, not the last admin) |
+
+#### Accounts
+`{id}` is the account's database id (`accountId`), not the account number.
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | Public | Register new user |
-| POST | `/api/auth/login` | Public | Login & get JWT |
-| GET | `/api/auth/bootstrap-status` | Public | Check bootstrap status |
-| POST | `/api/auth/bootstrap-admin/register` | Public* | Register first admin |
-| GET | `/api/users/get-by-username/{username}` | JWT | Get user profile |
-| PUT | `/api/users/{id}` | JWT | Update profile |
-| GET | `/api/users/admin/get_all` | ADMIN | List all users |
-| PATCH | `/api/users/{id}/role` | ADMIN | Update user role |
-| DELETE | `/api/users/{id}` | ADMIN | Delete user |
-| POST | `/api/accounts/create` | JWT | Create bank account |
-| GET | `/api/accounts/get_all/{user_id}` | JWT | Get user's accounts |
-| GET | `/api/accounts/{id}` | JWT | Get account by ID |
-| PATCH | `/api/accounts/{id}/status` | ADMIN | Update account status |
-| DELETE | `/api/accounts/{id}` | ADMIN | Delete account |
-| POST | `/api/transfers` | JWT | Transfer funds |
-| GET | `/api/transfers/{reference}` | JWT | Get transaction by reference |
+| GET | `/api/accounts/summary` | Logged in | Own accounts and total balance |
+| POST | `/api/accounts/create` | ADMIN | Open an account for a customer (RM20 opening balance) |
+| PATCH | `/api/accounts/{id}/topup?amount=` | Owner | Cash deposit |
+| GET | `/api/accounts/{id}` | Owner or ADMIN | Account by id |
+| GET | `/api/accounts/number/{accountNumber}` | Owner or ADMIN | Account by account number |
+| GET | `/api/accounts/get_all/{user_id}` | Owner or ADMIN | All accounts of a user |
+| GET | `/api/accounts/get_all?status=` | ADMIN | All accounts, optional `ACTIVE` / `LOCKED` filter |
+| PATCH | `/api/accounts/{id}/status?status=` | ADMIN | Lock or unlock an account |
+| DELETE | `/api/accounts/{id}` | ADMIN | Delete an account (409 if it has transaction history) |
 
-> \* Bootstrap endpoint auto-disables once the first admin is created.
+#### Transfers
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe |
+| GET | `/api/transfers/{reference}` | Sender, recipient or ADMIN | One transaction |
+| GET | `/api/transfers/account/{accountNumber}` | Owner or ADMIN | Transaction history of an account (paged) |
 
+---
+
+## 🔒 Security
+
+### Authentication: stateless JWT
+1. `POST /api/auth/login` checks the password against its **BCrypt** hash and returns a JWT signed with
+   HS256 (`sub` = username, 1-hour expiry by default). The signing key comes from `JWT_SECRET`, never from Git.
+2. Every request sends `Authorization: Bearer <token>`. `JwtRequestFilter` verifies the signature and expiry,
+   then **reloads the user from the database**, so a role change or deletion takes effect on the next request,
+   not when the token expires.
+3. No server-side session (`SessionCreationPolicy.STATELESS`), so CSRF protection is not needed and is disabled.
+
+A missing, garbage, tampered, expired or deleted-user token is ignored by the filter (the request continues
+as anonymous) — it never crashes the request, and a stale token never blocks `/api/auth/login`.
+
+### Authorization: three layers
+| Layer | Where | Example |
+|---|---|---|
+| URL rules | `SecurityConfig` | `/api/auth/**` public, `/api/admin/**` admin only, everything else needs a token |
+| Role checks | `@PreAuthorize("hasRole('ADMIN')")` | Opening, locking and deleting accounts |
+| Ownership checks | Use cases / services | Only the owner can transfer from or top up an account; history is owner-or-admin |
+
+Ownership rules live in the application layer: the web adapter turns the logged-in user into an
+`AccountRequester(userId, admin)`, so the use cases enforce "owner or admin" without depending on Spring Security.
+**Admins cannot move a customer's money** — transfers and top-ups are owner-only for everyone.
+
+### Status codes
+| Code | Meaning |
+|---|---|
+| 401 | Not logged in: no token, or a token that is invalid, expired, or belongs to a deleted user |
+| 403 | Logged in, but not allowed (wrong role, or not your account) |
+| 401 + `Invalid credentials` | Failed login — the same message for a wrong password and an unknown user, so usernames can't be probed |
+
+### Other protections
+- Registration has no `role` field: nobody can sign themselves up as admin.
+- Every error, including 401/403 from the security layer, uses the same JSON body
+  (`timestamp`, `status`, `error`, `message`, `path`); unexpected errors are logged, never shown to the client.
+- CORS only allows the configured frontend origin (`CORS_ALLOWED_ORIGINS`, default `http://localhost:5173`)
+  and only the `Authorization` and `Content-Type` headers.
+- Swagger UI and the API docs are only enabled in the `dev` profile.
+- Transaction responses never contain another user's internal id.
+- An idempotency key belongs to the account that first used it: reusing another account's key returns 400
+  instead of that account's transaction.
+- Transfers and top-ups lock the account rows (`SELECT … FOR UPDATE`, always in the same order), so concurrent
+  requests can't overwrite each other's balance or deadlock.
+
+### Known limitations
+- No rate limiting or lockout on `/api/auth/login` (brute force).
+- No refresh tokens or logout/revocation: a token stays valid until it expires.
+- The frontend keeps the JWT in `localStorage`, which any XSS could read.
+- **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
+  exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
+  real banks do. The defence against probing account numbers is rate limiting, not hiding the status code.
 
 ---
 
 ## 🧪 Running Tests
 
+Requires **Docker** running: the tests start a real PostgreSQL 17 container with Testcontainers.
 ```bash
 ./gradlew test
 ```
 
+The security tests are black-box HTTP tests: a real embedded server on a random port, real JWTs, a real database
+with every Flyway migration applied. Because they only talk HTTP, they stay valid while the code behind the
+endpoints is refactored.
+
 | Test Class | What It Covers |
 |---|---|
-| `UserProfileServiceImplTest` | Registration, role management, CRUD |
-| `AccountServiceImplTest` | Account creation, status updates, CRUD |
-| `TransactionServiceImplTest` | Fund transfers, idempotency, error handling |
-| `AuthServiceTest` | JWT registration, login, bad credentials |
-| `BootstrapServiceImplTest` | Admin bootstrap flow and guards |
+| `AuthenticationSecurityTest` | Missing, garbage, tampered, forged, expired and deleted-user tokens → 401; a stale token doesn't block login; failed logins look identical; the bootstrap admin exists |
+| `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; `role` in registration is ignored; viewing or topping up someone else's account → 403 |
+| `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
+| `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |
