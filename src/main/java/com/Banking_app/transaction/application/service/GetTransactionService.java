@@ -9,12 +9,13 @@ import com.Banking_app.transaction.application.port.out.AccountDirectoryPort;
 import com.Banking_app.transaction.application.port.out.AccountRef;
 import com.Banking_app.transaction.application.port.out.LoadTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 
-// @Service is added in step 8.
+@Service
 public class GetTransactionService implements GetTransactionUseCase {
 
     private final LoadTransactionPort loadTransactionPort;

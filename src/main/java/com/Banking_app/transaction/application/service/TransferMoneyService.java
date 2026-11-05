@@ -16,6 +16,7 @@ import com.Banking_app.transaction.application.port.out.TransferParties;
 import com.Banking_app.transaction.application.port.out.TransferParty;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -35,7 +36,7 @@ import java.util.Optional;
  * One database transaction for everything: if anything fails, nothing is stored and the balances stay as they were.
  * (The old code's FAILED update was rolled back too, so dropping it changes nothing — plan decision 7.)
  */
-// @Service is added in step 8, once every port has an adapter (otherwise the app would not start).
+@Service
 public class TransferMoneyService implements TransferMoneyUseCase {
 
     private final TransferAccountsPort transferAccountsPort;

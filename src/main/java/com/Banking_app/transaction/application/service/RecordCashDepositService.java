@@ -5,13 +5,14 @@ import com.Banking_app.transaction.application.port.in.usecase.RecordCashDeposit
 import com.Banking_app.transaction.application.port.out.SaveTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionReferencePort;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
 
 /** Records a top-up: one SUCCESS transaction without a from-account, with one CREDIT ledger entry. */
-// @Service is added in step 8.
+@Service
 public class RecordCashDepositService implements RecordCashDepositUseCase {
 
     private final SaveTransactionPort saveTransactionPort;
