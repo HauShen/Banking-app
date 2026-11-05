@@ -1,7 +1,7 @@
 package com.Banking_app.jpaentities;
 
 import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
-import com.Banking_app.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;

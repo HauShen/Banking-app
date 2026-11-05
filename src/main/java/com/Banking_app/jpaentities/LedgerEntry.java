@@ -1,7 +1,7 @@
 package com.Banking_app.jpaentities;
 
 import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
-import com.Banking_app.enums.LedgerType;
+import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
