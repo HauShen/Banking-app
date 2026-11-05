@@ -4,6 +4,7 @@ import com.Banking_app.account.domain.enums.AccountCurrency;
 import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.account.domain.enums.AccountType;
 import com.Banking_app.account.domain.exception.AccountNotActiveException;
+import com.Banking_app.account.domain.exception.InsufficientBalanceException;
 import com.Banking_app.account.domain.exception.InvalidAmountException;
 
 import java.math.BigDecimal;
@@ -17,6 +18,9 @@ import java.util.Objects;
 public class Account {
 
     public static final BigDecimal OPENING_BALANCE = new BigDecimal("20.00");
+
+    /** A withdrawal may not take the balance below this. Same value as the opening balance, different rule. */
+    public static final BigDecimal MINIMUM_BALANCE = new BigDecimal("20.00");
 
     private final Long id;                  // null until the account is saved
     private final String ownerId;           // UserProfile id (plain value, no link to the user module)
@@ -62,6 +66,26 @@ public class Account {
             throw new AccountNotActiveException("Cannot top up a non-active account");
         }
         this.balance = this.balance.add(amount);
+    }
+
+    /**
+     * Takes money out of the account (the sending side of a transfer). The amount must be positive,
+     * the account ACTIVE, and at least {@link #MINIMUM_BALANCE} must stay in the account.
+     * Same minimum-balance rule and message as the old TransactionServiceImpl.transfer.
+     */
+    public void withdraw(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidAmountException("Withdrawal amount must be greater than zero");
+        }
+        if (!isActive()) {
+            throw new AccountNotActiveException("Cannot withdraw from a non-active account");
+        }
+        BigDecimal remaining = this.balance.subtract(amount);
+        if (remaining.compareTo(MINIMUM_BALANCE) < 0) {
+            throw new InsufficientBalanceException(
+                    "Insufficient balance. Minimum balance of $20.00 must be maintained.");
+        }
+        this.balance = remaining;
     }
 
     public void changeStatus(AccountStatus newStatus) {

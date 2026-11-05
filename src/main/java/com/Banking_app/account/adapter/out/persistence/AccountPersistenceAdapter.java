@@ -9,6 +9,7 @@ import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.account.domain.models.account.Account;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +37,16 @@ public class AccountPersistenceAdapter implements LoadAccountPort, SaveAccountPo
     @Override
     public Optional<Account> findByAccountNumber(String accountNumber) {
         return accountJpaRepository.findByAccountNumber(accountNumber).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Account> loadByAccountNumberForUpdate(String accountNumber) {
+        return accountJpaRepository.findByAccountNumberForUpdate(accountNumber).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Account> findAllByIds(Collection<Long> accountIds) {
+        return accountJpaRepository.findAllById(accountIds).stream().map(mapper::toDomain).toList();
     }
 
     @Override

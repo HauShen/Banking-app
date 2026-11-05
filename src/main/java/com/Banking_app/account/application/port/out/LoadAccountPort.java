@@ -3,6 +3,7 @@ package com.Banking_app.account.application.port.out;
 import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.account.domain.models.account.Account;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,12 @@ public interface LoadAccountPort {
     Optional<Account> loadForUpdate(Long accountId);
 
     Optional<Account> findByAccountNumber(String accountNumber);
+
+    /** Same as {@link #loadForUpdate(Long)}, by account number (SELECT ... FOR UPDATE). Used by transfers. */
+    Optional<Account> loadByAccountNumberForUpdate(String accountNumber);
+
+    /** All accounts with these ids, in any order; unknown ids are skipped. One query. */
+    List<Account> findAllByIds(Collection<Long> accountIds);
 
     List<Account> findAll();
 
