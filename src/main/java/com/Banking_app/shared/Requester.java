@@ -1,4 +1,4 @@
-package com.Banking_app.account.application.port.in;
+package com.Banking_app.shared;
 
 import java.util.Objects;
 
@@ -6,9 +6,9 @@ import java.util.Objects;
  * Who is calling a use case. Built by the web adapter from the logged-in user,
  * so the application layer can enforce "owner or admin" without knowing Spring Security.
  */
-public record AccountRequester(String userId, boolean admin) {
+public record Requester(String userId, boolean admin) {
 
-    public AccountRequester {
+    public Requester {
         Objects.requireNonNull(userId, "userId is required");
     }
 

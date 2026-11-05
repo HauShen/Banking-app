@@ -15,7 +15,7 @@ import com.Banking_app.userProfile.application.port.in.query.SortDirection;
 import com.Banking_app.userProfile.application.port.in.query.UserSortField;
 import com.Banking_app.userProfile.application.port.in.usecase.*;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
-import com.Banking_app.userProfile.common.PageResult;
+import com.Banking_app.shared.PageResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

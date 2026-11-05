@@ -1,6 +1,6 @@
 package com.Banking_app.account.application.port.in.usecase;
 
-import com.Banking_app.account.application.port.in.AccountRequester;
+import com.Banking_app.shared.Requester;
 import com.Banking_app.account.application.port.in.query.ListAccountsQuery;
 import com.Banking_app.account.domain.models.account.Account;
 
@@ -14,5 +14,5 @@ public interface ListAccountsUseCase {
      * All accounts of one user. Owner or admin only.
      * Throws AccountAccessDeniedException, or AccountOwnerNotFoundException if the user does not exist.
      */
-    List<Account> listByOwner(String ownerId, AccountRequester requester);
+    List<Account> listByOwner(String ownerId, Requester requester);
 }

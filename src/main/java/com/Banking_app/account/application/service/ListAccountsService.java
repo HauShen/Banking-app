@@ -2,7 +2,7 @@ package com.Banking_app.account.application.service;
 
 import com.Banking_app.account.application.exception.AccountAccessDeniedException;
 import com.Banking_app.account.application.exception.AccountOwnerNotFoundException;
-import com.Banking_app.account.application.port.in.AccountRequester;
+import com.Banking_app.shared.Requester;
 import com.Banking_app.account.application.port.in.query.ListAccountsQuery;
 import com.Banking_app.account.application.port.in.usecase.ListAccountsUseCase;
 import com.Banking_app.account.application.port.out.AccountOwnerLookupPort;
@@ -33,7 +33,7 @@ public class ListAccountsService implements ListAccountsUseCase {
     }
 
     @Override
-    public List<Account> listByOwner(String ownerId, AccountRequester requester) {
+    public List<Account> listByOwner(String ownerId, Requester requester) {
         // Access is checked first, so a customer cannot probe which user ids exist.
         if (!requester.canAccessAccountsOf(ownerId)) {
             throw new AccountAccessDeniedException("You can only view your own accounts");

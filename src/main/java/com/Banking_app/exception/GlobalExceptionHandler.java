@@ -1,6 +1,5 @@
 package com.Banking_app.exception;
 
-import com.Banking_app.account.application.exception.AccountAccessDeniedException;
 import com.Banking_app.account.application.exception.AccountHasTransactionsException;
 import com.Banking_app.security.TooManyLoginAttemptsException;
 import com.Banking_app.security.refresh.InvalidRefreshTokenException;
@@ -113,11 +112,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Logged in, but the account belongs to someone else (view or top-up). 403, with the
-     * use case's message, e.g. "You can only view your own accounts".
+     * Logged in, but the account / transaction belongs to someone else. 403, with the use case's
+     * message, e.g. "You can only view your own accounts". Covers every ForbiddenException subclass
+     * (AccountAccessDeniedException today, the transaction module's own exception later).
      */
-    @ExceptionHandler(AccountAccessDeniedException.class)
-    public ResponseEntity<ApiError> handleAccountAccessDenied(AccountAccessDeniedException ex, HttpServletRequest request){
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex, HttpServletRequest request){
         ApiError error = ApiError.builder()
                 .timestamp(Instant.now())
                 .status(HttpStatus.FORBIDDEN.value())

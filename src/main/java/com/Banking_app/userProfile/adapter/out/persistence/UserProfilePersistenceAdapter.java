@@ -5,7 +5,7 @@ import com.Banking_app.userProfile.adapter.out.persistence.mappers.UserProfilePe
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import com.Banking_app.userProfile.application.port.out.SaveUserProfilePort;
-import com.Banking_app.userProfile.common.PageResult;
+import com.Banking_app.shared.PageResult;
 import com.Banking_app.userProfile.domain.enums.UserRole;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import com.Banking_app.userProfile.application.port.in.query.ListUserProfilesQuery;

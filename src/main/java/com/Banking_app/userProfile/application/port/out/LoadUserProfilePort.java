@@ -2,7 +2,7 @@ package com.Banking_app.userProfile.application.port.out;
 
 import com.Banking_app.userProfile.application.port.in.query.ListUserProfilesQuery;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
-import com.Banking_app.userProfile.common.PageResult;
+import com.Banking_app.shared.PageResult;
 import java.util.Optional;
 
 public interface LoadUserProfilePort {

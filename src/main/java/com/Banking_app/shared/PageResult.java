@@ -1,4 +1,4 @@
-package com.Banking_app.userProfile.common;
+package com.Banking_app.shared;
 
 import java.util.List;
 import java.util.function.Function;

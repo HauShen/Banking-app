@@ -5,7 +5,7 @@ import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
 import com.Banking_app.account.adapter.out.persistence.entities.AccountJpaEntity;
 import com.Banking_app.account.application.exception.AccountAccessDeniedException; // TODO Transaction module: own exception
-import com.Banking_app.account.application.port.in.AccountRequester; // TODO Transaction module: shared requester type
+import com.Banking_app.shared.Requester;
 import com.Banking_app.jpaentities.LedgerEntry;
 import com.Banking_app.jpaentities.Transaction;
 import com.Banking_app.account.domain.enums.AccountStatus;
@@ -167,7 +167,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public TransactionResponseBody getTransactionByReferenceNumber(String reference, AccountRequester requester){
+    public TransactionResponseBody getTransactionByReferenceNumber(String reference, Requester requester){
         Transaction transaction = transactionRepository.findByReferenceNumber(reference).orElseThrow(() -> new EntityNotFoundException("Transaction not found"));
 
         // The sender and the recipient may both see a transfer; admins see everything.
@@ -184,7 +184,7 @@ public class TransactionServiceImpl implements TransactionService {
    @Override
    @Transactional(readOnly = true)
    public Page<TransactionResponseBody> getTransactionsByAccountNumber(String accountNumber, int page, int size,
-                                                                       AccountRequester requester) {
+                                                                       Requester requester) {
        AccountJpaEntity account = accountRepository.findByAccountNumber(accountNumber)
                .orElseThrow(() -> new EntityNotFoundException("Account not found: " + accountNumber));
 

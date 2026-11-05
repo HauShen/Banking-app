@@ -4,7 +4,7 @@ import com.Banking_app.account.adapter.in.web.dto.AccountRequestBody;
 import com.Banking_app.account.adapter.in.web.dto.AccountResponseBody;
 import com.Banking_app.account.adapter.in.web.dto.AccountSummaryResponseBody;
 import com.Banking_app.account.adapter.in.web.mapper.AccountWebMapper;
-import com.Banking_app.account.application.port.in.AccountRequester;
+import com.Banking_app.shared.Requester;
 import com.Banking_app.account.application.port.in.command.ChangeAccountStatusCommand;
 import com.Banking_app.account.application.port.in.command.DeleteAccountCommand;
 import com.Banking_app.account.application.port.in.command.OpenAccountCommand;
@@ -18,10 +18,10 @@ import com.Banking_app.account.application.port.in.usecase.ListAccountsUseCase;
 import com.Banking_app.account.application.port.in.usecase.OpenAccountUseCase;
 import com.Banking_app.account.application.port.in.usecase.TopUpAccountUseCase;
 import com.Banking_app.account.domain.enums.AccountStatus;
+import com.Banking_app.security.CurrentRequester;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -47,7 +47,8 @@ import java.util.List;
  * was typed UserProfileJpaEntity, resolved to null, and /summary and /topup returned 500.
  *
  * Visibility: /get_all is admin only (@PreAuthorize). /get_all/{user_id}, /{id} and /number/{n}
- * are owner-or-admin; that rule lives in the use cases, which receive an AccountRequester.
+ * are owner-or-admin; that rule lives in the use cases, which receive a Requester built by
+ * @CurrentRequester (security.CurrentRequesterArgumentResolver).
  */
 @RestController
 @RequestMapping("/api/accounts")
@@ -112,27 +113,24 @@ public class AccountController {
     @GetMapping("/get_all/{user_id}")
     public ResponseEntity<List<AccountResponseBody>> getAllAccountsByUserId(
             @PathVariable("user_id") String userId,
-            @AuthenticationPrincipal(expression = "userId") String currentUserId,
-            Authentication authentication) {
-        var accounts = listAccountsUseCase.listByOwner(userId, requester(currentUserId, authentication));
+            @CurrentRequester Requester requester) {
+        var accounts = listAccountsUseCase.listByOwner(userId, requester);
         return ResponseEntity.ok(mapper.toResponses(accounts));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AccountResponseBody> getAccountById(
             @PathVariable("id") Long id,
-            @AuthenticationPrincipal(expression = "userId") String currentUserId,
-            Authentication authentication) {
-        var account = getAccountUseCase.getById(id, requester(currentUserId, authentication));
+            @CurrentRequester Requester requester) {
+        var account = getAccountUseCase.getById(id, requester);
         return ResponseEntity.ok(mapper.toResponse(account));
     }
 
     @GetMapping("/number/{accountNumber}")
     public ResponseEntity<AccountResponseBody> getByAccountNumber(
             @PathVariable String accountNumber,
-            @AuthenticationPrincipal(expression = "userId") String currentUserId,
-            Authentication authentication) {
-        var account = getAccountUseCase.getByAccountNumber(accountNumber, requester(currentUserId, authentication));
+            @CurrentRequester Requester requester) {
+        var account = getAccountUseCase.getByAccountNumber(accountNumber, requester);
         return ResponseEntity.ok(mapper.toResponse(account));
     }
 
@@ -148,12 +146,5 @@ public class AccountController {
     public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         deleteAccountUseCase.delete(new DeleteAccountCommand(id));
         return ResponseEntity.noContent().build();
-    }
-
-    /** Logged-in user's id + whether they have ROLE_ADMIN (the role SecurityUserDetails grants). */
-    private static AccountRequester requester(String currentUserId, Authentication authentication) {
-        boolean admin = authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-        return new AccountRequester(currentUserId, admin);
     }
 }

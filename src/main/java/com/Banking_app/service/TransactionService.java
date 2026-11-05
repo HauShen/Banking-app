@@ -1,6 +1,6 @@
 package com.Banking_app.service;
 
-import com.Banking_app.account.application.port.in.AccountRequester; // TODO Transaction module: shared requester type
+import com.Banking_app.shared.Requester;
 import com.Banking_app.dto.requestBodies.TransferRequestBody;
 import com.Banking_app.dto.responseBodies.TransactionResponseBody;
 import com.Banking_app.dto.responseBodies.TransferResponseBody;
@@ -15,9 +15,9 @@ public interface TransactionService {
      */
     TransferResponseBody transfer(TransferRequestBody transferRequestBody, String currentUserId);
     /** Visible to the sender, the recipient, or an admin. */
-    TransactionResponseBody getTransactionByReferenceNumber(String referenceNumber, AccountRequester requester);
+    TransactionResponseBody getTransactionByReferenceNumber(String referenceNumber, Requester requester);
 
     /** Visible to the account owner or an admin. */
     Page<TransactionResponseBody> getTransactionsByAccountNumber(String accountNumber, int page, int size,
-                                                                 AccountRequester requester);
+                                                                 Requester requester);
 }
