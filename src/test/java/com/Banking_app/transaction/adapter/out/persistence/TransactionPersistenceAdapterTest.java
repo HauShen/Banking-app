@@ -92,8 +92,8 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("rows written by the new adapter are read correctly by the old /api/transfers code")
-    void oldEndpointReadsNewRows() {
+    @DisplayName("rows written by the adapter are read correctly through GET /api/transfers/{reference}")
+    void endpointReadsAdapterRows() {
         Customer alice = newCustomer("pa_alice");
         Customer bob = newCustomer("pa_bob");
         Transaction saved = adapter.save(completedTransfer(alice.account().id(), bob.account().id(), "12.50", now()));

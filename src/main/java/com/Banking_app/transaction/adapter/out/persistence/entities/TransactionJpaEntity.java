@@ -27,9 +27,6 @@ import java.util.List;
  * The accounts are plain id columns, not {@code @ManyToOne AccountJpaEntity}: accounts belong to another module,
  * so this module never loads or joins account entities (same idea as AccountJpaEntity's plain user_id).
  * The foreign keys stay in the database.
- *
- * Until step 11 the old jpaentities.Transaction maps the same table. Hibernate allows that because the entity
- * names differ ("Transaction" vs "TransactionJpaEntity").
  */
 @Entity
 @Table(name = "transactions")

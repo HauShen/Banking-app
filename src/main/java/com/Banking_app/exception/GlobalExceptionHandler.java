@@ -39,9 +39,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
     /**
-     * The service layer signals "missing row" with jakarta.persistence.EntityNotFoundException.
-     * Without this handler those fall through to handleGeneric and surface as 500, which tells
-     * a client the server is broken when in fact the caller asked for something that isn't there.
+     * Safety net for jakarta.persistence.EntityNotFoundException, which Hibernate throws when a lazy
+     * reference (getReferenceById) points to a row that doesn't exist. The use cases signal "not found"
+     * with ResourceNotFoundException subclasses instead (handler above); same 404 body either way.
+     * Without this handler it would fall through to handleGeneric and surface as 500.
      */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiError> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request){
