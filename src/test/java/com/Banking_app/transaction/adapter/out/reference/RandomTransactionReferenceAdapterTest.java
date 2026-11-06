@@ -13,9 +13,15 @@ class RandomTransactionReferenceAdapterTest {
     private final RandomTransactionReferenceAdapter adapter = new RandomTransactionReferenceAdapter();
 
     @Test
-    @DisplayName("same format as before: TXN- and 12 upper-case hex characters")
-    void format() {
+    @DisplayName("transfers: TXN- and 12 upper-case hex characters (old format)")
+    void transferFormat() {
         assertThat(adapter.next()).matches("TXN-[0-9A-F]{12}");
+    }
+
+    @Test
+    @DisplayName("cash deposits: CDM- and 12 upper-case hex characters (old top-up format)")
+    void cashDepositFormat() {
+        assertThat(adapter.nextCashDeposit()).matches("CDM-[0-9A-F]{12}");
     }
 
     @Test

@@ -7,14 +7,24 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * "TXN-" + 12 upper-case hex characters from a random UUID, e.g. "TXN-3F9A0C12B7D4" — the same format as the old
- * TransactionServiceImpl. 48 random bits; the unique constraint on reference_number catches the (very unlikely) clash.
+ * Prefix + 12 upper-case hex characters from a random UUID: "TXN-3F9A0C12B7D4" for transfers, "CDM-3F9A0C12B7D4"
+ * for top-ups — the same formats as the old code. 48 random bits; the unique constraint on reference_number catches
+ * the (very unlikely) clash.
  */
 @Component
 public class RandomTransactionReferenceAdapter implements TransactionReferencePort {
 
     @Override
     public String next() {
-        return "TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
+        return "TXN-" + randomHex12();
+    }
+
+    @Override
+    public String nextCashDeposit() {
+        return "CDM-" + randomHex12();
+    }
+
+    private static String randomHex12() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
     }
 }

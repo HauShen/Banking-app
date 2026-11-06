@@ -8,32 +8,30 @@ import com.Banking_app.transaction.domain.models.transaction.Transaction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
-
-/** Records a top-up: one SUCCESS transaction without a from-account, with one CREDIT ledger entry. */
+/**
+ * Records a top-up: one SUCCESS transaction without a from-account, with one CREDIT ledger entry.
+ * Same rows as the old LegacyCashDepositAdapter: "CDM-" reference, and created_at = success_at = the ledger
+ * entry's time = the moment of the top-up.
+ */
 @Service
 public class RecordCashDepositService implements RecordCashDepositUseCase {
 
     private final SaveTransactionPort saveTransactionPort;
     private final TransactionReferencePort transactionReferencePort;
-    private final Clock clock;
 
     public RecordCashDepositService(SaveTransactionPort saveTransactionPort,
-                                    TransactionReferencePort transactionReferencePort,
-                                    Clock clock) {
+                                    TransactionReferencePort transactionReferencePort) {
         this.saveTransactionPort = saveTransactionPort;
         this.transactionReferencePort = transactionReferencePort;
-        this.clock = clock;
     }
 
     @Override
     @Transactional   // joins the top-up's transaction: balance and history are stored together or not at all
     public String record(RecordCashDepositCommand command) {
-        Instant now = clock.instant();
-        Transaction deposit = Transaction.startCashDeposit(transactionReferencePort.next(), command.toAccountId(),
-                        command.amount(), command.description(), command.idempotencyKey(), now)
-                .completeCashDeposit(command.balanceAfter(), now);
+        Transaction deposit = Transaction.startCashDeposit(transactionReferencePort.nextCashDeposit(),
+                        command.toAccountId(), command.amount(), command.description(), command.idempotencyKey(),
+                        command.depositedAt())
+                .completeCashDeposit(command.balanceAfter(), command.depositedAt());
         return saveTransactionPort.save(deposit).getReferenceNumber();
     }
 }
