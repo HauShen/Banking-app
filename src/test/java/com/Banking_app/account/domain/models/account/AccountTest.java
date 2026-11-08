@@ -77,6 +77,23 @@ class AccountTest {
         }
 
         @Test
+        @DisplayName("rejects more than 2 decimals as written (10.005, 10.500), balance unchanged; 10.5 is fine")
+        void rejectsMoreThanTwoDecimals() {
+            Account account = account(AccountStatus.ACTIVE, "120.00");
+
+            for (String amount : new String[]{"10.005", "10.500"}) {
+                assertThatThrownBy(() -> account.withdraw(new BigDecimal(amount)))
+                        .as("amount %s", amount)
+                        .isInstanceOf(InvalidAmountException.class)
+                        .hasMessage("Withdrawal amount can have at most 2 decimal places");
+            }
+            assertThat(account.getBalance()).isEqualByComparingTo("120.00");
+
+            account.withdraw(new BigDecimal("10.5"));
+            assertThat(account.getBalance()).isEqualByComparingTo("109.50");
+        }
+
+        @Test
         @DisplayName("is not allowed on a locked account")
         void rejectsLockedAccount() {
             Account account = account(AccountStatus.LOCKED, "120.00");
@@ -89,7 +106,7 @@ class AccountTest {
     }
 
     @Nested
-    @DisplayName("deposit (unchanged, covered here for completeness)")
+    @DisplayName("deposit")
     class Deposit {
 
         @Test
@@ -100,6 +117,23 @@ class AccountTest {
             account.deposit(new BigDecimal("50.00"));
 
             assertThat(account.getBalance()).isEqualByComparingTo("70.00");
+        }
+
+        @Test
+        @DisplayName("rejects more than 2 decimals as written (0.001, 5.100), balance unchanged; 5.10 is fine")
+        void rejectsMoreThanTwoDecimals() {
+            Account account = account(AccountStatus.ACTIVE, "20.00");
+
+            for (String amount : new String[]{"0.001", "5.100"}) {
+                assertThatThrownBy(() -> account.deposit(new BigDecimal(amount)))
+                        .as("amount %s", amount)
+                        .isInstanceOf(InvalidAmountException.class)
+                        .hasMessage("Top-up amount can have at most 2 decimal places");
+            }
+            assertThat(account.getBalance()).isEqualByComparingTo("20.00");
+
+            account.deposit(new BigDecimal("5.10"));
+            assertThat(account.getBalance()).isEqualByComparingTo("25.10");
         }
 
         @Test

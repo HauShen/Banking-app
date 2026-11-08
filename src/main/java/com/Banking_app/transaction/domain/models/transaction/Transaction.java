@@ -87,6 +87,9 @@ public final class Transaction {
         if (amount == null || amount.signum() <= 0) {
             throw new InvalidTransactionAmountException();
         }
+        if (amount.scale() > 2) {   // decimals as written; the amount column is NUMERIC(19,2)
+            throw InvalidTransactionAmountException.tooManyDecimals();
+        }
         return new Transaction(null, referenceNumber, fromAccountId, toAccountId, amount, description,
                 TransactionStatus.PENDING, now, null, idempotencyKey, List.of());
     }

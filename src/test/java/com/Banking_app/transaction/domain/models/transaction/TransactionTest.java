@@ -78,6 +78,25 @@ class TransactionTest {
         }
 
         @Test
+        @DisplayName("rejects more than 2 decimals as written (10.005, 10.500); 10.5 is fine")
+        void rejectsMoreThanTwoDecimals() {
+            assertThatThrownBy(() -> Transaction.startTransfer("TXN-1", ALICE, BOB, new BigDecimal("10.005"), "x",
+                    "key", CREATED))
+                    .isInstanceOf(InvalidTransactionAmountException.class)
+                    .hasMessage("Amount can have at most 2 decimal places");
+            assertThatThrownBy(() -> Transaction.startCashDeposit("TXN-1", BOB, new BigDecimal("0.001"), "x",
+                    "key", CREATED))
+                    .isInstanceOf(InvalidTransactionAmountException.class);
+
+            assertThatThrownBy(() -> Transaction.startTransfer("TXN-1", ALICE, BOB, new BigDecimal("10.500"), "x",
+                    "key", CREATED))
+                    .isInstanceOf(InvalidTransactionAmountException.class);
+
+            assertThat(Transaction.startTransfer("TXN-1", ALICE, BOB, new BigDecimal("10.5"), "x", "key", CREATED)
+                    .getAmount()).isEqualByComparingTo("10.50");
+        }
+
+        @Test
         @DisplayName("requires a reference number and an idempotency key")
         void requiresReferenceAndKey() {
             assertThatThrownBy(() -> Transaction.startTransfer(" ", ALICE, BOB, BigDecimal.TEN, "x", "key", CREATED))

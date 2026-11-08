@@ -22,6 +22,9 @@ public class Account {
     /** A withdrawal may not take the balance below this. Same value as the opening balance, different rule. */
     public static final BigDecimal MINIMUM_BALANCE = new BigDecimal("20.00");
 
+    /** Money has at most 2 decimals (sen); the balance column is NUMERIC(19,2). */
+    public static final int MAX_DECIMALS = 2;
+
     private final Long id;                  // null until the account is saved
     private final String ownerId;           // UserProfile id (plain value, no link to the user module)
     private final String accountNumber;
@@ -57,10 +60,13 @@ public class Account {
         return new Account(id, ownerId, accountNumber, type, status, currency, balance, createdAt);
     }
 
-    /** Adds money to the account. The amount must be positive and the account ACTIVE. */
+    /** Adds money to the account. The amount must be positive with at most 2 decimals, and the account ACTIVE. */
     public void deposit(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Top-up amount must be greater than zero");
+        }
+        if (hasTooManyDecimals(amount)) {
+            throw new InvalidAmountException("Top-up amount can have at most 2 decimal places");
         }
         if (!isActive()) {
             throw new AccountNotActiveException("Cannot top up a non-active account");
@@ -69,13 +75,16 @@ public class Account {
     }
 
     /**
-     * Takes money out of the account (the sending side of a transfer). The amount must be positive,
-     * the account ACTIVE, and at least {@link #MINIMUM_BALANCE} must stay in the account.
+     * Takes money out of the account (the sending side of a transfer). The amount must be positive with at most
+     * 2 decimals, the account ACTIVE, and at least {@link #MINIMUM_BALANCE} must stay in the account.
      * Same minimum-balance rule and message as the old TransactionServiceImpl.transfer.
      */
     public void withdraw(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Withdrawal amount must be greater than zero");
+        }
+        if (hasTooManyDecimals(amount)) {
+            throw new InvalidAmountException("Withdrawal amount can have at most 2 decimal places");
         }
         if (!isActive()) {
             throw new AccountNotActiveException("Cannot withdraw from a non-active account");
@@ -86,6 +95,16 @@ public class Account {
                     "Insufficient balance. Minimum balance of $20.00 must be maintained.");
         }
         this.balance = remaining;
+    }
+
+    /**
+     * Decimals as written: 10.5 and 10.50 are fine, 10.005 and 10.500 are not — the same rule as @Digits on the
+     * transfer request, so every entry point agrees.
+     * Before this rule, PostgreSQL silently rounded such amounts on save while Java had calculated with all of
+     * them, so a balance and its ledger entry could disagree by 0.01.
+     */
+    private static boolean hasTooManyDecimals(BigDecimal amount) {
+        return amount.scale() > MAX_DECIMALS;
     }
 
     public void changeStatus(AccountStatus newStatus) {

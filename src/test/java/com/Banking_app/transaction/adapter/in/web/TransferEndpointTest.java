@@ -146,6 +146,49 @@ class TransferEndpointTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("more than 2 decimals → 400 with a field error, no money moves (was: silently rounded)")
+        void moreThanTwoDecimals() {
+            Customer alice = newCustomer("ep_alice");
+            Customer bob = newCustomer("ep_bob");
+            topUp(alice.token(), alice.account(), "100.00");
+
+            ResponseEntity<String> response = transfer(alice.token(), alice.account(), bob.account(), "10.005", key());
+
+            assertStatus(response, 400);
+            assertThat(json(response).get("fieldErrors").get("amount").asText())
+                    .isEqualTo("amount can have at most 2 decimal places and 17 digits before the decimal point");
+            assertThat(balanceOf(alice.account())).isEqualByComparingTo("120.00");
+            assertThat(balanceOf(bob.account())).isEqualByComparingTo("20.00");
+        }
+
+        @Test
+        @DisplayName("decimals count as written: 10.500 → 400, 10.5 → 201 and moves 10.50")
+        void decimalsCountAsWritten() {
+            Customer alice = newCustomer("ep_alice");
+            Customer bob = newCustomer("ep_bob");
+            topUp(alice.token(), alice.account(), "100.00");
+
+            assertStatus(transfer(alice.token(), alice.account(), bob.account(), "10.500", key()), 400);
+            assertStatus(transfer(alice.token(), alice.account(), bob.account(), "10.5", key()), 201);
+
+            assertThat(balanceOf(alice.account())).isEqualByComparingTo("109.50");
+            assertThat(balanceOf(bob.account())).isEqualByComparingTo("30.50");
+        }
+
+        @Test
+        @DisplayName("more than 17 digits before the decimal point → 400 (was: database overflow → 500)")
+        void tooLarge() {
+            Customer alice = newCustomer("ep_alice");
+            Customer bob = newCustomer("ep_bob");
+
+            ResponseEntity<String> response = transfer(alice.token(), alice.account(), bob.account(),
+                    "123456789012345678.00", key());
+
+            assertStatus(response, 400);
+            assertThat(json(response).get("fieldErrors").has("amount")).isTrue();
+        }
+
+        @Test
         @DisplayName("request validation: missing amount, zero amount, bad currency, blank key → 400")
         void validation() {
             Customer alice = newCustomer("ep_alice");

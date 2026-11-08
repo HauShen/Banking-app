@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
@@ -64,6 +65,22 @@ class TopUpAndDeleteEndpointTest extends AbstractIntegrationTest {
         assertThat(balanceOf(alice.account())).isEqualByComparingTo("40.00");
         assertThat(json(get("/api/transfers/account/" + alice.account().number(), alice.token()))
                 .get("totalElements").asLong()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("a top-up with more than 2 decimals → 400, no balance change, no transaction (was: silently rounded)")
+    void topUpWithMoreThanTwoDecimals() {
+        Customer alice = newCustomer("tu_alice");
+
+        ResponseEntity<String> response = patch(
+                "/api/accounts/" + alice.account().id() + "/topup?amount=0.001", alice.token());
+
+        assertStatus(response, 400);
+        assertThat(json(response).get("message").asText())
+                .isEqualTo("Top-up amount can have at most 2 decimal places");
+        assertThat(balanceOf(alice.account())).isEqualByComparingTo("20.00");
+        assertThat(json(get("/api/transfers/account/" + alice.account().number(), alice.token()))
+                .get("totalElements").asLong()).isZero();
     }
 
     @Test
