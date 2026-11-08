@@ -1,6 +1,7 @@
 package com.Banking_app.account.application.service;
 
 import com.Banking_app.account.application.exception.AccountOwnerNotFoundException;
+import com.Banking_app.account.application.port.in.result.AccountSummary;
 import com.Banking_app.account.application.port.in.usecase.GetAccountSummaryUseCase;
 import com.Banking_app.account.application.port.out.AccountOwnerLookupPort;
 import com.Banking_app.account.application.port.out.LoadAccountPort;

@@ -2,7 +2,7 @@ package com.Banking_app.account.adapter.in.web.mapper;
 
 import com.Banking_app.account.adapter.in.web.dto.AccountResponseBody;
 import com.Banking_app.account.adapter.in.web.dto.AccountSummaryResponseBody;
-import com.Banking_app.account.application.port.in.usecase.GetAccountSummaryUseCase.AccountSummary;
+import com.Banking_app.account.application.port.in.result.AccountSummary;
 import com.Banking_app.account.domain.models.account.Account;
 import org.springframework.stereotype.Component;
 
