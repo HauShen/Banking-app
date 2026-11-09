@@ -78,7 +78,7 @@ public class TransactionPersistenceMapper {
     /** For reads: never touches ledgerEntries, so the LAZY collection is not loaded. */
     public TransactionSummary toSummary(TransactionJpaEntity entity) {
         return new TransactionSummary(entity.getId(), entity.getReferenceNumber(), entity.getTransactionType(),
-                entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(), entity.getDescription(),
-                entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt());
+                entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(), conversionOf(entity),
+                entity.getDescription(), entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt());
     }
 }

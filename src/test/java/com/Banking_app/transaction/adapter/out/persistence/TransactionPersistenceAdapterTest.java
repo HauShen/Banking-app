@@ -178,6 +178,8 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         assertThat(summary.type()).isEqualTo(TransactionType.FOREIGN_REMITTANCE);
         assertThat(summary.fromAccountId()).isNull();
         assertThat(summary.amount()).isEqualByComparingTo("305.00");
+        assertThat(summary.conversion().originalCurrency().getCurrencyCode()).isEqualTo("JPY");   // reads carry it too
+        assertThat(summary.conversion().exchangeRate()).isEqualByComparingTo("0.0305");
         assertThat(ledgerRowsOf(saved.getId())).singleElement()
                 .satisfies(ledger -> assertThat(ledger.get("ledger_type")).isEqualTo("CREDIT"));
         assertThat(saved.getConversion().orElseThrow().originalAmount()).isEqualByComparingTo("10000");

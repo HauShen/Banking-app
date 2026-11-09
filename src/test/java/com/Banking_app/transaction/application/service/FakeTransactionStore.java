@@ -37,7 +37,7 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
                            String idempotencyKey, Instant createdAt) {
         TransactionType type = fromAccountId == null ? TransactionType.CASH_DEPOSIT : TransactionType.TRANSFER;
         TransactionSummary row = new TransactionSummary(nextId++, reference, type, fromAccountId, toAccountId,
-                new BigDecimal(amount), "earlier", TransactionStatus.SUCCESS, createdAt, createdAt.plusSeconds(1));
+                new BigDecimal(amount), null, "earlier", TransactionStatus.SUCCESS, createdAt, createdAt.plusSeconds(1));
         rows.add(row);
         keyToReference.put(idempotencyKey, reference);
         return row;
@@ -56,7 +56,8 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
         saved.add(withId);
         rows.add(new TransactionSummary(withId.getId(), withId.getReferenceNumber(), withId.getType(),
                 withId.getFromAccountId(),
-                withId.getToAccountId(), withId.getAmount(), withId.getDescription(), withId.getStatus(),
+                withId.getToAccountId(), withId.getAmount(), withId.getConversion().orElse(null),
+                withId.getDescription(), withId.getStatus(),
                 withId.getCreatedAt(), withId.getSuccessAt()));
         keyToReference.put(withId.getIdempotencyKey(), withId.getReferenceNumber());
         return withId;

@@ -13,7 +13,9 @@ import java.math.BigDecimal;
  * — including the copy-paste message on toAccountNumber ("fromAccountNumber is required"): the refactor changes no
  * behaviour, fix it later on its own.
  *
- * {@code currency} is validated but not used, as before (plan, Phase 4 item 16).
+ * {@code currency} is the currency of {@code amount}: absent or MYR → a plain MYR transfer; another currency offered by
+ * the bank (GET /api/fx/rates) → the MYR equivalent at the sell rate moves (foreign-currency plan, Phase 5B step 4).
+ * Decimals per currency (JPY none) are checked by the fx module.
  *
  * {@code @Digits} matches the NUMERIC(19,2) columns: at most 2 decimals as written (for a BigDecimal, 10.500 counts
  * as 3) and 17 digits before the point. Bigger amounts used to fail in the database with a 500.

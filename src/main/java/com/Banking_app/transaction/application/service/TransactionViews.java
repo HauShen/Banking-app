@@ -1,15 +1,18 @@
 package com.Banking_app.transaction.application.service;
 
+import com.Banking_app.transaction.application.port.in.result.ForeignAmountView;
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
 import com.Banking_app.transaction.application.port.out.AccountRef;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
+import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 
+import java.math.RoundingMode;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/** Turns stored rows into views, for GetTransactionService and ListAccountTransactionsService. */
+/** Turns stored rows into views, for GetTransactionService, ListAccountTransactionsService and TransferMoneyService. */
 final class TransactionViews {
 
     private TransactionViews() {
@@ -37,10 +40,25 @@ final class TransactionViews {
                 to.accountNumber(),
                 row.amount(),
                 from != null ? from.currency() : to.currency(),
+                foreignAmountOf(row.conversion()),
                 row.status(),
                 row.description(),
                 row.createdAt(),
                 row.successAt());
+    }
+
+    /**
+     * The original currency, amount and rate of a foreign-currency transaction; null for MYR.
+     * The amount is shown with the currency's own decimals: the column stores 2, so JPY 10000 comes back as 10000.00.
+     * (UNNECESSARY can't fail: amounts with more decimals than the currency has are refused when booked.)
+     */
+    static ForeignAmountView foreignAmountOf(CurrencyConversion conversion) {
+        if (conversion == null) {
+            return null;
+        }
+        int decimals = conversion.originalCurrency().getDefaultFractionDigits();
+        return new ForeignAmountView(conversion.originalCurrency().getCurrencyCode(),
+                conversion.originalAmount().setScale(decimals, RoundingMode.UNNECESSARY), conversion.exchangeRate());
     }
 
     static AccountRef account(Map<Long, AccountRef> accounts, Long accountId) {

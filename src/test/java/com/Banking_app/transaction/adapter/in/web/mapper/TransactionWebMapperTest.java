@@ -5,6 +5,7 @@ import com.Banking_app.transaction.adapter.in.web.dto.TransactionResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferResponseBody;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
+import com.Banking_app.transaction.application.port.in.result.ForeignAmountView;
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
 import com.Banking_app.transaction.application.port.in.result.TransferResult;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
@@ -29,11 +30,14 @@ class TransactionWebMapperTest {
     private static TransactionView view(String from) {
         TransactionType type = from == null ? TransactionType.CASH_DEPOSIT : TransactionType.TRANSFER;
         return new TransactionView("TXN-AAAABBBBCCCC", type, from, "1000000002", new BigDecimal("30.00"), "MYR",
-                TransactionStatus.SUCCESS, "Dinner", CREATED, SUCCEEDED);
+                null, TransactionStatus.SUCCESS, "Dinner", CREATED, SUCCEEDED);
     }
 
+    private static final ForeignAmountView USD_20 =
+            new ForeignAmountView("USD", new BigDecimal("20.00"), new BigDecimal("4.75"));
+
     @Test
-    @DisplayName("request body + logged-in user → command (currency is not passed on)")
+    @DisplayName("request body + logged-in user → command, with the currency of the amount")
     void toCommand() {
         TransferRequestBody body = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("30.00"),
                 "MYR", "Dinner", "key-1");
@@ -46,21 +50,52 @@ class TransactionWebMapperTest {
         assertThat(command.amount()).isEqualByComparingTo("30.00");
         assertThat(command.description()).isEqualTo("Dinner");
         assertThat(command.idempotencyKey()).isEqualTo("key-1");
+        assertThat(command.currency()).isEqualTo("MYR");
+    }
+
+    @Test
+    @DisplayName("currency is passed on; absent means MYR")
+    void currencyOnCommand() {
+        TransferRequestBody usd = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("20.00"),
+                "USD", "Dinner", "key-1");
+        TransferRequestBody none = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("20.00"),
+                null, "Dinner", "key-1");
+
+        assertThat(mapper.toCommand(usd, "alice").currency()).isEqualTo("USD");
+        assertThat(mapper.toCommand(usd, "alice").isForeignCurrency()).isTrue();
+        assertThat(mapper.toCommand(none, "alice").currency()).isEqualTo("MYR");
+        assertThat(mapper.toCommand(none, "alice").isForeignCurrency()).isFalse();
     }
 
     @Test
     @DisplayName("transfer result → reply with the old messages for new and duplicate requests")
     void transferResponse() {
-        TransferResponseBody created = mapper.toResponse(
-                new TransferResult("TXN-AAAABBBBCCCC", TransactionStatus.SUCCESS, CREATED, false));
-        TransferResponseBody duplicate = mapper.toResponse(
-                new TransferResult("TXN-AAAABBBBCCCC", TransactionStatus.SUCCESS, CREATED, true));
+        TransferResponseBody created = mapper.toResponse(new TransferResult("TXN-AAAABBBBCCCC",
+                TransactionStatus.SUCCESS, CREATED, new BigDecimal("30.00"), null, false));
+        TransferResponseBody duplicate = mapper.toResponse(new TransferResult("TXN-AAAABBBBCCCC",
+                TransactionStatus.SUCCESS, CREATED, new BigDecimal("30.00"), null, true));
 
         assertThat(created.transactionReference()).isEqualTo("TXN-AAAABBBBCCCC");
         assertThat(created.status()).isEqualTo("SUCCESS");
         assertThat(created.createdAt()).isEqualTo(CREATED);
         assertThat(created.message()).isEqualTo("Transfer successful");
         assertThat(duplicate.message()).isEqualTo("Duplicate request detected. Returning existing transaction.");
+        assertThat(created.amount()).isEqualByComparingTo("30.00");
+        assertThat(created.originalCurrency()).isNull();
+        assertThat(created.originalAmount()).isNull();
+        assertThat(created.exchangeRate()).isNull();
+    }
+
+    @Test
+    @DisplayName("a transfer paid in USD → reply with the MYR amount plus original currency, amount and rate")
+    void foreignTransferResponse() {
+        TransferResponseBody body = mapper.toResponse(new TransferResult("TXN-AAAABBBBCCCC",
+                TransactionStatus.SUCCESS, CREATED, new BigDecimal("95.00"), USD_20, false));
+
+        assertThat(body.amount()).isEqualByComparingTo("95.00");
+        assertThat(body.originalCurrency()).isEqualTo("USD");
+        assertThat(body.originalAmount()).isEqualByComparingTo("20.00");
+        assertThat(body.exchangeRate()).isEqualByComparingTo("4.75");
     }
 
     @Test
@@ -75,6 +110,27 @@ class TransactionWebMapperTest {
         assertThat(transfer.createdAt()).isEqualTo(CREATED);
         assertThat(transfer.postedAt()).isEqualTo(SUCCEEDED);
         assertThat(topUp.fromAccountNumber()).isEqualTo("Cash Deposit Machine");
+        assertThat(transfer.type()).isEqualTo("TRANSFER");
+        assertThat(topUp.type()).isEqualTo("CASH_DEPOSIT");
+        assertThat(transfer.originalCurrency()).isNull();
+        assertThat(transfer.originalAmount()).isNull();
+        assertThat(transfer.exchangeRate()).isNull();
+    }
+
+    @Test
+    @DisplayName("a foreign-currency transaction view → body with original currency, amount and rate")
+    void foreignTransactionResponse() {
+        TransactionView view = new TransactionView("TXN-AAAABBBBCCCC", TransactionType.TRANSFER, "1000000001",
+                "1000000002", new BigDecimal("95.00"), "MYR", USD_20, TransactionStatus.SUCCESS, "Dinner", CREATED,
+                SUCCEEDED);
+
+        TransactionResponseBody body = mapper.toResponse(view);
+
+        assertThat(body.amount()).isEqualByComparingTo("95.00");
+        assertThat(body.currency()).isEqualTo("MYR");
+        assertThat(body.originalCurrency()).isEqualTo("USD");
+        assertThat(body.originalAmount()).isEqualByComparingTo("20.00");
+        assertThat(body.exchangeRate()).isEqualByComparingTo("4.75");
     }
 
     @Test

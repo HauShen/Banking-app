@@ -2,6 +2,7 @@ package com.Banking_app.transaction.application.port.out;
 
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.enums.TransactionType;
+import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,6 +12,8 @@ import java.time.Instant;
  * Reads never load the full Transaction aggregate, so a page of history can't trigger one extra query per row.
  *
  * @param fromAccountId null for a cash deposit
+ * @param amount        the MYR amount that moved
+ * @param conversion    the original currency, amount and rate; null for a MYR transaction
  */
 public record TransactionSummary(Long id,
                                  String referenceNumber,
@@ -18,6 +21,7 @@ public record TransactionSummary(Long id,
                                  Long fromAccountId,
                                  Long toAccountId,
                                  BigDecimal amount,
+                                 CurrencyConversion conversion,
                                  String description,
                                  TransactionStatus status,
                                  Instant createdAt,

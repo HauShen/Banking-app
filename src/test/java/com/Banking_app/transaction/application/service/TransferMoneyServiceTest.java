@@ -35,16 +35,24 @@ class TransferMoneyServiceTest {
 
     private final FakeAccounts accounts = new FakeAccounts();
     private final FakeTransactionStore store = new FakeTransactionStore();
+    private final FakeCurrencyConversions conversions = new FakeCurrencyConversions();
     private final TransferMoneyService service = new TransferMoneyService(accounts, store, store,
-            new SequentialReferences(), Clock.fixed(NOW, ZoneOffset.UTC));
+            new SequentialReferences(), conversions, Clock.fixed(NOW, ZoneOffset.UTC));
 
     TransferMoneyServiceTest() {
         accounts.add(ALICE_ACC, "1000000001", "alice", false, "120.00");
         accounts.add(BOB_ACC, "1000000002", "bob", false, "20.00");
     }
 
+    /** No currency given, as before foreign-currency transfers: MYR. */
     private static TransferMoneyCommand command(String user, String from, String to, String amount, String key) {
-        return new TransferMoneyCommand(user, from, to, new BigDecimal(amount), "Dinner", key);
+        return new TransferMoneyCommand(user, from, to, new BigDecimal(amount), null, "Dinner", key);
+    }
+
+    /** Alice → Bob, amount in {@code currency}. */
+    private static TransferMoneyCommand aliceToBob(String amount, String currency, String key) {
+        return new TransferMoneyCommand("alice", "1000000001", "1000000002", new BigDecimal(amount), currency,
+                "Dinner", key);
     }
 
     private void assertNothingHappened() {
@@ -78,6 +86,10 @@ class TransferMoneyServiceTest {
         assertThat(tx.getLedgerEntries().get(0).type()).isEqualTo(LedgerType.DEBIT);
         assertThat(tx.getLedgerEntries().get(0).balanceAfter()).isEqualByComparingTo("90.00");
         assertThat(tx.getLedgerEntries().get(1).type()).isEqualTo(LedgerType.CREDIT);
+        assertThat(tx.getConversion()).isEmpty();
+        assertThat(conversions.calls).isZero();
+        assertThat(result.amount()).isEqualByComparingTo("30.00");
+        assertThat(result.original()).isNull();
         assertThat(tx.getLedgerEntries().get(1).balanceAfter()).isEqualByComparingTo("50.00");
     }
 
@@ -244,6 +256,127 @@ class TransferMoneyServiceTest {
 
             assertThat(result.duplicate()).isTrue();
             assertThat(result.transactionReference()).isEqualTo("TXN-ORIGINAL0003");
+        }
+    }
+
+    @Nested
+    @DisplayName("paying in a foreign currency")
+    class ForeignCurrency {
+
+        @Test
+        @DisplayName("20.00 USD at the sell rate 4.75 moves RM 95.00; the transaction keeps currency, amount and rate")
+        void usd() {
+            TransferResult result = service.transfer(aliceToBob("20.00", "USD", "k-usd"));
+
+            assertThat(accounts.balanceOf(ALICE_ACC)).isEqualByComparingTo("25.00");
+            assertThat(accounts.balanceOf(BOB_ACC)).isEqualByComparingTo("115.00");
+            assertThat(result.amount()).isEqualByComparingTo("95.00");
+            assertThat(result.original().currency()).isEqualTo("USD");
+            assertThat(result.original().amount()).isEqualByComparingTo("20.00");
+            assertThat(result.original().exchangeRate()).isEqualByComparingTo("4.75");
+
+            Transaction tx = store.saved.get(0);
+            assertThat(tx.getAmount()).isEqualByComparingTo("95.00");
+            assertThat(tx.getLedgerEntries().get(0).amount()).isEqualByComparingTo("95.00");   // ledger is MYR
+            assertThat(tx.getConversion().orElseThrow().originalAmount()).isEqualByComparingTo("20.00");
+        }
+
+        @Test
+        @DisplayName("currency MYR is a plain MYR transfer: nothing is converted")
+        void myr() {
+            TransferResult result = service.transfer(aliceToBob("30.00", "MYR", "k-myr"));
+
+            assertThat(result.amount()).isEqualByComparingTo("30.00");
+            assertThat(result.original()).isNull();
+            assertThat(conversions.calls).isZero();
+            assertThat(store.saved.get(0).getConversion()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("the fx module's refusal (e.g. currency not offered) passes through; nothing moves")
+        void refusedByFx() {
+            assertThatThrownBy(() -> service.transfer(aliceToBob("10.00", "XYZ", "k-xyz")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Currency XYZ is not supported");
+            assertNothingHappened();
+        }
+
+        @Test
+        @DisplayName("the minimum balance applies to the converted amount: 22.00 USD = RM 104.50 leaves 15.50 → 400")
+        void minimumBalanceOnConvertedAmount() {
+            assertThatThrownBy(() -> service.transfer(aliceToBob("22.00", "USD", "k-big")))
+                    .hasMessage("Insufficient balance. Minimum balance of $20.00 must be maintained.");
+            assertThat(store.saved).isEmpty();
+            assertThat(accounts.balanceOf(ALICE_ACC)).isEqualByComparingTo("120.00");
+        }
+
+        @Test
+        @DisplayName("converted only after the checks: not the owner → 403, locked → 400, no rate asked for")
+        void convertsAfterTheChecks() {
+            accounts.add(3L, "1000000003", "carol", true, "500.00");
+
+            assertThatThrownBy(() -> service.transfer(new TransferMoneyCommand("bob", "1000000001", "1000000002",
+                    BigDecimal.TEN, "XYZ", "Dinner", "k1")))
+                    .isInstanceOf(TransactionAccessDeniedException.class);
+            assertThatThrownBy(() -> service.transfer(new TransferMoneyCommand("carol", "1000000003", "1000000002",
+                    BigDecimal.TEN, "XYZ", "Dinner", "k2")))
+                    .isInstanceOf(TransferAccountLockedException.class);
+            assertThat(conversions.calls).isZero();
+        }
+
+        @Nested
+        @DisplayName("idempotency")
+        class ForeignIdempotency {
+
+            @Test
+            @DisplayName("a retry after the rate changed is still the same request → the original, not converted again")
+            void retryAfterRateChange() {
+                TransferResult first = service.transfer(aliceToBob("20.00", "USD", "k-fx"));
+                conversions.setSellRate("USD", "4.80");
+
+                TransferResult retry = service.transfer(aliceToBob("20.00", "USD", "k-fx"));
+
+                assertThat(retry.duplicate()).isTrue();
+                assertThat(retry.transactionReference()).isEqualTo(first.transactionReference());
+                assertThat(retry.amount()).isEqualByComparingTo("95.00");                 // the original MYR amount
+                assertThat(retry.original().exchangeRate()).isEqualByComparingTo("4.75"); // and the original rate
+                assertThat(conversions.calls).isEqualTo(1);
+                assertThat(accounts.moveCalls).isEqualTo(1);
+            }
+
+            @Test
+            @DisplayName("same key, a different original amount or currency → 409")
+            void differentAmountOrCurrency() {
+                service.transfer(aliceToBob("20.00", "USD", "k-fx"));
+
+                assertThatThrownBy(() -> service.transfer(aliceToBob("21.00", "USD", "k-fx")))
+                        .isInstanceOf(IdempotencyKeyMismatchException.class);
+                assertThatThrownBy(() -> service.transfer(aliceToBob("20.00", "SGD", "k-fx")))
+                        .isInstanceOf(IdempotencyKeyMismatchException.class);
+                assertThat(accounts.moveCalls).isEqualTo(1);
+            }
+
+            @Test
+            @DisplayName("MYR and foreign never match: 47.50 MYR is not a retry of 10.00 USD, 10.00 USD not of 10.00 MYR")
+            void myrAndForeignNeverMatch() {
+                service.transfer(aliceToBob("10.00", "USD", "k-fx"));    // RM 47.50
+                service.transfer(aliceToBob("10.00", "MYR", "k-myr"));
+
+                assertThatThrownBy(() -> service.transfer(aliceToBob("47.50", "MYR", "k-fx")))
+                        .isInstanceOf(IdempotencyKeyMismatchException.class);
+                assertThatThrownBy(() -> service.transfer(aliceToBob("47.50", null, "k-fx")))
+                        .isInstanceOf(IdempotencyKeyMismatchException.class);
+                assertThatThrownBy(() -> service.transfer(aliceToBob("10.00", "USD", "k-myr")))
+                        .isInstanceOf(IdempotencyKeyMismatchException.class);
+            }
+
+            @Test
+            @DisplayName("a MYR retry without the currency field matches a MYR transfer that had it (absent = MYR)")
+            void absentCurrencyIsMyr() {
+                service.transfer(aliceToBob("30.00", "MYR", "k-myr"));
+
+                assertThat(service.transfer(aliceToBob("30.00", null, "k-myr")).duplicate()).isTrue();
+            }
         }
     }
 

@@ -26,8 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The transaction module wired by Spring with its real adapters (account module, PostgreSQL), called directly
- * through its use cases rather than over HTTP. Balances are read through the account endpoints.
+ * The new transaction module wired by Spring with its real adapters (account module, PostgreSQL), called directly
+ * through its use cases — before step 9 points the HTTP endpoints at it. Balances are read through the
+ * existing account endpoints.
  */
 class TransactionModuleWiringTest extends AbstractIntegrationTest {
 
@@ -52,7 +53,7 @@ class TransactionModuleWiringTest extends AbstractIntegrationTest {
 
     private TransferMoneyCommand command(Customer from, Customer to, String amount, String idempotencyKey) {
         return new TransferMoneyCommand(userIdOf(from.token()), from.account().number(), to.account().number(),
-                new BigDecimal(amount), "wiring test", idempotencyKey);
+                new BigDecimal(amount), "MYR", "wiring test", idempotencyKey);
     }
 
     @Test
@@ -74,7 +75,7 @@ class TransactionModuleWiringTest extends AbstractIntegrationTest {
                 "SELECT COUNT(*) FROM ledgers l JOIN transactions t ON t.id = l.transaction_id WHERE t.idempotency_key = ?",
                 Integer.class, key)).isEqualTo(2);
 
-        // readable through the endpoint too (the recipient may see it)
+        // the old endpoint still reads it (the recipient may see it)
         assertStatus(get("/api/transfers/" + result.transactionReference(), bob.token()), 200);
     }
 
