@@ -15,6 +15,7 @@ public class TransactionPersistenceMapper {
         TransactionJpaEntity entity = new TransactionJpaEntity();
         entity.setId(transaction.getId());
         entity.setReferenceNumber(transaction.getReferenceNumber());
+        entity.setTransactionType(transaction.getType());
         entity.setFromAccountId(transaction.getFromAccountId());
         entity.setToAccountId(transaction.getToAccountId());
         entity.setAmount(transaction.getAmount());
@@ -45,9 +46,9 @@ public class TransactionPersistenceMapper {
      * in-memory list we just wrote, so no lazy loading happens.
      */
     public Transaction toDomain(TransactionJpaEntity entity) {
-        return Transaction.rehydrate(entity.getId(), entity.getReferenceNumber(), entity.getFromAccountId(),
-                entity.getToAccountId(), entity.getAmount(), entity.getDescription(), entity.getStatus(),
-                entity.getCreatedAt(), entity.getSuccessAt(), entity.getIdempotencyKey(),
+        return Transaction.rehydrate(entity.getId(), entity.getReferenceNumber(), entity.getTransactionType(),
+                entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(), entity.getDescription(),
+                entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt(), entity.getIdempotencyKey(),
                 entity.getLedgerEntries().stream().map(TransactionPersistenceMapper::toDomain).toList());
     }
 
@@ -58,8 +59,8 @@ public class TransactionPersistenceMapper {
 
     /** For reads: never touches ledgerEntries, so the LAZY collection is not loaded. */
     public TransactionSummary toSummary(TransactionJpaEntity entity) {
-        return new TransactionSummary(entity.getId(), entity.getReferenceNumber(), entity.getFromAccountId(),
-                entity.getToAccountId(), entity.getAmount(), entity.getDescription(), entity.getStatus(),
-                entity.getCreatedAt(), entity.getSuccessAt());
+        return new TransactionSummary(entity.getId(), entity.getReferenceNumber(), entity.getTransactionType(),
+                entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(), entity.getDescription(),
+                entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt());
     }
 }

@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.domain.models.transaction;
 
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import com.Banking_app.transaction.domain.exception.InvalidTransactionAmountException;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
 
@@ -18,7 +19,7 @@ import java.util.Objects;
  *
  * Life cycle:
  * <pre>
- *   startTransfer / startCashDeposit  → PENDING, no ledger entries
+ *   startTransfer / startCashDeposit  → PENDING, no ledger entries; the type (TRANSFER / CASH_DEPOSIT) never changes
  *   completeTransfer                  → SUCCESS, DEBIT on the sender + CREDIT on the recipient
  *   completeCashDeposit               → SUCCESS, CREDIT on the recipient only (the money comes from the machine)
  * </pre>
@@ -32,6 +33,7 @@ public final class Transaction {
 
     private final Long id;                 // null until saved
     private final String referenceNumber;
+    private final TransactionType type;
     private final Long fromAccountId;      // null for a cash deposit
     private final Long toAccountId;
     private final BigDecimal amount;
@@ -42,11 +44,12 @@ public final class Transaction {
     private final String idempotencyKey;
     private final List<LedgerEntry> ledgerEntries;
 
-    private Transaction(Long id, String referenceNumber, Long fromAccountId, Long toAccountId, BigDecimal amount,
-                        String description, TransactionStatus status, Instant createdAt, Instant successAt,
-                        String idempotencyKey, List<LedgerEntry> ledgerEntries) {
+    private Transaction(Long id, String referenceNumber, TransactionType type, Long fromAccountId, Long toAccountId,
+                        BigDecimal amount, String description, TransactionStatus status, Instant createdAt,
+                        Instant successAt, String idempotencyKey, List<LedgerEntry> ledgerEntries) {
         this.id = id;
         this.referenceNumber = referenceNumber;
+        this.type = type;
         this.fromAccountId = fromAccountId;
         this.toAccountId = toAccountId;
         this.amount = amount;
@@ -69,18 +72,21 @@ public final class Transaction {
         if (fromAccountId.equals(toAccountId)) {
             throw new SameAccountTransferException();
         }
-        return start(referenceNumber, fromAccountId, toAccountId, amount, description, idempotencyKey, now);
+        return start(TransactionType.TRANSFER, referenceNumber, fromAccountId, toAccountId, amount, description,
+                idempotencyKey, now);
     }
 
     /** New PENDING cash deposit (top-up): money from the cash deposit machine, so there is no from-account. */
     public static Transaction startCashDeposit(String referenceNumber, Long toAccountId, BigDecimal amount,
                                                String description, String idempotencyKey, Instant now) {
         Objects.requireNonNull(toAccountId, "toAccountId");
-        return start(referenceNumber, null, toAccountId, amount, description, idempotencyKey, now);
+        return start(TransactionType.CASH_DEPOSIT, referenceNumber, null, toAccountId, amount, description,
+                idempotencyKey, now);
     }
 
-    private static Transaction start(String referenceNumber, Long fromAccountId, Long toAccountId,
-                                     BigDecimal amount, String description, String idempotencyKey, Instant now) {
+    private static Transaction start(TransactionType type, String referenceNumber, Long fromAccountId,
+                                     Long toAccountId, BigDecimal amount, String description, String idempotencyKey,
+                                     Instant now) {
         requireText(referenceNumber, "referenceNumber");
         requireText(idempotencyKey, "idempotencyKey");
         Objects.requireNonNull(now, "now");
@@ -90,7 +96,7 @@ public final class Transaction {
         if (amount.scale() > 2) {   // decimals as written; the amount column is NUMERIC(19,2)
             throw InvalidTransactionAmountException.tooManyDecimals();
         }
-        return new Transaction(null, referenceNumber, fromAccountId, toAccountId, amount, description,
+        return new Transaction(null, referenceNumber, type, fromAccountId, toAccountId, amount, description,
                 TransactionStatus.PENDING, now, null, idempotencyKey, List.of());
     }
 
@@ -98,11 +104,11 @@ public final class Transaction {
      * Rebuilds a stored transaction (used by the persistence mapper). No business checks: the data was valid
      * when it was saved, and the database constraints guard it.
      */
-    public static Transaction rehydrate(Long id, String referenceNumber, Long fromAccountId, Long toAccountId,
-                                        BigDecimal amount, String description, TransactionStatus status,
-                                        Instant createdAt, Instant successAt, String idempotencyKey,
-                                        List<LedgerEntry> ledgerEntries) {
-        return new Transaction(id, referenceNumber, fromAccountId, toAccountId, amount, description, status,
+    public static Transaction rehydrate(Long id, String referenceNumber, TransactionType type, Long fromAccountId,
+                                        Long toAccountId, BigDecimal amount, String description,
+                                        TransactionStatus status, Instant createdAt, Instant successAt,
+                                        String idempotencyKey, List<LedgerEntry> ledgerEntries) {
+        return new Transaction(id, referenceNumber, type, fromAccountId, toAccountId, amount, description, status,
                 createdAt, successAt, idempotencyKey, ledgerEntries);
     }
 
@@ -114,8 +120,8 @@ public final class Transaction {
      */
     public Transaction completeTransfer(BigDecimal fromBalanceAfter, BigDecimal toBalanceAfter, Instant now) {
         requirePending();
-        if (isCashDeposit()) {
-            throw new IllegalStateException("A cash deposit has no sender: use completeCashDeposit");
+        if (type != TransactionType.TRANSFER) {
+            throw new IllegalStateException("Only a transfer has a sender; this is a " + type);
         }
         return completed(List.of(
                 LedgerEntry.debit(fromAccountId, amount, fromBalanceAfter, now),
@@ -125,14 +131,14 @@ public final class Transaction {
     /** Money has arrived: record the recipient's CREDIT with the balance after, and mark it SUCCESS. */
     public Transaction completeCashDeposit(BigDecimal toBalanceAfter, Instant now) {
         requirePending();
-        if (!isCashDeposit()) {
-            throw new IllegalStateException("A transfer needs both balances: use completeTransfer");
+        if (type != TransactionType.CASH_DEPOSIT) {
+            throw new IllegalStateException("Not a cash deposit but a " + type);
         }
         return completed(List.of(LedgerEntry.credit(toAccountId, amount, toBalanceAfter, now)), now);
     }
 
     private Transaction completed(List<LedgerEntry> entries, Instant now) {
-        return new Transaction(id, referenceNumber, fromAccountId, toAccountId, amount, description,
+        return new Transaction(id, referenceNumber, type, fromAccountId, toAccountId, amount, description,
                 TransactionStatus.SUCCESS, createdAt, now, idempotencyKey, entries);
     }
 
@@ -145,7 +151,7 @@ public final class Transaction {
     // ---------------------------------------------------------------- questions
 
     public boolean isCashDeposit() {
-        return fromAccountId == null;
+        return type == TransactionType.CASH_DEPOSIT;
     }
 
     /** True if the money left this account (never true for a cash deposit). Used by the idempotency check. */
@@ -162,6 +168,7 @@ public final class Transaction {
 
     public Long getId() { return id; }
     public String getReferenceNumber() { return referenceNumber; }
+    public TransactionType getType() { return type; }
     public Long getFromAccountId() { return fromAccountId; }
     public Long getToAccountId() { return toAccountId; }
     public BigDecimal getAmount() { return amount; }

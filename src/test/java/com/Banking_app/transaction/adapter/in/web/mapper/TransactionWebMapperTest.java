@@ -8,6 +8,7 @@ import com.Banking_app.transaction.application.port.in.command.TransferMoneyComm
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
 import com.Banking_app.transaction.application.port.in.result.TransferResult;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,8 @@ class TransactionWebMapperTest {
     private final TransactionWebMapper mapper = new TransactionWebMapper();
 
     private static TransactionView view(String from) {
-        return new TransactionView("TXN-AAAABBBBCCCC", from, "1000000002", new BigDecimal("30.00"), "MYR",
+        TransactionType type = from == null ? TransactionType.CASH_DEPOSIT : TransactionType.TRANSFER;
+        return new TransactionView("TXN-AAAABBBBCCCC", type, from, "1000000002", new BigDecimal("30.00"), "MYR",
                 TransactionStatus.SUCCESS, "Dinner", CREATED, SUCCEEDED);
     }
 

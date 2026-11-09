@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.application.port.out;
 
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,6 +14,7 @@ import java.time.Instant;
  */
 public record TransactionSummary(Long id,
                                  String referenceNumber,
+                                 TransactionType type,
                                  Long fromAccountId,
                                  Long toAccountId,
                                  BigDecimal amount,

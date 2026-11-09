@@ -6,6 +6,7 @@ import com.Banking_app.transaction.application.port.out.LoadTransactionPort;
 import com.Banking_app.transaction.application.port.out.SaveTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
 
 import java.math.BigDecimal;
@@ -34,7 +35,8 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
     /** Puts an existing transaction in the table (e.g. an earlier transfer with the same idempotency key). */
     TransactionSummary add(String reference, Long fromAccountId, Long toAccountId, String amount,
                            String idempotencyKey, Instant createdAt) {
-        TransactionSummary row = new TransactionSummary(nextId++, reference, fromAccountId, toAccountId,
+        TransactionType type = fromAccountId == null ? TransactionType.CASH_DEPOSIT : TransactionType.TRANSFER;
+        TransactionSummary row = new TransactionSummary(nextId++, reference, type, fromAccountId, toAccountId,
                 new BigDecimal(amount), "earlier", TransactionStatus.SUCCESS, createdAt, createdAt.plusSeconds(1));
         rows.add(row);
         keyToReference.put(idempotencyKey, reference);
@@ -47,11 +49,12 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
             nextSaveLosesTheRace = false;
             throw new DuplicateIdempotencyKeyException(t.getIdempotencyKey(), null);
         }
-        Transaction withId = Transaction.rehydrate(nextId++, t.getReferenceNumber(), t.getFromAccountId(),
+        Transaction withId = Transaction.rehydrate(nextId++, t.getReferenceNumber(), t.getType(), t.getFromAccountId(),
                 t.getToAccountId(), t.getAmount(), t.getDescription(), t.getStatus(), t.getCreatedAt(),
                 t.getSuccessAt(), t.getIdempotencyKey(), t.getLedgerEntries());
         saved.add(withId);
-        rows.add(new TransactionSummary(withId.getId(), withId.getReferenceNumber(), withId.getFromAccountId(),
+        rows.add(new TransactionSummary(withId.getId(), withId.getReferenceNumber(), withId.getType(),
+                withId.getFromAccountId(),
                 withId.getToAccountId(), withId.getAmount(), withId.getDescription(), withId.getStatus(),
                 withId.getCreatedAt(), withId.getSuccessAt()));
         keyToReference.put(withId.getIdempotencyKey(), withId.getReferenceNumber());

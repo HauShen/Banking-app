@@ -5,6 +5,7 @@ import com.Banking_app.support.AbstractIntegrationTest;
 import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyException;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -84,6 +85,9 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
 
         TransactionSummary byReference = adapter.findByReferenceNumber(saved.getReferenceNumber()).orElseThrow();
         assertThat(byReference.id()).isEqualTo(saved.getId());
+        assertThat(byReference.type()).isEqualTo(TransactionType.TRANSFER);
+        assertThat(jdbc.queryForObject("SELECT transaction_type FROM transactions WHERE id = ?", String.class,
+                saved.getId())).isEqualTo("TRANSFER");
         assertThat(byReference.fromAccountId()).isEqualTo(alice.account().id());
         assertThat(byReference.toAccountId()).isEqualTo(bob.account().id());
         assertThat(byReference.amount()).isEqualByComparingTo("30.00");
@@ -123,6 +127,7 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         Transaction saved = adapter.save(deposit);
 
         TransactionSummary summary = adapter.findByReferenceNumber(saved.getReferenceNumber()).orElseThrow();
+        assertThat(summary.type()).isEqualTo(TransactionType.CASH_DEPOSIT);
         assertThat(summary.fromAccountId()).isNull();
         assertThat(summary.toAccountId()).isEqualTo(bob.account().id());
         List<Map<String, Object>> ledgers = ledgerRowsOf(saved.getId());

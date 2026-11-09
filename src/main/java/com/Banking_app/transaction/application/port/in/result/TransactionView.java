@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.application.port.in.result;
 
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.time.Instant;
  * @param currency          the from-account's currency, or the to-account's for a cash deposit (as before)
  */
 public record TransactionView(String referenceNumber,
+                              TransactionType type,
                               String fromAccountNumber,
                               String toAccountNumber,
                               BigDecimal amount,

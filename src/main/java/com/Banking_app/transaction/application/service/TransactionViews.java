@@ -32,6 +32,7 @@ final class TransactionViews {
         AccountRef to = account(accounts, row.toAccountId());
         return new TransactionView(
                 row.referenceNumber(),
+                row.type(),
                 from == null ? null : from.accountNumber(),
                 to.accountNumber(),
                 row.amount(),

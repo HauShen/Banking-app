@@ -2,6 +2,7 @@ package com.Banking_app.transaction.domain.models.transaction;
 
 import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import com.Banking_app.transaction.domain.exception.InvalidTransactionAmountException;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,7 @@ class TransactionTest {
             Transaction tx = pendingTransfer("30.00");
 
             assertThat(tx.getId()).isNull();
+            assertThat(tx.getType()).isEqualTo(TransactionType.TRANSFER);
             assertThat(tx.getReferenceNumber()).isEqualTo("TXN-AAAABBBBCCCC");
             assertThat(tx.getFromAccountId()).isEqualTo(ALICE);
             assertThat(tx.getToAccountId()).isEqualTo(BOB);
@@ -128,6 +130,7 @@ class TransactionTest {
                     .completeTransfer(new BigDecimal("90.00"), new BigDecimal("50.00"), DONE);
 
             assertThat(done.getStatus()).isEqualTo(TransactionStatus.SUCCESS);
+            assertThat(done.getType()).isEqualTo(TransactionType.TRANSFER);
             assertThat(done.getSuccessAt()).isEqualTo(DONE);
             assertThat(done.getCreatedAt()).isEqualTo(CREATED);
 
@@ -195,6 +198,7 @@ class TransactionTest {
         void hasNoSender() {
             Transaction tx = pendingCashDeposit("50.00");
 
+            assertThat(tx.getType()).isEqualTo(TransactionType.CASH_DEPOSIT);
             assertThat(tx.getFromAccountId()).isNull();
             assertThat(tx.getToAccountId()).isEqualTo(BOB);
             assertThat(tx.isCashDeposit()).isTrue();
@@ -263,10 +267,12 @@ class TransactionTest {
         LedgerEntry credit = new LedgerEntry(11L, BOB, LedgerType.CREDIT, new BigDecimal("50.00"),
                 new BigDecimal("70.00"), DONE);
 
-        Transaction tx = Transaction.rehydrate(7L, "TXN-DDDDEEEEFFFF", null, BOB, new BigDecimal("50.00"),
+        Transaction tx = Transaction.rehydrate(7L, "TXN-DDDDEEEEFFFF", TransactionType.CASH_DEPOSIT, null, BOB,
+                new BigDecimal("50.00"),
                 "Cash deposit", TransactionStatus.SUCCESS, CREATED, DONE, "key-2", List.of(credit));
 
         assertThat(tx.getId()).isEqualTo(7L);
+        assertThat(tx.getType()).isEqualTo(TransactionType.CASH_DEPOSIT);
         assertThat(tx.getStatus()).isEqualTo(TransactionStatus.SUCCESS);
         assertThat(tx.getSuccessAt()).isEqualTo(DONE);
         assertThat(tx.isCashDeposit()).isTrue();
