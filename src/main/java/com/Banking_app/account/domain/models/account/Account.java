@@ -75,6 +75,24 @@ public class Account {
     }
 
     /**
+     * Money arriving from outside the bank (a foreign remittance, already converted to MYR by the transaction module).
+     * Same rules as {@link #deposit}: positive, at most 2 decimals, the account ACTIVE. No upper limit and no minimum
+     * balance to keep. The messages don't say "Top-up", because this isn't one.
+     */
+    public void receive(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidAmountException("Received amount must be greater than zero");
+        }
+        if (hasTooManyDecimals(amount)) {
+            throw new InvalidAmountException("Received amount can have at most 2 decimal places");
+        }
+        if (!isActive()) {
+            throw new AccountNotActiveException("Cannot receive money into a non-active account");
+        }
+        this.balance = this.balance.add(amount);
+    }
+
+    /**
      * Takes money out of the account (the sending side of a transfer). The amount must be positive with at most
      * 2 decimals, the account ACTIVE, and at least {@link #MINIMUM_BALANCE} must stay in the account.
      * Same minimum-balance rule and message as the old TransactionServiceImpl.transfer.

@@ -146,4 +146,59 @@ class AccountTest {
             assertThat(account.getBalance()).isEqualByComparingTo("20.00");
         }
     }
+
+    @Nested
+    @DisplayName("receive (money from abroad)")
+    class Receive {
+
+        @Test
+        @DisplayName("adds the amount to the balance")
+        void addsAmount() {
+            Account account = account(AccountStatus.ACTIVE, "20.00");
+
+            account.receive(new BigDecimal("305.00"));
+
+            assertThat(account.getBalance()).isEqualByComparingTo("325.00");
+        }
+
+        @Test
+        @DisplayName("rejects zero, negative and missing amounts with its own message (not 'Top-up')")
+        void rejectsNonPositive() {
+            Account account = account(AccountStatus.ACTIVE, "20.00");
+
+            for (String amount : new String[]{"0", "-1.00"}) {
+                assertThatThrownBy(() -> account.receive(new BigDecimal(amount)))
+                        .as("amount %s", amount)
+                        .isInstanceOf(InvalidAmountException.class)
+                        .hasMessage("Received amount must be greater than zero");
+            }
+            assertThatThrownBy(() -> account.receive(null)).isInstanceOf(InvalidAmountException.class);
+            assertThat(account.getBalance()).isEqualByComparingTo("20.00");
+        }
+
+        @Test
+        @DisplayName("rejects more than 2 decimals as written (0.001, 5.100), balance unchanged")
+        void rejectsMoreThanTwoDecimals() {
+            Account account = account(AccountStatus.ACTIVE, "20.00");
+
+            for (String amount : new String[]{"0.001", "5.100"}) {
+                assertThatThrownBy(() -> account.receive(new BigDecimal(amount)))
+                        .as("amount %s", amount)
+                        .isInstanceOf(InvalidAmountException.class)
+                        .hasMessage("Received amount can have at most 2 decimal places");
+            }
+            assertThat(account.getBalance()).isEqualByComparingTo("20.00");
+        }
+
+        @Test
+        @DisplayName("is not allowed on a locked account")
+        void rejectsLockedAccount() {
+            Account account = account(AccountStatus.LOCKED, "20.00");
+
+            assertThatThrownBy(() -> account.receive(new BigDecimal("50.00")))
+                    .isInstanceOf(AccountNotActiveException.class)
+                    .hasMessage("Cannot receive money into a non-active account");
+            assertThat(account.getBalance()).isEqualByComparingTo("20.00");
+        }
+    }
 }
