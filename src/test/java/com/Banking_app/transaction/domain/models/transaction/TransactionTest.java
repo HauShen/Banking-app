@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Currency;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -232,8 +233,8 @@ class TransactionTest {
     @DisplayName("foreign currency")
     class ForeignCurrency {
 
-        private final CurrencyConversion hundredUsd =
-                CurrencyConversion.toMyr("USD", new BigDecimal("100.00"), new BigDecimal("4.75"));
+        private final CurrencyConversion hundredUsd = new CurrencyConversion(Currency.getInstance("USD"),
+                new BigDecimal("100.00"), new BigDecimal("4.75"), new BigDecimal("475.00"));
 
         @Test
         @DisplayName("a transfer paid in USD moves the converted MYR amount and keeps the conversion")

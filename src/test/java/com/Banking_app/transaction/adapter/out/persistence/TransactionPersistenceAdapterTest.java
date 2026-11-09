@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Currency;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -142,8 +143,8 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         long a = newCustomer("pa_a").account().id();
         long b = newCustomer("pa_b").account().id();
         Instant at = now();
-        CurrencyConversion conversion =
-                CurrencyConversion.toMyr("USD", new BigDecimal("100.00"), new BigDecimal("4.71234567"));
+        CurrencyConversion conversion = new CurrencyConversion(Currency.getInstance("USD"),
+                new BigDecimal("100.00"), new BigDecimal("4.71234567"), new BigDecimal("471.23"));
         Transaction fx = Transaction.startTransfer(unique("TXN"), a, b, conversion, "fx test", unique("key"), at)
                 .completeTransfer(new BigDecimal("100.00"), new BigDecimal("50.00"), at);
 
@@ -166,7 +167,8 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         long b = newCustomer("pa_b").account().id();
         Instant at = now();
         Transaction remittance = Transaction.startForeignRemittance(unique("TXN"), b,
-                        CurrencyConversion.toMyr("JPY", new BigDecimal("10000"), new BigDecimal("0.0305")),
+                        new CurrencyConversion(Currency.getInstance("JPY"), new BigDecimal("10000"),
+                                new BigDecimal("0.0305"), new BigDecimal("305.00")),
                         "remittance test", unique("key"), at)
                 .completeForeignRemittance(new BigDecimal("325.00"), at);
 

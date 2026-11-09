@@ -1,21 +1,23 @@
 package com.Banking_app.transaction.domain.models.transaction;
 
-import com.Banking_app.transaction.domain.exception.InvalidCurrencyConversionException;
-import com.Banking_app.transaction.domain.exception.InvalidTransactionAmountException;
-
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Currency;
 import java.util.Objects;
 
 /**
- * A foreign-currency amount converted to MYR at a given rate, as it happened. Accounts are MYR only, so a transaction
- * in USD stores the MYR amount that moved plus this record of the original currency, amount and rate.
+ * A foreign-currency amount converted to MYR, as it was booked. Accounts are MYR only, so a transaction in USD stores
+ * the MYR amount that moved plus this record of the original currency, amount and rate.
+ *
+ * The conversion itself (which rate, rounding, decimals per currency, the RM 0.01 minimum) is the fx module's job:
+ * the transaction module gets it through CurrencyConversionPort, the same quote the customer sees at GET /api/fx/quote.
+ * This record only checks that the values can be stored as they are (the transactions table: amounts NUMERIC(19,2),
+ * rate NUMERIC(19,8)), so nothing is silently rounded by the database.
  *
  * Value object: immutable, compared by value, no identity.
  *
- * @param exchangeRate MYR per 1 unit of the foreign currency (e.g. 4.75 for USD, 0.0305 for JPY), at most 8 decimals
- * @param myrAmount    the converted amount that actually moves, rounded HALF_UP to 2 decimals
+ * @param originalAmount in the original currency; read back from the database it has 2 decimals (JPY 10000.00)
+ * @param exchangeRate   MYR per 1 unit of the original currency (e.g. 4.75 for USD, 0.0305 for JPY)
+ * @param myrAmount      the amount that actually moved, also the transaction's amount
  */
 public record CurrencyConversion(Currency originalCurrency,
                                  BigDecimal originalAmount,
@@ -24,71 +26,24 @@ public record CurrencyConversion(Currency originalCurrency,
 
     public static final Currency MYR = Currency.getInstance("MYR");
 
-    /** The transactions table stores rates as NUMERIC(19,8) and amounts as NUMERIC(19,2). */
     static final int MAX_RATE_DECIMALS = 8;
     static final int MAX_AMOUNT_DECIMALS = 2;
 
-    private static final BigDecimal ONE_SEN = new BigDecimal("0.01");
-
-    /** Basic sanity for every instance, also the ones rebuilt from the database (no recalculation there). */
     public CurrencyConversion {
         Objects.requireNonNull(originalCurrency, "originalCurrency");
         Objects.requireNonNull(originalAmount, "originalAmount");
         Objects.requireNonNull(exchangeRate, "exchangeRate");
         Objects.requireNonNull(myrAmount, "myrAmount");
+        if (originalCurrency.equals(MYR)) {
+            throw new IllegalArgumentException("A currency conversion needs a foreign currency, not MYR");
+        }
         if (originalAmount.signum() <= 0 || exchangeRate.signum() <= 0 || myrAmount.signum() <= 0) {
             throw new IllegalArgumentException("A currency conversion needs positive amounts and rate");
         }
-    }
-
-    /**
-     * Converts a foreign amount to MYR.
-     *
-     * @param currencyCode ISO 4217 code, e.g. "USD". Whether the bank offers it is decided by the fx module (a rate
-     *                     exists); this only rejects what can't be represented: MYR itself, unknown codes, and
-     *                     currencies with more than 2 decimals (the amount columns are NUMERIC(19,2)).
-     * @param amount       in that currency, with at most its usual decimals as written (USD 10.50 ok, 10.500 not;
-     *                     JPY none at all) — the same "as written" rule as MYR amounts
-     * @param myrPerUnit   the rate to apply (the fx module picks buy or sell)
-     */
-    public static CurrencyConversion toMyr(String currencyCode, BigDecimal amount, BigDecimal myrPerUnit) {
-        Currency currency = currencyOf(currencyCode);
-
-        int allowedDecimals = currency.getDefaultFractionDigits();
-        if (amount == null || amount.signum() <= 0) {
-            throw new InvalidTransactionAmountException();
+        if (originalAmount.scale() > MAX_AMOUNT_DECIMALS || myrAmount.scale() > MAX_AMOUNT_DECIMALS
+                || exchangeRate.scale() > MAX_RATE_DECIMALS) {
+            throw new IllegalArgumentException(
+                    "A currency conversion stores amounts with at most 2 decimals and the rate with at most 8");
         }
-        if (amount.scale() > allowedDecimals) {
-            throw InvalidCurrencyConversionException.tooManyDecimals(currency.getCurrencyCode(), allowedDecimals);
-        }
-        if (myrPerUnit == null || myrPerUnit.signum() <= 0 || myrPerUnit.scale() > MAX_RATE_DECIMALS) {
-            throw InvalidCurrencyConversionException.invalidRate();
-        }
-
-        BigDecimal myr = amount.multiply(myrPerUnit).setScale(MAX_AMOUNT_DECIMALS, RoundingMode.HALF_UP);
-        if (myr.compareTo(ONE_SEN) < 0) {
-            throw InvalidCurrencyConversionException.belowOneSen();
-        }
-        return new CurrencyConversion(currency, amount, myrPerUnit, myr);
-    }
-
-    private static Currency currencyOf(String currencyCode) {
-        if (currencyCode == null || currencyCode.isBlank()) {
-            throw InvalidCurrencyConversionException.notSupported(String.valueOf(currencyCode));
-        }
-        Currency currency;
-        try {
-            currency = Currency.getInstance(currencyCode);
-        } catch (IllegalArgumentException unknownCode) {
-            throw InvalidCurrencyConversionException.notSupported(currencyCode);
-        }
-        if (currency.equals(MYR)) {
-            throw InvalidCurrencyConversionException.notForeign();
-        }
-        int decimals = currency.getDefaultFractionDigits();
-        if (decimals < 0 || decimals > MAX_AMOUNT_DECIMALS) {   // e.g. gold (XAU: -1) or KWD (3)
-            throw InvalidCurrencyConversionException.notSupported(currencyCode);
-        }
-        return currency;
     }
 }
