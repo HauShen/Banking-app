@@ -49,7 +49,8 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
             nextSaveLosesTheRace = false;
             throw new DuplicateIdempotencyKeyException(t.getIdempotencyKey(), null);
         }
-        Transaction withId = Transaction.rehydrate(nextId++, t.getReferenceNumber(), t.getType(), t.getFromAccountId(),
+        Transaction withId = Transaction.rehydrate(nextId++, t.getReferenceNumber(), t.getType(),
+                t.getConversion().orElse(null), t.getFromAccountId(),
                 t.getToAccountId(), t.getAmount(), t.getDescription(), t.getStatus(), t.getCreatedAt(),
                 t.getSuccessAt(), t.getIdempotencyKey(), t.getLedgerEntries());
         saved.add(withId);

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A movement of money: a transfer between two accounts, or a cash deposit (top-up) into one account.
@@ -22,7 +23,11 @@ import java.util.Objects;
  *   startTransfer / startCashDeposit  → PENDING, no ledger entries; the type (TRANSFER / CASH_DEPOSIT) never changes
  *   completeTransfer                  → SUCCESS, DEBIT on the sender + CREDIT on the recipient
  *   completeCashDeposit               → SUCCESS, CREDIT on the recipient only (the money comes from the machine)
+ *   startForeignRemittance            → PENDING, money from abroad (no from-account), always with a conversion
+ *   completeForeignRemittance         → SUCCESS, CREDIT on the recipient only
  * </pre>
+ * A transfer may be paid in a foreign currency: then {@link #getConversion()} holds the original currency, amount
+ * and rate, and {@code amount} is the converted MYR amount — the only amount that moves between accounts.
  * FAILED exists in the enum and the database, but nothing stores it today: the old code's FAILED update was
  * rolled back together with the failed transfer (transaction plan, decision 7).
  *
@@ -34,7 +39,8 @@ public final class Transaction {
     private final Long id;                 // null until saved
     private final String referenceNumber;
     private final TransactionType type;
-    private final Long fromAccountId;      // null for a cash deposit
+    private final CurrencyConversion conversion;   // null for plain MYR transactions
+    private final Long fromAccountId;      // null for a cash deposit or foreign remittance
     private final Long toAccountId;
     private final BigDecimal amount;
     private final String description;
@@ -44,12 +50,14 @@ public final class Transaction {
     private final String idempotencyKey;
     private final List<LedgerEntry> ledgerEntries;
 
-    private Transaction(Long id, String referenceNumber, TransactionType type, Long fromAccountId, Long toAccountId,
-                        BigDecimal amount, String description, TransactionStatus status, Instant createdAt,
-                        Instant successAt, String idempotencyKey, List<LedgerEntry> ledgerEntries) {
+    private Transaction(Long id, String referenceNumber, TransactionType type, CurrencyConversion conversion,
+                        Long fromAccountId, Long toAccountId, BigDecimal amount, String description,
+                        TransactionStatus status, Instant createdAt, Instant successAt, String idempotencyKey,
+                        List<LedgerEntry> ledgerEntries) {
         this.id = id;
         this.referenceNumber = referenceNumber;
         this.type = type;
+        this.conversion = conversion;
         this.fromAccountId = fromAccountId;
         this.toAccountId = toAccountId;
         this.amount = amount;
@@ -72,21 +80,48 @@ public final class Transaction {
         if (fromAccountId.equals(toAccountId)) {
             throw new SameAccountTransferException();
         }
-        return start(TransactionType.TRANSFER, referenceNumber, fromAccountId, toAccountId, amount, description,
-                idempotencyKey, now);
+        return start(TransactionType.TRANSFER, referenceNumber, null, fromAccountId, toAccountId, amount,
+                description, idempotencyKey, now);
+    }
+
+    /**
+     * New PENDING transfer paid in a foreign currency: the converted MYR amount moves, the conversion is kept.
+     * Same checks as {@link #startTransfer(String, Long, Long, BigDecimal, String, String, Instant)}.
+     */
+    public static Transaction startTransfer(String referenceNumber, Long fromAccountId, Long toAccountId,
+                                            CurrencyConversion conversion, String description, String idempotencyKey,
+                                            Instant now) {
+        Objects.requireNonNull(conversion, "conversion");
+        Objects.requireNonNull(fromAccountId, "fromAccountId");
+        Objects.requireNonNull(toAccountId, "toAccountId");
+        if (fromAccountId.equals(toAccountId)) {
+            throw new SameAccountTransferException();
+        }
+        return start(TransactionType.TRANSFER, referenceNumber, conversion, fromAccountId, toAccountId,
+                conversion.myrAmount(), description, idempotencyKey, now);
+    }
+
+    /** New PENDING foreign remittance: money from abroad, converted to MYR, credited to one account. */
+    public static Transaction startForeignRemittance(String referenceNumber, Long toAccountId,
+                                                     CurrencyConversion conversion, String description,
+                                                     String idempotencyKey, Instant now) {
+        Objects.requireNonNull(toAccountId, "toAccountId");
+        Objects.requireNonNull(conversion, "conversion");
+        return start(TransactionType.FOREIGN_REMITTANCE, referenceNumber, conversion, null, toAccountId,
+                conversion.myrAmount(), description, idempotencyKey, now);
     }
 
     /** New PENDING cash deposit (top-up): money from the cash deposit machine, so there is no from-account. */
     public static Transaction startCashDeposit(String referenceNumber, Long toAccountId, BigDecimal amount,
                                                String description, String idempotencyKey, Instant now) {
         Objects.requireNonNull(toAccountId, "toAccountId");
-        return start(TransactionType.CASH_DEPOSIT, referenceNumber, null, toAccountId, amount, description,
+        return start(TransactionType.CASH_DEPOSIT, referenceNumber, null, null, toAccountId, amount, description,
                 idempotencyKey, now);
     }
 
-    private static Transaction start(TransactionType type, String referenceNumber, Long fromAccountId,
-                                     Long toAccountId, BigDecimal amount, String description, String idempotencyKey,
-                                     Instant now) {
+    private static Transaction start(TransactionType type, String referenceNumber, CurrencyConversion conversion,
+                                     Long fromAccountId, Long toAccountId, BigDecimal amount, String description,
+                                     String idempotencyKey, Instant now) {
         requireText(referenceNumber, "referenceNumber");
         requireText(idempotencyKey, "idempotencyKey");
         Objects.requireNonNull(now, "now");
@@ -96,20 +131,21 @@ public final class Transaction {
         if (amount.scale() > 2) {   // decimals as written; the amount column is NUMERIC(19,2)
             throw InvalidTransactionAmountException.tooManyDecimals();
         }
-        return new Transaction(null, referenceNumber, type, fromAccountId, toAccountId, amount, description,
-                TransactionStatus.PENDING, now, null, idempotencyKey, List.of());
+        return new Transaction(null, referenceNumber, type, conversion, fromAccountId, toAccountId, amount,
+                description, TransactionStatus.PENDING, now, null, idempotencyKey, List.of());
     }
 
     /**
      * Rebuilds a stored transaction (used by the persistence mapper). No business checks: the data was valid
      * when it was saved, and the database constraints guard it.
      */
-    public static Transaction rehydrate(Long id, String referenceNumber, TransactionType type, Long fromAccountId,
-                                        Long toAccountId, BigDecimal amount, String description,
-                                        TransactionStatus status, Instant createdAt, Instant successAt,
-                                        String idempotencyKey, List<LedgerEntry> ledgerEntries) {
-        return new Transaction(id, referenceNumber, type, fromAccountId, toAccountId, amount, description, status,
-                createdAt, successAt, idempotencyKey, ledgerEntries);
+    public static Transaction rehydrate(Long id, String referenceNumber, TransactionType type,
+                                        CurrencyConversion conversion, Long fromAccountId, Long toAccountId,
+                                        BigDecimal amount, String description, TransactionStatus status,
+                                        Instant createdAt, Instant successAt, String idempotencyKey,
+                                        List<LedgerEntry> ledgerEntries) {
+        return new Transaction(id, referenceNumber, type, conversion, fromAccountId, toAccountId, amount,
+                description, status, createdAt, successAt, idempotencyKey, ledgerEntries);
     }
 
     // ---------------------------------------------------------------- state changes
@@ -130,16 +166,25 @@ public final class Transaction {
 
     /** Money has arrived: record the recipient's CREDIT with the balance after, and mark it SUCCESS. */
     public Transaction completeCashDeposit(BigDecimal toBalanceAfter, Instant now) {
+        return completeIncoming(TransactionType.CASH_DEPOSIT, toBalanceAfter, now);
+    }
+
+    /** The MYR equivalent has arrived: record the recipient's CREDIT with the balance after, mark it SUCCESS. */
+    public Transaction completeForeignRemittance(BigDecimal toBalanceAfter, Instant now) {
+        return completeIncoming(TransactionType.FOREIGN_REMITTANCE, toBalanceAfter, now);
+    }
+
+    private Transaction completeIncoming(TransactionType expected, BigDecimal toBalanceAfter, Instant now) {
         requirePending();
-        if (type != TransactionType.CASH_DEPOSIT) {
-            throw new IllegalStateException("Not a cash deposit but a " + type);
+        if (type != expected) {
+            throw new IllegalStateException("Not a " + expected + " but a " + type);
         }
         return completed(List.of(LedgerEntry.credit(toAccountId, amount, toBalanceAfter, now)), now);
     }
 
     private Transaction completed(List<LedgerEntry> entries, Instant now) {
-        return new Transaction(id, referenceNumber, type, fromAccountId, toAccountId, amount, description,
-                TransactionStatus.SUCCESS, createdAt, now, idempotencyKey, entries);
+        return new Transaction(id, referenceNumber, type, conversion, fromAccountId, toAccountId, amount,
+                description, TransactionStatus.SUCCESS, createdAt, now, idempotencyKey, entries);
     }
 
     private void requirePending() {
@@ -152,6 +197,11 @@ public final class Transaction {
 
     public boolean isCashDeposit() {
         return type == TransactionType.CASH_DEPOSIT;
+    }
+
+    /** True if the transaction was made in a foreign currency (see {@link #getConversion()}). */
+    public boolean isForeignCurrency() {
+        return conversion != null;
     }
 
     /** True if the money left this account (never true for a cash deposit). Used by the idempotency check. */
@@ -169,6 +219,7 @@ public final class Transaction {
     public Long getId() { return id; }
     public String getReferenceNumber() { return referenceNumber; }
     public TransactionType getType() { return type; }
+    public Optional<CurrencyConversion> getConversion() { return Optional.ofNullable(conversion); }
     public Long getFromAccountId() { return fromAccountId; }
     public Long getToAccountId() { return toAccountId; }
     public BigDecimal getAmount() { return amount; }

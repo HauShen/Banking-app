@@ -3,9 +3,12 @@ package com.Banking_app.transaction.adapter.out.persistence.mappers;
 import com.Banking_app.transaction.adapter.out.persistence.entities.LedgerEntryJpaEntity;
 import com.Banking_app.transaction.adapter.out.persistence.entities.TransactionJpaEntity;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
+import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 import com.Banking_app.transaction.domain.models.transaction.LedgerEntry;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
 import org.springframework.stereotype.Component;
+
+import java.util.Currency;
 
 /** Domain ↔ JPA entity. No rules here: just copying fields. */
 @Component
@@ -16,6 +19,11 @@ public class TransactionPersistenceMapper {
         entity.setId(transaction.getId());
         entity.setReferenceNumber(transaction.getReferenceNumber());
         entity.setTransactionType(transaction.getType());
+        transaction.getConversion().ifPresent(conversion -> {
+            entity.setOriginalCurrency(conversion.originalCurrency().getCurrencyCode());
+            entity.setOriginalAmount(conversion.originalAmount());
+            entity.setExchangeRate(conversion.exchangeRate());
+        });
         entity.setFromAccountId(transaction.getFromAccountId());
         entity.setToAccountId(transaction.getToAccountId());
         entity.setAmount(transaction.getAmount());
@@ -47,9 +55,19 @@ public class TransactionPersistenceMapper {
      */
     public Transaction toDomain(TransactionJpaEntity entity) {
         return Transaction.rehydrate(entity.getId(), entity.getReferenceNumber(), entity.getTransactionType(),
-                entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(), entity.getDescription(),
-                entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt(), entity.getIdempotencyKey(),
+                conversionOf(entity), entity.getFromAccountId(), entity.getToAccountId(), entity.getAmount(),
+                entity.getDescription(), entity.getStatus(), entity.getCreatedAt(), entity.getSuccessAt(),
+                entity.getIdempotencyKey(),
                 entity.getLedgerEntries().stream().map(TransactionPersistenceMapper::toDomain).toList());
+    }
+
+    /** Rebuilt as stored (no recalculation): the MYR amount is the transaction's amount column. */
+    private static CurrencyConversion conversionOf(TransactionJpaEntity entity) {
+        if (entity.getOriginalCurrency() == null) {
+            return null;
+        }
+        return new CurrencyConversion(Currency.getInstance(entity.getOriginalCurrency()), entity.getOriginalAmount(),
+                entity.getExchangeRate(), entity.getAmount());
     }
 
     private static LedgerEntry toDomain(LedgerEntryJpaEntity entity) {

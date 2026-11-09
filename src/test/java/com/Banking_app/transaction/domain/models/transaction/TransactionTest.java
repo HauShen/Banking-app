@@ -229,6 +229,82 @@ class TransactionTest {
     }
 
     @Nested
+    @DisplayName("foreign currency")
+    class ForeignCurrency {
+
+        private final CurrencyConversion hundredUsd =
+                CurrencyConversion.toMyr("USD", new BigDecimal("100.00"), new BigDecimal("4.75"));
+
+        @Test
+        @DisplayName("a transfer paid in USD moves the converted MYR amount and keeps the conversion")
+        void foreignCurrencyTransfer() {
+            Transaction done = Transaction.startTransfer("TXN-FX", ALICE, BOB, hundredUsd, "Invoice", "k-fx", CREATED)
+                    .completeTransfer(new BigDecimal("25.00"), new BigDecimal("495.00"), DONE);
+
+            assertThat(done.getType()).isEqualTo(TransactionType.TRANSFER);
+            assertThat(done.getAmount()).isEqualByComparingTo("475.00");
+            assertThat(done.isForeignCurrency()).isTrue();
+            assertThat(done.getConversion()).contains(hundredUsd);
+            assertThat(done.getLedgerEntries().get(0).amount()).isEqualByComparingTo("475.00");
+            assertThat(done.getLedgerEntries().get(1).amount()).isEqualByComparingTo("475.00");
+        }
+
+        @Test
+        @DisplayName("a plain MYR transfer has no conversion")
+        void plainTransferHasNoConversion() {
+            assertThat(pendingTransfer("30.00").getConversion()).isEmpty();
+            assertThat(pendingTransfer("30.00").isForeignCurrency()).isFalse();
+        }
+
+        @Test
+        @DisplayName("a foreign-currency transfer to the same account is still refused")
+        void foreignCurrencySameAccount() {
+            assertThatThrownBy(() -> Transaction.startTransfer("TXN-FX", ALICE, ALICE, hundredUsd, "x", "k", CREATED))
+                    .isInstanceOf(SameAccountTransferException.class);
+        }
+
+        @Test
+        @DisplayName("a foreign remittance has no from-account, is credited in MYR and records only a CREDIT")
+        void foreignRemittance() {
+            Transaction pending = Transaction.startForeignRemittance("TXN-REM", BOB, hundredUsd, "From Acme Inc.",
+                    "k-rem", CREATED);
+            Transaction done = pending.completeForeignRemittance(new BigDecimal("495.00"), DONE);
+
+            assertThat(pending.getType()).isEqualTo(TransactionType.FOREIGN_REMITTANCE);
+            assertThat(pending.getFromAccountId()).isNull();
+            assertThat(pending.isCashDeposit()).isFalse();
+            assertThat(done.getStatus()).isEqualTo(TransactionStatus.SUCCESS);
+            assertThat(done.getLedgerEntries()).singleElement().satisfies(credit -> {
+                assertThat(credit.type()).isEqualTo(LedgerType.CREDIT);
+                assertThat(credit.accountId()).isEqualTo(BOB);
+                assertThat(credit.amount()).isEqualByComparingTo("475.00");
+            });
+        }
+
+        @Test
+        @DisplayName("each kind only completes its own way")
+        void wrongCompletion() {
+            Transaction remittance = Transaction.startForeignRemittance("TXN-REM", BOB, hundredUsd, "x", "k", CREATED);
+
+            assertThatThrownBy(() -> remittance.completeCashDeposit(BigDecimal.TEN, DONE))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> remittance.completeTransfer(BigDecimal.TEN, BigDecimal.TEN, DONE))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> pendingCashDeposit("10").completeForeignRemittance(BigDecimal.TEN, DONE))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("rehydrate keeps the conversion as stored")
+        void rehydrateWithConversion() {
+            Transaction tx = Transaction.rehydrate(8L, "TXN-REM", TransactionType.FOREIGN_REMITTANCE, hundredUsd,
+                    null, BOB, new BigDecimal("475.00"), "x", TransactionStatus.SUCCESS, CREATED, DONE, "k", List.of());
+
+            assertThat(tx.getConversion()).contains(hundredUsd);
+        }
+    }
+
+    @Nested
     @DisplayName("questions")
     class Questions {
 
@@ -267,7 +343,7 @@ class TransactionTest {
         LedgerEntry credit = new LedgerEntry(11L, BOB, LedgerType.CREDIT, new BigDecimal("50.00"),
                 new BigDecimal("70.00"), DONE);
 
-        Transaction tx = Transaction.rehydrate(7L, "TXN-DDDDEEEEFFFF", TransactionType.CASH_DEPOSIT, null, BOB,
+        Transaction tx = Transaction.rehydrate(7L, "TXN-DDDDEEEEFFFF", TransactionType.CASH_DEPOSIT, null, null, BOB,
                 new BigDecimal("50.00"),
                 "Cash deposit", TransactionStatus.SUCCESS, CREATED, DONE, "key-2", List.of(credit));
 

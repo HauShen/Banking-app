@@ -44,10 +44,21 @@ public class TransactionJpaEntity {
     @Column(name = "reference_number", nullable = false, length = 100)
     private String referenceNumber;
 
-    /** V9. The foreign-currency columns of V9 are mapped once the domain uses them (Phase 5A step 2). */
+    /** V9. */
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, length = 30)
     private TransactionType transactionType;
+
+    /** V9: set only for foreign-currency transactions; all three or none (database check). */
+    @Column(name = "original_currency", length = 3)
+    private String originalCurrency;
+
+    @Column(name = "original_amount", precision = 19, scale = 2)
+    private BigDecimal originalAmount;
+
+    /** MYR per 1 unit of the original currency. */
+    @Column(name = "exchange_rate", precision = 19, scale = 8)
+    private BigDecimal exchangeRate;
 
     /** Null for a cash deposit (top-up). */
     @Column(name = "from_account_id")

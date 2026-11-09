@@ -6,6 +6,7 @@ import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyE
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.enums.TransactionType;
+import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -133,6 +134,51 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         List<Map<String, Object>> ledgers = ledgerRowsOf(saved.getId());
         assertThat(ledgers).hasSize(1);
         assertThat(ledgers.get(0).get("ledger_type")).isEqualTo("CREDIT");
+    }
+
+    @Test
+    @DisplayName("a transfer paid in USD stores the MYR amount plus original currency, amount and rate")
+    void savesForeignCurrencyTransfer() {
+        long a = newCustomer("pa_a").account().id();
+        long b = newCustomer("pa_b").account().id();
+        Instant at = now();
+        CurrencyConversion conversion =
+                CurrencyConversion.toMyr("USD", new BigDecimal("100.00"), new BigDecimal("4.71234567"));
+        Transaction fx = Transaction.startTransfer(unique("TXN"), a, b, conversion, "fx test", unique("key"), at)
+                .completeTransfer(new BigDecimal("100.00"), new BigDecimal("50.00"), at);
+
+        Transaction saved = adapter.save(fx);
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT transaction_type, amount, original_currency, original_amount, exchange_rate "
+                        + "FROM transactions WHERE id = ?", saved.getId());
+        assertThat(row.get("transaction_type")).isEqualTo("TRANSFER");
+        assertThat((BigDecimal) row.get("amount")).isEqualByComparingTo("471.23");
+        assertThat(row.get("original_currency")).isEqualTo("USD");
+        assertThat((BigDecimal) row.get("original_amount")).isEqualByComparingTo("100.00");
+        assertThat((BigDecimal) row.get("exchange_rate")).isEqualByComparingTo("4.71234567");   // all 8 decimals kept
+        assertThat(saved.getConversion()).contains(conversion);
+    }
+
+    @Test
+    @DisplayName("a foreign remittance is stored with its type, no from-account and a single CREDIT row")
+    void savesForeignRemittance() {
+        long b = newCustomer("pa_b").account().id();
+        Instant at = now();
+        Transaction remittance = Transaction.startForeignRemittance(unique("TXN"), b,
+                        CurrencyConversion.toMyr("JPY", new BigDecimal("10000"), new BigDecimal("0.0305")),
+                        "remittance test", unique("key"), at)
+                .completeForeignRemittance(new BigDecimal("325.00"), at);
+
+        Transaction saved = adapter.save(remittance);
+
+        TransactionSummary summary = adapter.findByReferenceNumber(saved.getReferenceNumber()).orElseThrow();
+        assertThat(summary.type()).isEqualTo(TransactionType.FOREIGN_REMITTANCE);
+        assertThat(summary.fromAccountId()).isNull();
+        assertThat(summary.amount()).isEqualByComparingTo("305.00");
+        assertThat(ledgerRowsOf(saved.getId())).singleElement()
+                .satisfies(ledger -> assertThat(ledger.get("ledger_type")).isEqualTo("CREDIT"));
+        assertThat(saved.getConversion().orElseThrow().originalAmount()).isEqualByComparingTo("10000");
     }
 
     @Test
