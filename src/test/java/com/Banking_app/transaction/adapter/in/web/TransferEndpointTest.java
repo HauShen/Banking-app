@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -82,6 +83,23 @@ class TransferEndpointTest extends AbstractIntegrationTest {
             assertThat(text(again, "status")).isEqualTo("SUCCESS");
             assertThat(text(again, "message")).isEqualTo("Duplicate request detected. Returning existing transaction.");
             assertThat(balanceOf(alice.account())).isEqualByComparingTo("90.00");
+        }
+
+        @Test
+        @DisplayName("a duplicate reply shows exactly the original createdAt, which is also the stored time")
+        void duplicateReplyKeepsOriginalCreatedAt() {
+            Customer alice = newCustomer("ep_alice");
+            Customer bob = newCustomer("ep_bob");
+            topUp(alice.token(), alice.account(), "100.00");
+            String key = key();
+
+            ResponseEntity<String> first = transfer(alice.token(), alice.account(), bob.account(), "30.00", key);
+            ResponseEntity<String> again = transfer(alice.token(), alice.account(), bob.account(), "30.00", key);
+            ResponseEntity<String> stored = get("/api/transfers/" + text(first, "transactionReference"), alice.token());
+
+            Instant firstCreatedAt = Instant.parse(text(first, "createdAt"));
+            assertThat(Instant.parse(text(again, "createdAt"))).isEqualTo(firstCreatedAt);    // was: a later now()
+            assertThat(Instant.parse(text(stored, "createdAt"))).isEqualTo(firstCreatedAt);   // same as in the DB
         }
 
         @Test
