@@ -1,13 +1,18 @@
 package com.Banking_app.transaction.adapter.in.web.mapper;
 
 import com.Banking_app.shared.PageResult;
+import com.Banking_app.transaction.adapter.in.web.dto.RemittanceRequestBody;
+import com.Banking_app.transaction.adapter.in.web.dto.RemittanceResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransactionResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferResponseBody;
+import com.Banking_app.transaction.application.port.in.command.RecordForeignRemittanceCommand;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
 import com.Banking_app.transaction.application.port.in.result.ForeignAmountView;
+import com.Banking_app.transaction.application.port.in.result.RemittanceResult;
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
 import com.Banking_app.transaction.application.port.in.result.TransferResult;
+import com.Banking_app.transaction.domain.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -19,7 +24,9 @@ import org.springframework.stereotype.Component;
 public class TransactionWebMapper {
 
     static final String CASH_DEPOSIT_MACHINE = "Cash Deposit Machine";
+    static final String FOREIGN_REMITTANCE = "Foreign Remittance";
     static final String TRANSFER_SUCCESSFUL = "Transfer successful";
+    static final String REMITTANCE_RECEIVED = "Remittance received";
     static final String DUPLICATE_REQUEST = "Duplicate request detected. Returning existing transaction.";
 
     public TransferMoneyCommand toCommand(TransferRequestBody body, String currentUserId) {
@@ -42,7 +49,7 @@ public class TransactionWebMapper {
         return new TransactionResponseBody(
                 view.referenceNumber(),
                 view.type().name(),
-                view.fromAccountNumber() != null ? view.fromAccountNumber() : CASH_DEPOSIT_MACHINE,
+                fromLabel(view),
                 view.toAccountNumber(),
                 view.amount(),
                 view.currency(),
@@ -53,6 +60,30 @@ public class TransactionWebMapper {
                 view.description(),
                 view.createdAt(),
                 view.successAt());
+    }
+
+    /** The sender as the history shows it: an account number, or where money without a from-account came from. */
+    private static String fromLabel(TransactionView view) {
+        if (view.fromAccountNumber() != null) {
+            return view.fromAccountNumber();
+        }
+        return view.type() == TransactionType.FOREIGN_REMITTANCE ? FOREIGN_REMITTANCE : CASH_DEPOSIT_MACHINE;
+    }
+
+    public RecordForeignRemittanceCommand toCommand(RemittanceRequestBody body) {
+        return new RecordForeignRemittanceCommand(body.toAccountNumber(), body.currency(), body.amount(),
+                body.senderName(), body.idempotencyKey());
+    }
+
+    public RemittanceResponseBody toResponse(RemittanceResult result) {
+        ForeignAmountView original = result.original();
+        return new RemittanceResponseBody(result.transactionReference(), result.status().name(), result.createdAt(),
+                result.duplicate() ? DUPLICATE_REQUEST : REMITTANCE_RECEIVED,
+                result.toAccountNumber(),
+                result.amount(),
+                original.currency(),
+                original.amount(),
+                original.exchangeRate());
     }
 
     /**

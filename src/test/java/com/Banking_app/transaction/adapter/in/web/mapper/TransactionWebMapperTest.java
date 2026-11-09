@@ -1,11 +1,15 @@
 package com.Banking_app.transaction.adapter.in.web.mapper;
 
 import com.Banking_app.shared.PageResult;
+import com.Banking_app.transaction.adapter.in.web.dto.RemittanceRequestBody;
+import com.Banking_app.transaction.adapter.in.web.dto.RemittanceResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransactionResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferResponseBody;
+import com.Banking_app.transaction.application.port.in.command.RecordForeignRemittanceCommand;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
 import com.Banking_app.transaction.application.port.in.result.ForeignAmountView;
+import com.Banking_app.transaction.application.port.in.result.RemittanceResult;
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
 import com.Banking_app.transaction.application.port.in.result.TransferResult;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
@@ -131,6 +135,49 @@ class TransactionWebMapperTest {
         assertThat(body.originalCurrency()).isEqualTo("USD");
         assertThat(body.originalAmount()).isEqualByComparingTo("20.00");
         assertThat(body.exchangeRate()).isEqualByComparingTo("4.75");
+    }
+
+    @Test
+    @DisplayName("a foreign remittance has no from-account either: the history shows 'Foreign Remittance'")
+    void remittanceLabel() {
+        TransactionView remittance = new TransactionView("RMT-AAAABBBBCCCC", TransactionType.FOREIGN_REMITTANCE, null,
+                "1000000002", new BigDecimal("460.00"), "MYR",
+                new ForeignAmountView("USD", new BigDecimal("100.00"), new BigDecimal("4.60")),
+                TransactionStatus.SUCCESS, "Foreign remittance from John Smith", CREATED, SUCCEEDED);
+
+        TransactionResponseBody body = mapper.toResponse(remittance);
+
+        assertThat(body.fromAccountNumber()).isEqualTo("Foreign Remittance");
+        assertThat(body.type()).isEqualTo("FOREIGN_REMITTANCE");
+        assertThat(body.originalCurrency()).isEqualTo("USD");
+    }
+
+    @Test
+    @DisplayName("remittance body → command; result → reply with 'Remittance received' or the duplicate message")
+    void remittance() {
+        RecordForeignRemittanceCommand command = mapper.toCommand(new RemittanceRequestBody("1000000002", "USD",
+                new BigDecimal("100.00"), "John Smith", "gw-1"));
+        assertThat(command.toAccountNumber()).isEqualTo("1000000002");
+        assertThat(command.currency()).isEqualTo("USD");
+        assertThat(command.amount()).isEqualByComparingTo("100.00");
+        assertThat(command.senderName()).isEqualTo("John Smith");
+        assertThat(command.idempotencyKey()).isEqualTo("gw-1");
+
+        ForeignAmountView usd100 = new ForeignAmountView("USD", new BigDecimal("100.00"), new BigDecimal("4.60"));
+        RemittanceResponseBody created = mapper.toResponse(new RemittanceResult("RMT-AAAABBBBCCCC",
+                TransactionStatus.SUCCESS, CREATED, "1000000002", new BigDecimal("460.00"), usd100, false));
+        RemittanceResponseBody duplicate = mapper.toResponse(new RemittanceResult("RMT-AAAABBBBCCCC",
+                TransactionStatus.SUCCESS, CREATED, "1000000002", new BigDecimal("460.00"), usd100, true));
+
+        assertThat(created.transactionReference()).isEqualTo("RMT-AAAABBBBCCCC");
+        assertThat(created.status()).isEqualTo("SUCCESS");
+        assertThat(created.message()).isEqualTo("Remittance received");
+        assertThat(created.toAccountNumber()).isEqualTo("1000000002");
+        assertThat(created.amount()).isEqualByComparingTo("460.00");
+        assertThat(created.originalCurrency()).isEqualTo("USD");
+        assertThat(created.originalAmount()).isEqualByComparingTo("100.00");
+        assertThat(created.exchangeRate()).isEqualByComparingTo("4.60");
+        assertThat(duplicate.message()).isEqualTo("Duplicate request detected. Returning existing transaction.");
     }
 
     @Test

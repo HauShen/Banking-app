@@ -25,6 +25,12 @@ class RandomTransactionReferenceAdapterTest {
     }
 
     @Test
+    @DisplayName("foreign remittances: RMT- and 12 upper-case hex characters")
+    void foreignRemittanceFormat() {
+        assertThat(adapter.nextForeignRemittance()).matches("RMT-[0-9A-F]{12}");
+    }
+
+    @Test
     @DisplayName("1000 references in a row are all different")
     void unique() {
         Set<String> references = new HashSet<>();

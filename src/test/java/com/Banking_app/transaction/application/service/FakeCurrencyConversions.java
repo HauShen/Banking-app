@@ -10,8 +10,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Stands in for the fx module: sell rates per currency (USD 4.75, SGD 3.50, JPY 0.0305), changeable to simulate the
- * rate moving between a transfer and its retry. Unknown currencies are refused with fx's message.
+ * Stands in for the fx module, with the same round rates as the test properties: sell USD 4.75, SGD 3.50,
+ * JPY 0.0305; buy USD 4.60, SGD 3.40, JPY 0.0290. Rates can be changed to simulate the market moving between a
+ * request and its retry. Unknown currencies are refused with fx's message.
  */
 class FakeCurrencyConversions implements CurrencyConversionPort {
 
@@ -19,25 +20,37 @@ class FakeCurrencyConversions implements CurrencyConversionPort {
             "USD", new BigDecimal("4.75"),
             "SGD", new BigDecimal("3.50"),
             "JPY", new BigDecimal("0.0305")));
+    private final Map<String, BigDecimal> buyRates = new HashMap<>(Map.of(
+            "USD", new BigDecimal("4.60"),
+            "SGD", new BigDecimal("3.40"),
+            "JPY", new BigDecimal("0.0290")));
     int calls;
 
     void setSellRate(String currency, String rate) {
         sellRates.put(currency, new BigDecimal(rate));
     }
 
+    void setBuyRate(String currency, String rate) {
+        buyRates.put(currency, new BigDecimal(rate));
+    }
+
     @Override
     public CurrencyConversion convertPayment(String currencyCode, BigDecimal amount) {
+        return convert(sellRates, currencyCode, amount);
+    }
+
+    @Override
+    public CurrencyConversion convertIncoming(String currencyCode, BigDecimal amount) {
+        return convert(buyRates, currencyCode, amount);
+    }
+
+    private CurrencyConversion convert(Map<String, BigDecimal> rates, String currencyCode, BigDecimal amount) {
         calls++;
-        BigDecimal rate = sellRates.get(currencyCode);
+        BigDecimal rate = rates.get(currencyCode);
         if (rate == null) {
             throw new IllegalArgumentException("Currency " + currencyCode + " is not supported");
         }
         return new CurrencyConversion(Currency.getInstance(currencyCode), amount, rate,
                 amount.multiply(rate).setScale(2, RoundingMode.HALF_UP));
-    }
-
-    @Override
-    public CurrencyConversion convertIncoming(String currencyCode, BigDecimal amount) {
-        throw new UnsupportedOperationException("not used by transfers");
     }
 }

@@ -8,4 +8,7 @@ public interface TransactionReferencePort {
 
     /** For cash deposits (top-ups), e.g. "CDM-3F9A0C12B7D4" — the prefix the old top-up code used. */
     String nextCashDeposit();
+
+    /** For money received from abroad, e.g. "RMT-3F9A0C12B7D4". */
+    String nextForeignRemittance();
 }

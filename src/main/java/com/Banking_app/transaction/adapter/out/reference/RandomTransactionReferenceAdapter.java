@@ -8,7 +8,7 @@ import java.util.UUID;
 
 /**
  * Prefix + 12 upper-case hex characters from a random UUID: "TXN-3F9A0C12B7D4" for transfers, "CDM-3F9A0C12B7D4"
- * for top-ups — the same formats as the old code. 48 random bits; the unique constraint on reference_number catches
+ * for top-ups — the same formats as the old code — and "RMT-3F9A0C12B7D4" for foreign remittances. 48 random bits; the unique constraint on reference_number catches
  * the (very unlikely) clash.
  */
 @Component
@@ -22,6 +22,11 @@ public class RandomTransactionReferenceAdapter implements TransactionReferencePo
     @Override
     public String nextCashDeposit() {
         return "CDM-" + randomHex12();
+    }
+
+    @Override
+    public String nextForeignRemittance() {
+        return "RMT-" + randomHex12();
     }
 
     private static String randomHex12() {
