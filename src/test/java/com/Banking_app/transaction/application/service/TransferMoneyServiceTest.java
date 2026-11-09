@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.application.service;
 
 import com.Banking_app.transaction.application.exception.IdempotencyKeyConflictException;
+import com.Banking_app.transaction.application.exception.IdempotencyKeyMismatchException;
 import com.Banking_app.transaction.application.exception.TransactionAccessDeniedException;
 import com.Banking_app.transaction.application.exception.TransferAccountLockedException;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
@@ -9,6 +10,7 @@ import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
+import com.Banking_app.exception.ConflictException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -150,6 +152,50 @@ class TransferMoneyServiceTest {
             assertThatThrownBy(() -> service.transfer(command("alice", "1000000001", "1000000002", "10", "deposit-key")))
                     .isInstanceOf(IdempotencyKeyConflictException.class);
             assertNothingHappened();
+        }
+
+        @Test
+        @DisplayName("same key from the same account but a different amount → 409, nothing moves")
+        void sameKeyDifferentAmount() {
+            store.add("TXN-ORIGINAL0001", ALICE_ACC, BOB_ACC, "30.00", "k1", NOW.minusSeconds(60));
+
+            assertThatThrownBy(() -> service.transfer(command("alice", "1000000001", "1000000002", "31.00", "k1")))
+                    .isInstanceOf(IdempotencyKeyMismatchException.class)
+                    .isInstanceOf(ConflictException.class)   // → 409
+                    .hasMessage("idempotencyKey has already been used for a transfer with a different amount or recipient");
+            assertNothingHappened();
+        }
+
+        @Test
+        @DisplayName("same key from the same account but a different recipient → 409, nothing moves")
+        void sameKeyDifferentRecipient() {
+            accounts.add(3L, "1000000003", "carol", false, "20.00");
+            store.add("TXN-ORIGINAL0001", ALICE_ACC, BOB_ACC, "30.00", "k1", NOW.minusSeconds(60));
+
+            assertThatThrownBy(() -> service.transfer(command("alice", "1000000001", "1000000003", "30.00", "k1")))
+                    .isInstanceOf(IdempotencyKeyMismatchException.class);
+            assertNothingHappened();
+        }
+
+        @Test
+        @DisplayName("same amount written differently (30 vs 30.00) is the same transfer → duplicate")
+        void sameAmountDifferentScale() {
+            store.add("TXN-ORIGINAL0001", ALICE_ACC, BOB_ACC, "30.00", "k1", NOW.minusSeconds(60));
+
+            TransferResult result = service.transfer(command("alice", "1000000001", "1000000002", "30", "k1"));
+
+            assertThat(result.duplicate()).isTrue();
+        }
+
+        @Test
+        @DisplayName("losing the race to another account's insert with the same key → the same 400 as a later request")
+        void lostRaceOnInsert() {
+            store.nextSaveLosesTheRace = true;
+
+            assertThatThrownBy(() -> service.transfer(command("alice", "1000000001", "1000000002", "30.00", "k1")))
+                    .isInstanceOf(IdempotencyKeyConflictException.class)
+                    .hasMessage("idempotencyKey has already been used for a different transfer");
+            assertThat(store.saved).isEmpty();   // (the real transaction also rolls back the moved money)
         }
 
         @Test

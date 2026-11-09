@@ -203,7 +203,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 #### Transfers
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe |
+| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer) |
 | GET | `/api/transfers/{reference}` | Sender, recipient or ADMIN | One transaction |
 | GET | `/api/transfers/account/{accountNumber}` | Owner or ADMIN | Transaction history of an account (paged) |
 
@@ -264,7 +264,10 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - Swagger UI and the API docs are only enabled in the `dev` profile.
 - Transaction responses never contain another user's internal id.
 - An idempotency key belongs to the account that first used it: reusing another account's key returns 400
-  instead of that account's transaction.
+  instead of that account's transaction — also when both requests arrive at the same moment.
+- Retrying with the same key returns the original transfer (same reference and time) and debits only once, even
+  when the retries arrive at the same moment. Reusing a key for a different amount or recipient returns 409.
+- Amounts can have at most 2 decimals (400 otherwise), matching the database columns.
 - Transfers and top-ups lock the account rows (`SELECT … FOR UPDATE`, always in the same order), so concurrent
   requests can't overwrite each other's balance or deadlock.
 

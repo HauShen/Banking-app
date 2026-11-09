@@ -2,6 +2,7 @@ package com.Banking_app.transaction.adapter.out.persistence;
 
 import com.Banking_app.shared.PageResult;
 import com.Banking_app.support.AbstractIntegrationTest;
+import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyException;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
@@ -44,8 +45,12 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
     }
 
     private static Transaction completedTransfer(long fromId, long toId, String amount, Instant at) {
+        return completedTransfer(fromId, toId, amount, at, unique("key"));
+    }
+
+    private static Transaction completedTransfer(long fromId, long toId, String amount, Instant at, String key) {
         return Transaction.startTransfer(unique("TXN"), fromId, toId, new BigDecimal(amount), "adapter test",
-                        unique("key"), at)
+                        key, at)
                 .completeTransfer(new BigDecimal("100.00"), new BigDecimal("50.00"), at.plusMillis(5));
     }
 
@@ -165,6 +170,21 @@ class TransactionPersistenceAdapterTest extends AbstractIntegrationTest {
         assertThat(adapter.existsInvolvingAccount(recipient)).isTrue();
         assertThat(adapter.existsInvolvingAccount(depositOnly)).isTrue();
         assertThat(adapter.existsInvolvingAccount(untouched)).isFalse();
+    }
+
+    @Test
+    @DisplayName("a second transaction with the same idempotency key → DuplicateIdempotencyKeyException, not stored")
+    void duplicateIdempotencyKey() {
+        long a = newCustomer("pa_a").account().id();
+        long b = newCustomer("pa_b").account().id();
+        long c = newCustomer("pa_c").account().id();
+        String key = unique("key");
+        adapter.save(completedTransfer(a, b, "1.00", now(), key));
+
+        assertThatThrownBy(() -> adapter.save(completedTransfer(c, b, "2.00", now(), key)))
+                .isInstanceOf(DuplicateIdempotencyKeyException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM transactions WHERE idempotency_key = ?",
+                Integer.class, key)).isEqualTo(1);
     }
 
     @Test

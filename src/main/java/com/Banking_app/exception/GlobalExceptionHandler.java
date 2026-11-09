@@ -129,6 +129,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    /**
+     * The request conflicts with data that already exists: 409 with the use case's message. Covers every
+     * ConflictException subclass (today: an idempotency key reused for a different transfer).
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request){
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error(HttpStatus.CONFLICT.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     /** Deleting an account that has transaction history: 409, the request conflicts with existing data. */
     @ExceptionHandler(AccountHasTransactionsException.class)
     public ResponseEntity<ApiError> handleAccountHasTransactions(AccountHasTransactionsException ex, HttpServletRequest request){

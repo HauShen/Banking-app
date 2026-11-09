@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.application.service;
 
 import com.Banking_app.shared.PageResult;
+import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyException;
 import com.Banking_app.transaction.application.port.out.LoadTransactionPort;
 import com.Banking_app.transaction.application.port.out.SaveTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
@@ -24,6 +25,12 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
     final List<Transaction> saved = new ArrayList<>();
     private long nextId = 100;
 
+    /**
+     * Simulates losing a race: the next save fails as if another account had stored the same idempotency key
+     * after our lookup (which therefore found nothing).
+     */
+    boolean nextSaveLosesTheRace;
+
     /** Puts an existing transaction in the table (e.g. an earlier transfer with the same idempotency key). */
     TransactionSummary add(String reference, Long fromAccountId, Long toAccountId, String amount,
                            String idempotencyKey, Instant createdAt) {
@@ -36,6 +43,10 @@ class FakeTransactionStore implements SaveTransactionPort, LoadTransactionPort {
 
     @Override
     public Transaction save(Transaction t) {
+        if (nextSaveLosesTheRace || keyToReference.containsKey(t.getIdempotencyKey())) {   // unique constraint
+            nextSaveLosesTheRace = false;
+            throw new DuplicateIdempotencyKeyException(t.getIdempotencyKey(), null);
+        }
         Transaction withId = Transaction.rehydrate(nextId++, t.getReferenceNumber(), t.getFromAccountId(),
                 t.getToAccountId(), t.getAmount(), t.getDescription(), t.getStatus(), t.getCreatedAt(),
                 t.getSuccessAt(), t.getIdempotencyKey(), t.getLedgerEntries());
