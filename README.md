@@ -91,7 +91,8 @@ and an admin management panel.
 - Transfer funds **from own accounts only**, with **idempotency protection** (no double transfers)
 - Pay a transfer in **USD, SGD, EUR or JPY**: the MYR equivalent at the bank's sell rate moves
   (see [Foreign currency](#-foreign-currency))
-- See the bank's exchange rates and a quote before paying
+- See the bank's exchange rates and a quote before paying, or **lock a rate for 60 seconds** and pay at exactly
+  that rate
 - View transaction history of own accounts, including the original currency, amount and rate
 - Update profile
 
@@ -208,7 +209,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 #### Transfers
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer); optional `currency` of the amount (default MYR) |
+| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer); optional `currency` of the amount (default MYR) and `quoteId` (pay at a locked rate) |
 | GET | `/api/transfers/{reference}` | Sender, recipient or ADMIN | One transaction |
 | GET | `/api/transfers/account/{accountNumber}` | Owner or ADMIN | Transaction history of an account (paged) |
 | POST | `/api/admin/remittances` | ADMIN | Money from abroad arrives for an account (201): converted at the buy rate, idempotent like transfers |
@@ -218,6 +219,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 |---|---|---|---|
 | GET | `/api/fx/rates` | Logged in | The bank's buy and sell rate for every offered currency (MYR per 1 unit) |
 | GET | `/api/fx/quote?currency=USD&amount=100.00&direction=PAY` | Logged in | What an amount is worth in MYR now; `direction` `PAY` (sell rate, default) or `RECEIVE` (buy rate) |
+| POST | `/api/fx/quotes` | Logged in | Lock the sell rate for `currency` + `amount` (201): `quoteId`, rate, MYR amount, `expiresAt` (60 s) |
 
 ---
 
@@ -233,17 +235,31 @@ comes in or goes out. The transaction remembers the original currency, amount an
 - **Which rate:** as banks quote it, from the bank's side. The customer pays in USD → the bank sells USD → **sell
   rate**. Money arrives in USD → the bank buys it → **buy rate** (lower). `GET /api/fx/quote` shows the same numbers
   before confirming.
+- **Locking a rate:** a quote alone is only a preview: the transfer uses the rate at the moment it runs. To pay at
+  a fixed rate, `POST /api/fx/quotes` with the currency and amount returns a `quoteId` valid for 60 seconds
+  (`fx.quote-validity`); the transfer then sends the same `currency` and `amount` plus `quoteId`:
+  ```json
+  { "fromAccountNumber": "…", "toAccountNumber": "…", "amount": 100.00, "currency": "USD",
+    "quoteId": "3f9a0c12-b7d4-4e5f-8a6b-1c2d3e4f5a6b", "description": "Rent", "idempotencyKey": "…" }
+  ```
+  A quote belongs to the user who locked it and works once. It is used up inside the transfer's database
+  transaction (its row locked with `SELECT … FOR UPDATE`), so a transfer that fails — e.g. on the minimum balance —
+  leaves it usable, and two transfers racing for one quote get it only once. Refused with 400: "Quote not found"
+  (also for someone else's quote, so ids reveal nothing), "The quote has already been used", "The quote has
+  expired", "The quote is for a different currency or amount", and a quote with a MYR transfer.
 - **Rules:** MYR amount = foreign amount × rate, rounded half-up to 2 decimals, at least RM 0.01. The foreign amount
   can't have more decimals than its currency (JPY none, others 2). Rates are stored with 8 decimals (JPY ≈ 0.03).
 - **Retries:** a retry with the same `idempotencyKey` is matched on the **original** currency and amount, so it
-  returns the original transaction even if the rate has changed since; nothing is converted or moved twice.
+  returns the original transaction even if the rate has changed since — or its quote has been used — and nothing
+  is converted or moved twice.
 - **History:** every transaction now has a `type` (`TRANSFER`, `CASH_DEPOSIT`, `FOREIGN_REMITTANCE`) and, for foreign
   ones, `originalCurrency`, `originalAmount` and `exchangeRate`. Remittances show "Foreign Remittance" as the sender.
 - **Rates** come from configuration (`fx.rates.USD.buy`, `fx.rates.USD.sell`, ...); the currencies listed there are
   the ones offered. A wrong rate (zero, buy above sell, too many decimals) stops the application at startup.
 - **Design:** exchange rates live in their own `fx` module. It owns the conversion rule; the transaction module asks
-  it through its own port (`CurrencyConversionPort`), so a transfer books exactly what the quote shows. A live rate
-  feed would replace one adapter (`ConfiguredExchangeRateSource`) without touching any business code.
+  it through its own port (`CurrencyConversionPort`), so a transfer books exactly what the quote shows. Locked
+  quotes are fx's own table (`fx_quotes`). A live rate feed would replace one adapter
+  (`ConfiguredExchangeRateSource`) without touching any business code.
 
 ---
 
@@ -310,7 +326,8 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   anything else returns 409.
 - Amounts can have at most 2 decimals (400 otherwise), matching the database columns.
 - Transfers, top-ups and remittances lock the account rows (`SELECT … FOR UPDATE`, always in the same order), so
-  concurrent requests can't overwrite each other's balance or deadlock.
+  concurrent requests can't overwrite each other's balance or deadlock. A locked quote's row is locked last, after
+  the accounts.
 
 ### Known limitations
 - Login throttling is in memory: it resets on restart and isn't shared between several instances
@@ -327,8 +344,8 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - Used and expired refresh tokens stay in the table; a scheduled cleanup job is not implemented yet.
 - Exchange rates are fixed in configuration (example values, not live rates). A live feed (e.g. a central bank's
   API, with caching and a fallback) would be a new adapter behind `ExchangeRateSourcePort`.
-- Quotes are informational: a transfer uses the rate at the moment it runs, so the rate can change between quote
-  and confirmation. Locking a quote for a short time (a quote id valid for 60 s) is not implemented.
+- Locked quotes are only for paying transfers; remittances always use the current buy rate. Used and expired
+  quotes stay in `fx_quotes`; a scheduled cleanup job is not implemented yet (like refresh tokens).
 - The bank's margin between buy and sell rate is not booked anywhere: a transfer debits and credits the same MYR
   amount, and there is no FX revenue account.
 - Remittances are simulated: an admin call stands in for the payment gateway, and the sender is just a name.
@@ -367,5 +384,6 @@ Feature tests in the same style cover the rest, for example:
 |---|---|
 | `ForeignCurrencyTransferTest` | Paying in USD / JPY moves the right MYR amount at the sell rate; history shows the original amount and rate; MYR unchanged; bad currency or decimals → 400; a retry after a rate change returns the original; mismatches → 409 |
 | `RemittanceEndpointTest` | Admin-only remittances credited at the buy rate; "Foreign Remittance" in the history; locked / unknown account; idempotency; delete after a remittance → 409 |
-| `FxEndpointTest` | Rates list and quotes (PAY / RECEIVE), unsupported currency, bad parameters → 400 (never 500), login required |
+| `FxEndpointTest` | Rates list and quotes (PAY / RECEIVE), unsupported currency, bad parameters → 400 (never 500), login required; locking a quote (201, stored for the user, valid 60 s) |
+| `LockedQuoteTransferTest` | Paying at a locked rate even when today's differs; the quote works once; a failed transfer leaves it usable; expired, someone else's, unknown, other amount / currency, or with MYR → 400; a retry returns the original |
 | `ArchitectureTest` | 22 ArchUnit rules: each module's domain is plain Java, adapters → application → domain, and modules reach each other only through inbound ports (account ↔ transaction, transaction → fx) |
