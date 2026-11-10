@@ -17,6 +17,9 @@ import java.math.BigDecimal;
  * the bank (GET /api/fx/rates) → the MYR equivalent at the sell rate moves (foreign-currency plan, Phase 5B step 4).
  * Decimals per currency (JPY none) are checked by the fx module.
  *
+ * {@code quoteId} (optional) pays at a rate locked with POST /api/fx/quotes instead of today's rate; currency and
+ * amount must then be exactly the quote's (Phase 5C step 9).
+ *
  * {@code @Digits} matches the NUMERIC(19,2) columns: at most 2 decimals as written (for a BigDecimal, 10.500 counts
  * as 3) and 17 digits before the point. Bigger amounts used to fail in the database with a 500.
  */
@@ -40,5 +43,9 @@ public record TransferRequestBody(
         String description,
 
         @NotBlank(message = "idempotencyKey is required")
-        String idempotencyKey) {
+        String idempotencyKey,
+
+        @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                message = "quoteId must be a UUID")
+        String quoteId) {
 }

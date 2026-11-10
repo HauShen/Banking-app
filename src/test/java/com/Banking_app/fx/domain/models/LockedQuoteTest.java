@@ -1,7 +1,9 @@
 package com.Banking_app.fx.domain.models;
 
 import com.Banking_app.fx.domain.exception.InvalidForeignAmountException;
+import com.Banking_app.fx.domain.exception.InvalidQuoteException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -97,5 +99,75 @@ class LockedQuoteTest {
                 BigDecimal.ONE, BigDecimal.ONE, NOW, NOW, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("A quote must expire after it was created");
+    }
+
+    @Nested
+    @DisplayName("consume (a transfer uses the quote)")
+    class Consume {
+
+        @Test
+        @DisplayName("the owner paying exactly the quoted amount before expiry → a used copy; the original is unchanged")
+        void consumes() {
+            LockedQuote quote = lockUsd("100.00");
+
+            LockedQuote used = quote.consume("alice", "USD", new BigDecimal("100"), NOW.plusSeconds(30));
+
+            assertThat(used.isUsed()).isTrue();
+            assertThat(used.getUsedAt()).isEqualTo(NOW.plusSeconds(30));
+            assertThat(used.getExchangeRate()).isEqualByComparingTo("4.75");
+            assertThat(used.getMyrAmount()).isEqualByComparingTo("475.00");
+            assertThat(quote.isUsed()).isFalse();
+        }
+
+        @Test
+        @DisplayName("someone else's quote → 'Quote not found' (the same as an unknown one)")
+        void notTheOwner() {
+            assertThatThrownBy(() -> lockUsd("100.00").consume("bob", "USD", new BigDecimal("100.00"), NOW))
+                    .isInstanceOf(InvalidQuoteException.class)
+                    .isInstanceOf(IllegalArgumentException.class)   // → 400
+                    .hasMessage("Quote not found");
+        }
+
+        @Test
+        @DisplayName("already used → 'The quote has already been used' (also when it has expired since)")
+        void alreadyUsed() {
+            LockedQuote used = lockUsd("100.00").consume("alice", "USD", new BigDecimal("100.00"), NOW);
+
+            assertThatThrownBy(() -> used.consume("alice", "USD", new BigDecimal("100.00"), NOW.plusSeconds(1)))
+                    .hasMessage("The quote has already been used");
+            assertThatThrownBy(() -> used.consume("alice", "USD", new BigDecimal("100.00"), NOW.plusSeconds(600)))
+                    .hasMessage("The quote has already been used");
+        }
+
+        @Test
+        @DisplayName("at or after expiresAt → 'The quote has expired'")
+        void expired() {
+            assertThatThrownBy(() -> lockUsd("100.00").consume("alice", "USD", new BigDecimal("100.00"),
+                    NOW.plusSeconds(60)))
+                    .isInstanceOf(InvalidQuoteException.class)
+                    .hasMessage("The quote has expired");
+        }
+
+        @Test
+        @DisplayName("another currency or amount → 'The quote is for a different currency or amount'")
+        void differentPayment() {
+            LockedQuote quote = lockUsd("100.00");
+
+            for (Object[] payment : new Object[][]{{"SGD", "100.00"}, {"USD", "100.01"}, {"USD", null}}) {
+                assertThatThrownBy(() -> quote.consume("alice", (String) payment[0],
+                        payment[1] == null ? null : new BigDecimal((String) payment[1]), NOW))
+                        .hasMessage("The quote is for a different currency or amount");
+            }
+        }
+
+        @Test
+        @DisplayName("a stored JPY quote (10000.00 from the database) matches a payment of 10000")
+        void storedJpy() {
+            LockedQuote stored = LockedQuote.rehydrate(ID, "alice", Currency.getInstance("JPY"),
+                    new BigDecimal("10000.00"), new BigDecimal("0.03050000"), new BigDecimal("305.00"), NOW,
+                    NOW.plusSeconds(60), null);
+
+            assertThat(stored.consume("alice", "JPY", new BigDecimal("10000"), NOW).isUsed()).isTrue();
+        }
     }
 }

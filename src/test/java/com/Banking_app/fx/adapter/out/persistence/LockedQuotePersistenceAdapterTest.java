@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -16,6 +18,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Currency;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +32,9 @@ class LockedQuotePersistenceAdapterTest extends AbstractIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     /** PostgreSQL keeps microseconds. */
     private static final Instant NOW = Instant.now().truncatedTo(ChronoUnit.MICROS);
@@ -77,5 +83,42 @@ class LockedQuotePersistenceAdapterTest extends AbstractIntegrationTest {
 
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fx_quotes WHERE id = ?", Integer.class, id.toString()))
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("loadForUpdate reads the quote back (JPY 10000 as 10000.00); saving the used quote updates used_at")
+    void loadsAndMarksUsed() {
+        String userId = userIdOf(register(uniqueName("fxq_carol")));
+        ExchangeRate jpy = new ExchangeRate(Currency.getInstance("JPY"), new BigDecimal("0.0290"),
+                new BigDecimal("0.0305"), NOW);
+        UUID id = UUID.randomUUID();
+        adapter.save(LockedQuote.lock(id, userId, jpy, new BigDecimal("10000"), NOW, Duration.ofSeconds(60)));
+        Instant usedAt = NOW.plusSeconds(5);
+
+        LockedQuote loaded = new TransactionTemplate(transactionManager).execute(status -> {
+            LockedQuote quote = adapter.loadForUpdate(id).orElseThrow();   // FOR UPDATE needs a transaction
+            adapter.save(quote.consume(userId, "JPY", new BigDecimal("10000"), usedAt));
+            return quote;
+        });
+
+        assertThat(loaded.getOwnerId()).isEqualTo(userId);
+        assertThat(loaded.getAmount().toPlainString()).isEqualTo("10000.00");
+        assertThat(loaded.getExchangeRate()).isEqualByComparingTo("0.0305");
+        assertThat(loaded.isUsed()).isFalse();
+        Timestamp stored = jdbc.queryForObject("SELECT used_at FROM fx_quotes WHERE id = ?", Timestamp.class,
+                id.toString());
+        assertThat(stored.toInstant()).isEqualTo(usedAt);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fx_quotes WHERE id = ?", Integer.class, id.toString()))
+                .isEqualTo(1);   // updated, not inserted again
+    }
+
+    @Test
+    @DisplayName("loadForUpdate of an unknown id → empty")
+    void unknown() {
+        // A typed variable first: passing execute(...) straight into the overloaded assertThat leaves T ambiguous.
+        Optional<LockedQuote> loaded = new TransactionTemplate(transactionManager)
+                .execute(status -> adapter.loadForUpdate(UUID.randomUUID()));
+
+        assertThat(loaded).isEmpty();
     }
 }

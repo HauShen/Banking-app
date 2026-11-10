@@ -44,7 +44,7 @@ class TransactionWebMapperTest {
     @DisplayName("request body + logged-in user → command, with the currency of the amount")
     void toCommand() {
         TransferRequestBody body = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("30.00"),
-                "MYR", "Dinner", "key-1");
+                "MYR", "Dinner", "key-1", null);
 
         TransferMoneyCommand command = mapper.toCommand(body, "alice");
 
@@ -55,15 +55,29 @@ class TransactionWebMapperTest {
         assertThat(command.description()).isEqualTo("Dinner");
         assertThat(command.idempotencyKey()).isEqualTo("key-1");
         assertThat(command.currency()).isEqualTo("MYR");
+        assertThat(command.quoteId()).isNull();
+        assertThat(command.hasQuote()).isFalse();
+    }
+
+    @Test
+    @DisplayName("quoteId is passed on")
+    void quoteIdOnCommand() {
+        TransferRequestBody body = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("20.00"),
+                "USD", "Dinner", "key-1", "3f9a0c12-b7d4-4e5f-8a6b-1c2d3e4f5a6b");
+
+        TransferMoneyCommand command = mapper.toCommand(body, "alice");
+
+        assertThat(command.quoteId()).isEqualTo("3f9a0c12-b7d4-4e5f-8a6b-1c2d3e4f5a6b");
+        assertThat(command.hasQuote()).isTrue();
     }
 
     @Test
     @DisplayName("currency is passed on; absent means MYR")
     void currencyOnCommand() {
         TransferRequestBody usd = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("20.00"),
-                "USD", "Dinner", "key-1");
+                "USD", "Dinner", "key-1", null);
         TransferRequestBody none = new TransferRequestBody("1000000001", "1000000002", new BigDecimal("20.00"),
-                null, "Dinner", "key-1");
+                null, "Dinner", "key-1", null);
 
         assertThat(mapper.toCommand(usd, "alice").currency()).isEqualTo("USD");
         assertThat(mapper.toCommand(usd, "alice").isForeignCurrency()).isTrue();

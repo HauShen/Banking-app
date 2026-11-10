@@ -1,8 +1,10 @@
 package com.Banking_app.transaction.adapter.out.fx;
 
 import com.Banking_app.fx.application.exception.UnsupportedCurrencyException;
+import com.Banking_app.fx.application.port.in.command.ConsumeQuoteCommand;
 import com.Banking_app.fx.application.port.in.query.QuoteQuery;
 import com.Banking_app.fx.application.port.in.result.Quote;
+import com.Banking_app.fx.application.port.in.usecase.ConsumeQuoteUseCase;
 import com.Banking_app.fx.application.port.in.usecase.QuoteUseCase;
 import com.Banking_app.fx.domain.enums.ConversionDirection;
 import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,7 +35,16 @@ class FxQuoteConversionAdapterTest {
                 query.amount().multiply(rate).setScale(2), Instant.EPOCH);
     };
 
-    private final FxQuoteConversionAdapter adapter = new FxQuoteConversionAdapter(fakeFxModule);
+    private ConsumeQuoteCommand consumed;
+
+    /** A locked quote at 4.70 (yesterday's rate) for whatever is asked. */
+    private final ConsumeQuoteUseCase fakeLockedQuotes = command -> {
+        consumed = command;
+        return new Quote(command.currencyCode(), command.amount(), ConversionDirection.PAY, new BigDecimal("4.70"),
+                command.amount().multiply(new BigDecimal("4.70")).setScale(2), Instant.EPOCH);
+    };
+
+    private final FxQuoteConversionAdapter adapter = new FxQuoteConversionAdapter(fakeFxModule, fakeLockedQuotes);
 
     @Test
     @DisplayName("a payment asks for a PAY quote (sell rate) and keeps currency, amount, rate and MYR amount")
@@ -62,5 +74,21 @@ class FxQuoteConversionAdapterTest {
         assertThatThrownBy(() -> adapter.convertPayment("XYZ", BigDecimal.ONE))
                 .isInstanceOf(UnsupportedCurrencyException.class)
                 .hasMessage("Currency XYZ is not supported");
+    }
+
+    @Test
+    @DisplayName("with a quote id: asks fx to use up that quote for this user and payment, and books its rate")
+    void withQuote() {
+        String quoteId = "3f9a0c12-b7d4-4e5f-8a6b-1c2d3e4f5a6b";
+
+        CurrencyConversion conversion = adapter.convertWithQuote(quoteId, "alice", "USD", new BigDecimal("100.00"));
+
+        assertThat(consumed.quoteId()).isEqualTo(UUID.fromString(quoteId));
+        assertThat(consumed.requesterUserId()).isEqualTo("alice");
+        assertThat(consumed.currencyCode()).isEqualTo("USD");
+        assertThat(consumed.amount()).isEqualByComparingTo("100.00");
+        assertThat(conversion.exchangeRate()).isEqualByComparingTo("4.70");
+        assertThat(conversion.myrAmount()).isEqualByComparingTo("470.00");
+        assertThat(askedFor).isNull();   // today's rate was not asked for
     }
 }

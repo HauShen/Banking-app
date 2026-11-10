@@ -31,7 +31,7 @@ public class TransactionWebMapper {
 
     public TransferMoneyCommand toCommand(TransferRequestBody body, String currentUserId) {
         return new TransferMoneyCommand(currentUserId, body.fromAccountNumber(), body.toAccountNumber(),
-                body.amount(), body.currency(), body.description(), body.idempotencyKey());
+                body.amount(), body.currency(), body.description(), body.idempotencyKey(), body.quoteId());
     }
 
     public TransferResponseBody toResponse(TransferResult result) {

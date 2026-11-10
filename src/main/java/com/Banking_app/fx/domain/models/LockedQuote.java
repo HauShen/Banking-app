@@ -1,6 +1,7 @@
 package com.Banking_app.fx.domain.models;
 
 import com.Banking_app.fx.domain.enums.ConversionDirection;
+import com.Banking_app.fx.domain.exception.InvalidQuoteException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -13,7 +14,8 @@ import java.util.UUID;
  * A quote with its rate fixed for a short time: the customer locks the bank's SELL rate for an amount in a foreign
  * currency, then pays a transfer at exactly that rate (instead of the rate at the moment the transfer runs).
  *
- * Belongs to the user who locked it and is single-use ({@code usedAt} is set when a transfer uses it).
+ * Belongs to the user who locked it and is single-use ({@code usedAt} is set by {@link #consume} when a transfer
+ * uses it).
  * The MYR amount is computed once, when locking, with the same rule as every conversion ({@link ExchangeRate#toMyr}).
  */
 public final class LockedQuote {
@@ -76,6 +78,30 @@ public final class LockedQuote {
 
     public boolean isUsed() {
         return usedAt != null;
+    }
+
+    /**
+     * Uses the quote for a payment: the requester's payment of {@code amount} in {@code currencyCode}, now.
+     * Returns the used quote ({@code usedAt} = now); this one is unchanged.
+     *
+     * Checked in this order, all 400: someone else's quote → "Quote not found" (as if it didn't exist); already used;
+     * expired; a different currency or amount (compared by value: 100 = 100.00, and JPY comes back as 10000.00).
+     */
+    public LockedQuote consume(String requesterId, String currencyCode, BigDecimal paymentAmount, Instant now) {
+        if (!ownerId.equals(requesterId)) {
+            throw InvalidQuoteException.notFound();
+        }
+        if (isUsed()) {
+            throw InvalidQuoteException.alreadyUsed();
+        }
+        if (isExpired(now)) {
+            throw InvalidQuoteException.expired();
+        }
+        if (!currency.getCurrencyCode().equals(currencyCode)
+                || paymentAmount == null || amount.compareTo(paymentAmount) != 0) {
+            throw InvalidQuoteException.differentPayment();
+        }
+        return new LockedQuote(id, ownerId, currency, amount, exchangeRate, myrAmount, createdAt, expiresAt, now);
     }
 
     public UUID getId() {

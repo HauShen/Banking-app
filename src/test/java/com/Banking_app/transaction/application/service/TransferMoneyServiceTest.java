@@ -2,6 +2,7 @@ package com.Banking_app.transaction.application.service;
 
 import com.Banking_app.transaction.application.exception.IdempotencyKeyConflictException;
 import com.Banking_app.transaction.application.exception.IdempotencyKeyMismatchException;
+import com.Banking_app.transaction.application.exception.QuoteRequiresForeignCurrencyException;
 import com.Banking_app.transaction.application.exception.TransactionAccessDeniedException;
 import com.Banking_app.transaction.application.exception.TransferAccountLockedException;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
@@ -46,13 +47,19 @@ class TransferMoneyServiceTest {
 
     /** No currency given, as before foreign-currency transfers: MYR. */
     private static TransferMoneyCommand command(String user, String from, String to, String amount, String key) {
-        return new TransferMoneyCommand(user, from, to, new BigDecimal(amount), null, "Dinner", key);
+        return new TransferMoneyCommand(user, from, to, new BigDecimal(amount), null, "Dinner", key, null);
     }
 
     /** Alice → Bob, amount in {@code currency}. */
     private static TransferMoneyCommand aliceToBob(String amount, String currency, String key) {
         return new TransferMoneyCommand("alice", "1000000001", "1000000002", new BigDecimal(amount), currency,
-                "Dinner", key);
+                "Dinner", key, null);
+    }
+
+    /** Alice → Bob at a locked quote. */
+    private static TransferMoneyCommand aliceToBobWithQuote(String amount, String currency, String key, String quoteId) {
+        return new TransferMoneyCommand("alice", "1000000001", "1000000002", new BigDecimal(amount), currency,
+                "Dinner", key, quoteId);
     }
 
     private void assertNothingHappened() {
@@ -316,10 +323,10 @@ class TransferMoneyServiceTest {
             accounts.add(3L, "1000000003", "carol", true, "500.00");
 
             assertThatThrownBy(() -> service.transfer(new TransferMoneyCommand("bob", "1000000001", "1000000002",
-                    BigDecimal.TEN, "XYZ", "Dinner", "k1")))
+                    BigDecimal.TEN, "XYZ", "Dinner", "k1", null)))
                     .isInstanceOf(TransactionAccessDeniedException.class);
             assertThatThrownBy(() -> service.transfer(new TransferMoneyCommand("carol", "1000000003", "1000000002",
-                    BigDecimal.TEN, "XYZ", "Dinner", "k2")))
+                    BigDecimal.TEN, "XYZ", "Dinner", "k2", null)))
                     .isInstanceOf(TransferAccountLockedException.class);
             assertThat(conversions.calls).isZero();
         }
@@ -377,6 +384,65 @@ class TransferMoneyServiceTest {
 
                 assertThat(service.transfer(aliceToBob("30.00", null, "k-myr")).duplicate()).isTrue();
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("paying at a locked quote")
+    class LockedQuote {
+
+        private static final String QUOTE = "3f9a0c12-b7d4-4e5f-8a6b-1c2d3e4f5a6b";
+
+        @Test
+        @DisplayName("20.00 USD at the locked 4.70 (today 4.75) moves RM 94.00; today's rate isn't asked for")
+        void usesLockedRate() {
+            conversions.lockQuote(QUOTE, "alice", "USD", "20.00", "4.70");
+
+            TransferResult result = service.transfer(aliceToBobWithQuote("20.00", "USD", "k-q", QUOTE));
+
+            assertThat(result.amount()).isEqualByComparingTo("94.00");
+            assertThat(result.original().exchangeRate()).isEqualByComparingTo("4.70");
+            assertThat(accounts.balanceOf(ALICE_ACC)).isEqualByComparingTo("26.00");
+            assertThat(conversions.quoteCalls).isEqualTo(1);
+            assertThat(conversions.calls).isZero();
+        }
+
+        @Test
+        @DisplayName("a quote with a MYR transfer (or no currency) → 400 before anything moves")
+        void quoteWithMyr() {
+            assertThatThrownBy(() -> service.transfer(aliceToBobWithQuote("20.00", "MYR", "k-myr", QUOTE)))
+                    .isInstanceOf(QuoteRequiresForeignCurrencyException.class)
+                    .isInstanceOf(IllegalArgumentException.class)   // → 400
+                    .hasMessage("quoteId can only be used with a foreign currency");
+            assertThatThrownBy(() -> service.transfer(aliceToBobWithQuote("20.00", null, "k-none", QUOTE)))
+                    .isInstanceOf(QuoteRequiresForeignCurrencyException.class);
+            assertNothingHappened();
+            assertThat(conversions.quoteCalls).isZero();
+        }
+
+        @Test
+        @DisplayName("fx's refusal (e.g. the quote was used) passes through; nothing moves")
+        void refusedQuote() {
+            conversions.lockQuote(QUOTE, "alice", "USD", "20.00", "4.70");
+            service.transfer(aliceToBobWithQuote("20.00", "USD", "k-1", QUOTE));
+
+            assertThatThrownBy(() -> service.transfer(aliceToBobWithQuote("20.00", "USD", "k-2", QUOTE)))
+                    .hasMessage("The quote has already been used");
+            assertThat(accounts.moveCalls).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("a retry with the same key returns the original before the (used) quote is looked at")
+        void retryAfterQuoteUsed() {
+            conversions.lockQuote(QUOTE, "alice", "USD", "20.00", "4.70");
+            TransferResult first = service.transfer(aliceToBobWithQuote("20.00", "USD", "k-q", QUOTE));
+
+            TransferResult retry = service.transfer(aliceToBobWithQuote("20.00", "USD", "k-q", QUOTE));
+
+            assertThat(retry.duplicate()).isTrue();
+            assertThat(retry.transactionReference()).isEqualTo(first.transactionReference());
+            assertThat(retry.amount()).isEqualByComparingTo("94.00");
+            assertThat(conversions.quoteCalls).isEqualTo(1);
         }
     }
 

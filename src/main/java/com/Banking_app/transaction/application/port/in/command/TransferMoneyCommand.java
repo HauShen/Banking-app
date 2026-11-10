@@ -9,6 +9,7 @@ import java.math.BigDecimal;
  * @param requesterUserId the logged-in user; must own the from-account
  * @param amount          in {@code currency}
  * @param currency        the currency of {@code amount}; absent means MYR (as before this field was used)
+ * @param quoteId         optional: a quote locked by the requester (fx module); pay at its rate instead of today's
  */
 public record TransferMoneyCommand(String requesterUserId,
                                    String fromAccountNumber,
@@ -16,7 +17,8 @@ public record TransferMoneyCommand(String requesterUserId,
                                    BigDecimal amount,
                                    String currency,
                                    String description,
-                                   String idempotencyKey) {
+                                   String idempotencyKey,
+                                   String quoteId) {
 
     public static final String MYR = "MYR";
 
@@ -24,6 +26,11 @@ public record TransferMoneyCommand(String requesterUserId,
         if (currency == null) {
             currency = MYR;
         }
+    }
+
+    /** True when the transfer should pay at a locked rate. */
+    public boolean hasQuote() {
+        return quoteId != null;
     }
 
     /** True when the amount is in another currency and has to be converted to MYR. */

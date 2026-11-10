@@ -2,6 +2,7 @@ package com.Banking_app.transaction.application.service;
 
 import com.Banking_app.transaction.application.exception.IdempotencyKeyConflictException;
 import com.Banking_app.transaction.application.exception.IdempotencyKeyMismatchException;
+import com.Banking_app.transaction.application.exception.QuoteRequiresForeignCurrencyException;
 import com.Banking_app.transaction.application.exception.TransactionAccessDeniedException;
 import com.Banking_app.transaction.application.exception.TransferAccountLockedException;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
@@ -35,7 +36,8 @@ import java.util.Optional;
  *   <li>idempotency: same key from this account → the original transfer (409 if the amount, its currency or the
  *       recipient differ); from another account → 400</li>
  *   <li>locked from / to → 400</li>
- *   <li>amount in a foreign currency → converted at the bank's sell rate (fx module; bad currency or amount → 400)</li>
+ *   <li>amount in a foreign currency → converted at the bank's sell rate, or at the rate of the requester's locked
+ *       quote (fx module; bad currency, amount or quote → 400; a quote with MYR → 400)</li>
  *   <li>move the MYR amount (minimum balance → 400), record the transaction with its ledger entries</li>
  * </ol>
  * One database transaction for everything: if anything fails, nothing is stored and the balances stay as they were.
@@ -107,10 +109,13 @@ public class TransferMoneyService implements TransferMoneyUseCase {
             throw TransferAccountLockedException.to();
         }
 
+        if (command.hasQuote() && !command.isForeignCurrency()) {
+            throw new QuoteRequiresForeignCurrencyException();
+        }
+
         String reference = transactionReferencePort.next();
         Transaction pending = command.isForeignCurrency()
-                ? Transaction.startTransfer(reference, from.accountId(), to.accountId(),
-                        currencyConversionPort.convertPayment(command.currency(), command.amount()),
+                ? Transaction.startTransfer(reference, from.accountId(), to.accountId(), conversionFor(command),
                         command.description(), command.idempotencyKey(), clock.instant())
                 : Transaction.startTransfer(reference, from.accountId(), to.accountId(), command.amount(),
                         command.description(), command.idempotencyKey(), clock.instant());
@@ -130,6 +135,17 @@ public class TransferMoneyService implements TransferMoneyUseCase {
 
         return new TransferResult(saved.getReferenceNumber(), saved.getStatus(), saved.getCreatedAt(),
                 saved.getAmount(), TransactionViews.foreignAmountOf(saved.getConversion().orElse(null)), false);
+    }
+
+    /**
+     * Today's sell rate, or the rate the requester locked. A locked quote is used up in this transaction: if the
+     * transfer fails afterwards (e.g. minimum balance), the rollback makes it usable again.
+     */
+    private CurrencyConversion conversionFor(TransferMoneyCommand command) {
+        return command.hasQuote()
+                ? currencyConversionPort.convertWithQuote(command.quoteId(), command.requesterUserId(),
+                        command.currency(), command.amount())
+                : currencyConversionPort.convertPayment(command.currency(), command.amount());
     }
 
     /**

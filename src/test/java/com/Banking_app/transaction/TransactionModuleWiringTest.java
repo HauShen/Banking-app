@@ -53,7 +53,7 @@ class TransactionModuleWiringTest extends AbstractIntegrationTest {
 
     private TransferMoneyCommand command(Customer from, Customer to, String amount, String idempotencyKey) {
         return new TransferMoneyCommand(userIdOf(from.token()), from.account().number(), to.account().number(),
-                new BigDecimal(amount), "MYR", "wiring test", idempotencyKey);
+                new BigDecimal(amount), "MYR", "wiring test", idempotencyKey, null);
     }
 
     @Test

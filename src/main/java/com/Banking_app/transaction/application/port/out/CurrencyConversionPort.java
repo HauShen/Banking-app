@@ -18,4 +18,12 @@ public interface CurrencyConversionPort {
 
     /** Money arrives from abroad (a remittance): the bank buys the foreign currency → buy rate. */
     CurrencyConversion convertIncoming(String currencyCode, BigDecimal amount);
+
+    /**
+     * The customer pays at a rate they locked earlier (POST /api/fx/quotes). Uses the quote up, inside the caller's
+     * database transaction: if the transfer fails later, the quote is unused again.
+     * 400 if the quote is unknown or someone else's, already used, expired, or for another currency or amount.
+     */
+    CurrencyConversion convertWithQuote(String quoteId, String requesterUserId, String currencyCode,
+                                        BigDecimal amount);
 }
