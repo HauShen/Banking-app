@@ -1,7 +1,8 @@
 # 🏦 Banking App
 
 A full-stack banking simulator built with **Java Spring Boot** and **React**, featuring JWT
-authentication, role-based access control, fund transfers, and an admin management panel.
+authentication, role-based access control, fund transfers (also paid in a foreign currency), foreign remittances,
+and an admin management panel.
 
 
 
@@ -88,13 +89,17 @@ authentication, role-based access control, fund transfers, and an admin manageme
 - View dashboard with account summary
 - Top up own accounts (cash deposit)
 - Transfer funds **from own accounts only**, with **idempotency protection** (no double transfers)
-- View transaction history of own accounts
+- Pay a transfer in **USD, SGD, EUR or JPY**: the MYR equivalent at the bank's sell rate moves
+  (see [Foreign currency](#-foreign-currency))
+- See the bank's exchange rates and a quote before paying
+- View transaction history of own accounts, including the original currency, amount and rate
 - Update profile
 
 ### 🛡️ Admin
 - Open bank accounts (Savings / Current) for customers
 - Manage all users — view, update profile, change role, delete
 - Manage all accounts — view, lock / unlock, delete (blocked when the account has transaction history)
+- Record **incoming foreign remittances** (simulates the bank's payment gateway): credited in MYR at the buy rate
 - Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
 - Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
 
@@ -203,9 +208,42 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 #### Transfers
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer) |
+| POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer); optional `currency` of the amount (default MYR) |
 | GET | `/api/transfers/{reference}` | Sender, recipient or ADMIN | One transaction |
 | GET | `/api/transfers/account/{accountNumber}` | Owner or ADMIN | Transaction history of an account (paged) |
+| POST | `/api/admin/remittances` | ADMIN | Money from abroad arrives for an account (201): converted at the buy rate, idempotent like transfers |
+
+#### Foreign exchange
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/fx/rates` | Logged in | The bank's buy and sell rate for every offered currency (MYR per 1 unit) |
+| GET | `/api/fx/quote?currency=USD&amount=100.00&direction=PAY` | Logged in | What an amount is worth in MYR now; `direction` `PAY` (sell rate, default) or `RECEIVE` (buy rate) |
+
+---
+
+## 💱 Foreign currency
+
+Modelled on everyday Malaysian savings accounts: **accounts stay in MYR**, and foreign money is converted when it
+comes in or goes out. The transaction remembers the original currency, amount and rate.
+
+- **Pay in a foreign currency:** `POST /api/transfers` with `"amount": 100.00, "currency": "USD"` moves the MYR
+  equivalent between two MYR accounts. Without `currency` (or with `MYR`) a transfer works exactly as before.
+- **Receive money from abroad:** `POST /api/admin/remittances` credits a MYR account. Admin only: customers can't
+  create incoming money; in a real bank this would be the payment gateway.
+- **Which rate:** as banks quote it, from the bank's side. The customer pays in USD → the bank sells USD → **sell
+  rate**. Money arrives in USD → the bank buys it → **buy rate** (lower). `GET /api/fx/quote` shows the same numbers
+  before confirming.
+- **Rules:** MYR amount = foreign amount × rate, rounded half-up to 2 decimals, at least RM 0.01. The foreign amount
+  can't have more decimals than its currency (JPY none, others 2). Rates are stored with 8 decimals (JPY ≈ 0.03).
+- **Retries:** a retry with the same `idempotencyKey` is matched on the **original** currency and amount, so it
+  returns the original transaction even if the rate has changed since; nothing is converted or moved twice.
+- **History:** every transaction now has a `type` (`TRANSFER`, `CASH_DEPOSIT`, `FOREIGN_REMITTANCE`) and, for foreign
+  ones, `originalCurrency`, `originalAmount` and `exchangeRate`. Remittances show "Foreign Remittance" as the sender.
+- **Rates** come from configuration (`fx.rates.USD.buy`, `fx.rates.USD.sell`, ...); the currencies listed there are
+  the ones offered. A wrong rate (zero, buy above sell, too many decimals) stops the application at startup.
+- **Design:** exchange rates live in their own `fx` module. It owns the conversion rule; the transaction module asks
+  it through its own port (`CurrencyConversionPort`), so a transfer books exactly what the quote shows. A live rate
+  feed would replace one adapter (`ConfiguredExchangeRateSource`) without touching any business code.
 
 ---
 
@@ -267,9 +305,12 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   instead of that account's transaction — also when both requests arrive at the same moment.
 - Retrying with the same key returns the original transfer (same reference and time) and debits only once, even
   when the retries arrive at the same moment. Reusing a key for a different amount or recipient returns 409.
+  For a transfer paid in a foreign currency, "the same amount" means the same original currency and amount.
+- Remittances follow the same rules: the same request again returns the original and credits once; a key used for
+  anything else returns 409.
 - Amounts can have at most 2 decimals (400 otherwise), matching the database columns.
-- Transfers and top-ups lock the account rows (`SELECT … FOR UPDATE`, always in the same order), so concurrent
-  requests can't overwrite each other's balance or deadlock.
+- Transfers, top-ups and remittances lock the account rows (`SELECT … FOR UPDATE`, always in the same order), so
+  concurrent requests can't overwrite each other's balance or deadlock.
 
 ### Known limitations
 - Login throttling is in memory: it resets on restart and isn't shared between several instances
@@ -284,6 +325,14 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - Two browser tabs refreshing at the same moment with the same cookie look like token reuse and log the user out —
   the frontend should run one refresh at a time.
 - Used and expired refresh tokens stay in the table; a scheduled cleanup job is not implemented yet.
+- Exchange rates are fixed in configuration (example values, not live rates). A live feed (e.g. a central bank's
+  API, with caching and a fallback) would be a new adapter behind `ExchangeRateSourcePort`.
+- Quotes are informational: a transfer uses the rate at the moment it runs, so the rate can change between quote
+  and confirmation. Locking a quote for a short time (a quote id valid for 60 s) is not implemented.
+- The bank's margin between buy and sell rate is not booked anywhere: a transfer debits and credits the same MYR
+  amount, and there is no FX revenue account.
+- Remittances are simulated: an admin call stands in for the payment gateway, and the sender is just a name.
+- Only currencies with at most 2 decimal places can be offered (e.g. not KWD, which has 3).
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
   exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
   real banks do. The defence against probing account numbers is rate limiting, not hiding the status code.
@@ -311,3 +360,12 @@ endpoints is refactored.
 | `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
 | `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |
+
+Feature tests in the same style cover the rest, for example:
+
+| Test Class | What It Covers |
+|---|---|
+| `ForeignCurrencyTransferTest` | Paying in USD / JPY moves the right MYR amount at the sell rate; history shows the original amount and rate; MYR unchanged; bad currency or decimals → 400; a retry after a rate change returns the original; mismatches → 409 |
+| `RemittanceEndpointTest` | Admin-only remittances credited at the buy rate; "Foreign Remittance" in the history; locked / unknown account; idempotency; delete after a remittance → 409 |
+| `FxEndpointTest` | Rates list and quotes (PAY / RECEIVE), unsupported currency, bad parameters → 400 (never 500), login required |
+| `ArchitectureTest` | 22 ArchUnit rules: each module's domain is plain Java, adapters → application → domain, and modules reach each other only through inbound ports (account ↔ transaction, transaction → fx) |
