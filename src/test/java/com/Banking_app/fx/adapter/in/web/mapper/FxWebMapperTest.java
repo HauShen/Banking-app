@@ -1,9 +1,17 @@
 package com.Banking_app.fx.adapter.in.web.mapper;
 
+import com.Banking_app.fx.adapter.in.web.dto.LockQuoteRequestBody;
+import com.Banking_app.fx.adapter.in.web.dto.LockedQuoteResponseBody;
+import com.Banking_app.fx.application.port.in.command.LockQuoteCommand;
 import com.Banking_app.fx.application.port.in.query.QuoteQuery;
+import com.Banking_app.fx.application.port.in.result.LockedQuoteView;
 import com.Banking_app.fx.domain.enums.ConversionDirection;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,5 +60,25 @@ class FxWebMapperTest {
                 .hasMessage("amount can have at most 17 digits before the decimal point");
         assertThatThrownBy(() -> mapper.toQuery("USD", "1e999999999", null))
                 .hasMessage("amount can have at most 17 digits before the decimal point");
+    }
+
+    @Test
+    @DisplayName("lock request + logged-in user → command; locked quote → reply")
+    void lockQuote() {
+        LockQuoteCommand command = mapper.toCommand(new LockQuoteRequestBody("USD", new BigDecimal("100.00")), "alice");
+        assertThat(command.requesterUserId()).isEqualTo("alice");
+        assertThat(command.currencyCode()).isEqualTo("USD");
+        assertThat(command.amount()).isEqualByComparingTo("100.00");
+
+        UUID id = UUID.randomUUID();
+        Instant expiresAt = Instant.parse("2026-11-10T08:01:00Z");
+        LockedQuoteResponseBody body = mapper.toResponse(new LockedQuoteView(id, "USD", new BigDecimal("100.00"),
+                new BigDecimal("4.75"), new BigDecimal("475.00"), expiresAt));
+        assertThat(body.quoteId()).isEqualTo(id);
+        assertThat(body.currency()).isEqualTo("USD");
+        assertThat(body.amount()).isEqualByComparingTo("100.00");
+        assertThat(body.exchangeRate()).isEqualByComparingTo("4.75");
+        assertThat(body.myrAmount()).isEqualByComparingTo("475.00");
+        assertThat(body.expiresAt()).isEqualTo(expiresAt);
     }
 }

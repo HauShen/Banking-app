@@ -1,9 +1,13 @@
 package com.Banking_app.fx.adapter.in.web.mapper;
 
 import com.Banking_app.fx.adapter.in.web.dto.ExchangeRateResponseBody;
+import com.Banking_app.fx.adapter.in.web.dto.LockQuoteRequestBody;
+import com.Banking_app.fx.adapter.in.web.dto.LockedQuoteResponseBody;
 import com.Banking_app.fx.adapter.in.web.dto.QuoteResponseBody;
+import com.Banking_app.fx.application.port.in.command.LockQuoteCommand;
 import com.Banking_app.fx.application.port.in.query.QuoteQuery;
 import com.Banking_app.fx.application.port.in.result.ExchangeRateView;
+import com.Banking_app.fx.application.port.in.result.LockedQuoteView;
 import com.Banking_app.fx.application.port.in.result.Quote;
 import com.Banking_app.fx.domain.enums.ConversionDirection;
 import org.springframework.stereotype.Component;
@@ -61,6 +65,15 @@ public class FxWebMapper {
     public QuoteResponseBody toResponse(Quote quote) {
         return new QuoteResponseBody(quote.currency(), quote.amount(), quote.direction().name(),
                 quote.exchangeRate(), quote.myrAmount(), quote.asOf());
+    }
+
+    public LockQuoteCommand toCommand(LockQuoteRequestBody body, String currentUserId) {
+        return new LockQuoteCommand(currentUserId, body.currency(), body.amount());
+    }
+
+    public LockedQuoteResponseBody toResponse(LockedQuoteView quote) {
+        return new LockedQuoteResponseBody(quote.quoteId(), quote.currency(), quote.amount(), quote.exchangeRate(),
+                quote.myrAmount(), quote.expiresAt());
     }
 
     public ExchangeRateResponseBody toResponse(ExchangeRateView rate) {

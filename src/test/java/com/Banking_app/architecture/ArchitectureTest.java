@@ -122,13 +122,13 @@ public class ArchitectureTest {
 
     @ArchTest
     static final ArchRule entitiesLiveInPersistenceAdapters = classes()
-            .that().resideInAnyPackage(ACCOUNT, TRANSACTION)
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX)
             .and().areAnnotatedWith(Entity.class)
             .should().resideInAPackage("..adapter.out.persistence..");
 
     @ArchTest
     static final ArchRule repositoriesOnlyUsedByPersistenceAdapters = noClasses()
-            .that().resideInAnyPackage(ACCOUNT, TRANSACTION)
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX)
             .and().resideOutsideOfPackage("..adapter.out.persistence..")
             .should().dependOnClassesThat().areAssignableTo(JpaRepository.class)
             .because("only a module's own persistence adapter touches its tables");
