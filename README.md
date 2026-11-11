@@ -1,5 +1,7 @@
 # 🏦 Banking App
 
+[![CI](https://github.com/HauShen/Banking-app/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/HauShen/Banking-app/actions/workflows/ci.yml)
+
 A full-stack banking simulator built with **Java Spring Boot** and **React**, featuring JWT
 authentication, role-based access control, fund transfers (also paid in a foreign currency), foreign remittances,
 and an admin management panel.
@@ -79,6 +81,7 @@ and an admin management panel.
 | Technology | Purpose |
 |---|---|
 | Docker Compose | PostgreSQL containerization |
+| GitHub Actions | CI: full build and every test on each push and pull request |
 
 ---
 
@@ -362,6 +365,9 @@ Requires **Docker** running: the tests start a real PostgreSQL 17 container with
 ```bash
 ./gradlew test
 ```
+
+GitHub Actions runs the full build (`./gradlew build`, which includes every test below) on each push to
+`master` and on each pull request: see `.github/workflows/ci.yml`. The HTML test report is attached to every run.
 
 The security tests are black-box HTTP tests: a real embedded server on a random port, real JWTs, a real database
 with every Flyway migration applied. Because they only talk HTTP, they stay valid while the code behind the
