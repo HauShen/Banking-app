@@ -80,7 +80,8 @@ and an admin management panel.
 ### DevOps
 | Technology | Purpose |
 |---|---|
-| Docker Compose | PostgreSQL containerization |
+| Docker | Multi-stage image of the backend: JDK 21 to build, JRE 21 to run, non-root user |
+| Docker Compose | PostgreSQL; with `--profile app` also the backend |
 | GitHub Actions | CI: full build and every test on each push and pull request |
 
 ---
@@ -147,6 +148,14 @@ The `dev` profile creates a demo admin on first start, when no admin exists yet:
 Backend runs on `http://localhost:8080`. Swagger UI (dev profile only): `http://localhost:8080/swagger-ui/index.html`
 (log in with `POST /api/auth/login`, then paste the `accessToken` into **Authorize**).
 If the frontend runs somewhere other than `http://localhost:5173`, set `CORS_ALLOWED_ORIGINS` (comma-separated).
+
+**Or run the backend in Docker too** (no local JDK needed):
+```bash
+docker compose --profile app up --build
+```
+This builds the image from the `Dockerfile` and starts it next to PostgreSQL with the `dev` profile, on the same
+`http://localhost:8080`. It reads `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
+`bootRun` first, because both use port 8080. A plain `docker compose up -d` still starts PostgreSQL only.
 
 ### 5. Run the frontend
 ```bash

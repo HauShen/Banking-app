@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [master]
 
-# The job only reads the code.
+# The jobs only read the code.
 permissions:
   contents: read
 
@@ -53,3 +53,16 @@ jobs:
           path: build/reports/tests/test/
           if-no-files-found: ignore
           retention-days: 14
+
+  # Proves the Dockerfile still builds. The image is thrown away: nothing is pushed anywhere yet.
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+
+      - name: Build the image
+        run: docker build --tag banking-app:ci .

@@ -1,0 +1,17 @@
+# Keeps the build context small and keeps secrets out of the image.
+# (The Dockerfile copies only gradlew, gradle/, the two build files and src/ - this is the second safety net.)
+.git
+.github
+.gradle
+.idea
+build
+.env
+.env.*
+_to_delete
+Claude outputs
+screenshots
+curl-commands.txt
+*.md
+Dockerfile
+.dockerignore
+docker-compose.yaml
