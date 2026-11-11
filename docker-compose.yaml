@@ -12,6 +12,35 @@ services:
       postgres -c shared_preload_libraries='pg_stat_statements'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Lets the app service wait until the database really accepts connections.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - app-network
+
+  # The backend itself. Started only with:  docker compose --profile app up --build
+  # A plain "docker compose up -d" still starts PostgreSQL only.
+  app:
+    profiles: ["app"]
+    build: .
+    image: banking-app:local
+    container_name: banking_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      # "postgres" is the service name above: inside the Docker network, localhost would be the app container itself.
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-banking_db}
+      POSTGRES_USER: ${POSTGRES_USER:-hau}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abc123}
+      # No value here = passed through from .env. No default on purpose: the secret is never written in this file.
+      JWT_SECRET:
     networks:
       - app-network
 

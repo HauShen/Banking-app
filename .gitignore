@@ -41,3 +41,6 @@ src/frontend/node_modules/
 .env
 .env.local
 .env.*.local
+
+### Claude desktop app working files ###
+Claude outputs/
