@@ -17,6 +17,10 @@ repositories {
 	mavenCentral()
 }
 
+// Spring Boot 3.4.5 manages Testcontainers 1.20.6, which cannot talk to Docker Engine 29+
+// (GitHub Actions runners, newer Docker Desktop). 1.21.4 is the first 1.x release that can.
+extra["testcontainers.version"] = "1.21.4"
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
@@ -47,4 +51,10 @@ tasks.withType<Test> {
 	testLogging {
 		events("passed", "skipped", "failed")
 	}
+}
+
+// Build only the executable Spring Boot jar (no extra "-plain" jar),
+// so build/libs holds exactly one jar for the Dockerfile to copy.
+tasks.named<Jar>("jar") {
+	enabled = false
 }
