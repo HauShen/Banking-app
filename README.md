@@ -82,7 +82,8 @@ and an admin management panel.
 |---|---|
 | Docker | Multi-stage image of the backend: JDK 21 to build, JRE 21 to run, non-root user |
 | Docker Compose | PostgreSQL; with `--profile app` also the backend |
-| GitHub Actions | CI: full build and every test on each push and pull request |
+| GitHub Actions | CI: full build and every test on each push and pull request; CD: publishes the image after each merge to `master` |
+| GitHub Container Registry | Home of the published image: `ghcr.io/haushen/banking-app` (`latest` and one `sha-…` tag per commit) |
 
 ---
 
@@ -384,6 +385,7 @@ GitHub Actions runs the full build (`./gradlew build`, which includes every test
 `master` and on each pull request: see `.github/workflows/ci.yml`. The HTML test report is attached to every run.
 A second job builds the Docker image, starts it with PostgreSQL through Docker Compose, and waits for
 `/actuator/health` to answer UP.
+After a merge to `master`, and only if both jobs passed, a third job publishes the image to GitHub Container Registry.
 
 The security tests are black-box HTTP tests: a real embedded server on a random port, real JWTs, a real database
 with every Flyway migration applied. Because they only talk HTTP, they stay valid while the code behind the
