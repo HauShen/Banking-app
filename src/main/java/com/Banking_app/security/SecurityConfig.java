@@ -60,6 +60,9 @@ public class SecurityConfig{
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()   // before the permitAll below
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // Health check for Docker and deploy scripts: answers UP or DOWN only, no details
+                        // (management.endpoint.health.show-details=never). Nothing else under /actuator is public.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")   // URL-level, defence in depth
                         .anyRequest().authenticated())
                 // Not logged in (no token, or a token the filter rejected) -> 401.

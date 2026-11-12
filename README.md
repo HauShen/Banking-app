@@ -170,7 +170,7 @@ Frontend runs on `http://localhost:5173`
 
 ## 🔐 API Endpoints
 
-All endpoints except `/api/auth/**` require:
+All endpoints except `/api/auth/**` and `GET /actuator/health` require:
 ```
 Authorization: Bearer <your-jwt-token>
 ```
@@ -187,6 +187,11 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | POST | `/api/auth/refresh` | Refresh cookie | New access token + new refresh cookie (the old one is used up) |
 | POST | `/api/auth/logout` | Logged in | Log out on every device: all access and refresh tokens stop working, cookie cleared (204) |
 | GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
+
+#### Health
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/actuator/health` | Public | `{"status":"UP"}` when the app and its database connection work, otherwise 503 with `DOWN`. No details, and nothing else under `/actuator` is exposed |
 
 #### Users
 | Method | Endpoint | Access | Description |
@@ -377,6 +382,8 @@ Requires **Docker** running: the tests start a real PostgreSQL 17 container with
 
 GitHub Actions runs the full build (`./gradlew build`, which includes every test below) on each push to
 `master` and on each pull request: see `.github/workflows/ci.yml`. The HTML test report is attached to every run.
+A second job builds the Docker image, starts it with PostgreSQL through Docker Compose, and waits for
+`/actuator/health` to answer UP.
 
 The security tests are black-box HTTP tests: a real embedded server on a random port, real JWTs, a real database
 with every Flyway migration applied. Because they only talk HTTP, they stay valid while the code behind the
@@ -391,6 +398,7 @@ endpoints is refactored.
 | `RefreshTokenSecurityTest` | Login/register set a hardened cookie (HttpOnly, Secure, SameSite=Strict, Path); refresh gives a working access token and rotates the cookie; reusing a used token revokes the family and the current access token; missing/garbage cookie → 401; logout and admin revoke-tokens kill refresh tokens; deleted user → 401 |
 | `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
+| `HealthEndpointSecurityTest` | `/actuator/health` is public and says only UP, without details; health sub-paths and the rest of Actuator → 401 |
 | `TransferSecurityTest` | Only the owner can transfer (admins too get 403) and balances are checked; idempotent retries debit once; reusing another account's key → 400; history visible only to owner / recipient / admin |
 
 Feature tests in the same style cover the rest, for example:
