@@ -14,10 +14,14 @@ import { theme } from 'theme/theme';
 import { API, server } from './server';
 
 /**
- * Renders the real auth setup (theme, query client, AuthProvider, RequireAuth, GuestOnly) with a
- * stand-in "Dashboard" at / and the given pages under the guest-only routes.
+ * Renders the real auth setup (theme, query client, AuthProvider, RequireAuth, GuestOnly) with
+ * `home` at / (a stand-in "Dashboard" by default) and the given pages under the guest-only routes.
  */
-export const renderApp = (startAt: string, guestPages: Record<string, ReactElement>) =>
+export const renderApp = (
+  startAt: string,
+  guestPages: Record<string, ReactElement> = {},
+  home: ReactElement = <p>Dashboard</p>,
+) =>
   render(
     <ThemeProvider theme={theme}>
       <BreakpointsProvider>
@@ -25,14 +29,7 @@ export const renderApp = (startAt: string, guestPages: Record<string, ReactEleme
           <MemoryRouter initialEntries={[startAt]}>
             <AuthProvider>
               <Routes>
-                <Route
-                  path={paths.default}
-                  element={
-                    <RequireAuth>
-                      <p>Dashboard</p>
-                    </RequireAuth>
-                  }
-                />
+                <Route path={paths.default} element={<RequireAuth>{home}</RequireAuth>} />
                 {Object.entries(guestPages).map(([path, page]) => (
                   <Route key={path} path={path} element={<GuestOnly>{page}</GuestOnly>} />
                 ))}
@@ -42,6 +39,15 @@ export const renderApp = (startAt: string, guestPages: Record<string, ReactEleme
         </QueryClientProvider>
       </BreakpointsProvider>
     </ThemeProvider>,
+  );
+
+/** A valid refresh cookie: the app starts signed in as `user`. */
+export const mockSession = (user: Record<string, unknown>) =>
+  server.use(
+    http.post(`${API}/api/auth/refresh`, () =>
+      HttpResponse.json({ accessToken: 'session-token', tokenType: 'Bearer', expiresIn: 900 }),
+    ),
+    http.get(`${API}/api/users/me`, () => HttpResponse.json(user)),
   );
 
 /** No refresh cookie: the app starts signed out. */
