@@ -12,6 +12,26 @@ export const login = async (username: string, password: string): Promise<void> =
   setAccessToken(res.accessToken);
 };
 
+export interface RegisterInput {
+  username: string;
+  fullName: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * POST /api/auth/register. A new user is always a CUSTOMER (the backend has no role field here).
+ * Like login, the response signs the user in: access token in memory, refresh token in the cookie.
+ */
+export const register = async (input: RegisterInput): Promise<void> => {
+  const res = await apiFetch<AuthenticationResponse>('/api/auth/register', {
+    method: 'POST',
+    body: input,
+    auth: false,
+  });
+  setAccessToken(res.accessToken);
+};
+
 /** POST /api/auth/logout: revokes the user's tokens on every device and clears the cookie. */
 export const logout = async (): Promise<void> => {
   try {

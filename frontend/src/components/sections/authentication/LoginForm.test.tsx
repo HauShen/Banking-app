@@ -1,18 +1,10 @@
-import { ThemeProvider } from '@mui/material';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createQueryClient } from 'api/queryClient';
 import { clearAccessToken } from 'api/tokenStore';
 import { http, HttpResponse } from 'msw';
-import AuthProvider from 'providers/AuthProvider';
-import BreakpointsProvider from 'providers/useBreakpoints';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import GuestOnly from 'routes/GuestOnly';
 import paths from 'routes/path';
-import RequireAuth from 'routes/RequireAuth';
+import { mockNoSession, renderApp as renderWithAuth } from 'test/renderApp';
 import { API, server } from 'test/server';
-import { theme } from 'theme/theme';
 import { beforeEach, describe, expect, it } from 'vitest';
 import LoginForm from './LoginForm';
 
@@ -24,45 +16,9 @@ const devadmin = {
   role: 'ADMIN',
 };
 
-/** The real auth pieces (AuthProvider, RequireAuth, GuestOnly, LoginForm) with a stand-in dashboard. */
-const renderApp = (startAt: string) =>
-  render(
-    <ThemeProvider theme={theme}>
-      <BreakpointsProvider>
-        <QueryClientProvider client={createQueryClient()}>
-          <MemoryRouter initialEntries={[startAt]}>
-            <AuthProvider>
-              <Routes>
-                <Route
-                  path={paths.default}
-                  element={
-                    <RequireAuth>
-                      <p>Dashboard</p>
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path={paths.login}
-                  element={
-                    <GuestOnly>
-                      <LoginForm />
-                    </GuestOnly>
-                  }
-                />
-              </Routes>
-            </AuthProvider>
-          </MemoryRouter>
-        </QueryClientProvider>
-      </BreakpointsProvider>
-    </ThemeProvider>,
-  );
+const renderApp = (startAt: string) => renderWithAuth(startAt, { [paths.login]: <LoginForm /> });
 
-const noSession = () =>
-  server.use(
-    http.post(`${API}/api/auth/refresh`, () =>
-      HttpResponse.json({ status: 401, message: 'Invalid refresh token' }, { status: 401 }),
-    ),
-  );
+const noSession = mockNoSession;
 
 const submitLogin = async (password: string) => {
   const user = userEvent.setup();

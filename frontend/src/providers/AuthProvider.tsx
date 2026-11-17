@@ -10,6 +10,7 @@ interface AuthContextValue {
   status: AuthStatus;
   user: UserProfile | null;
   login: (username: string, password: string) => Promise<void>;
+  register: (input: authApi.RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -60,6 +61,10 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       user,
       login: async (username, password) => {
         await authApi.login(username, password);
+        signedIn(await authApi.getCurrentUser());
+      },
+      register: async (input) => {
+        await authApi.register(input);
         signedIn(await authApi.getCurrentUser());
       },
       logout: async () => {
