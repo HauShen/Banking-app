@@ -1,4 +1,6 @@
 import { SvgIconProps } from '@mui/material';
+import type { Role } from 'api/types';
+import AdminIcon from 'components/icons/menu-icons/AdminIcon';
 import HomeIcon from 'components/icons/menu-icons/HomeIcon';
 import SettingsIcon from 'components/icons/menu-icons/SettingsIcon';
 import TransferIcon from 'components/icons/menu-icons/TransferIcon';
@@ -9,6 +11,7 @@ export enum linkEnum {
   Transactions = 'transactions',
   Accounts = 'accounts',
   Setting = 'Setting',
+  Admin = 'admin',
 }
 
 export interface MenuLinkType {
@@ -17,6 +20,8 @@ export interface MenuLinkType {
   link: string;
   icon?: (props: SvgIconProps) => JSX.Element;
   available: boolean;
+  /** Only these roles see the item; undefined = everyone. */
+  roles?: Role[];
 }
 export const menuLinks: MenuLinkType[] = [
   {
@@ -47,4 +52,16 @@ export const menuLinks: MenuLinkType[] = [
     icon: SettingsIcon,
     available: false,
   },
+  {
+    id: 5,
+    title: linkEnum.Admin,
+    link: '/admin',
+    icon: AdminIcon,
+    available: false, // admin pages come in phase F3
+    roles: ['ADMIN'],
+  },
 ];
+
+/** The menu items a user with this role may see. */
+export const visibleMenuLinks = (role: Role | undefined): MenuLinkType[] =>
+  menuLinks.filter((link) => !link.roles || (role !== undefined && link.roles.includes(role)));

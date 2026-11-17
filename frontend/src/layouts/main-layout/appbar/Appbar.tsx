@@ -6,7 +6,7 @@ import ProfileDropdown from 'layouts/main-layout/appbar/ProfileDropdown';
 import SearchInput from 'layouts/main-layout/appbar/SearchInput';
 import SettingsDropdown from 'layouts/main-layout/appbar/SettingsDropdown';
 import { MouseEvent, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link as RouterLink } from 'react-router-dom';
 interface NavbarProps {
   onDrawerToggle: () => void;
 }
@@ -51,7 +51,7 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
             {routeName}
           </Typography>
           <Stack direction="row" gap={1} sx={{ display: { xs: 'flex', md: 'none' } }}>
-            <Link href="/" sx={{ display: 'flex', p: 0.5 }}>
+            <Link component={RouterLink} to="/" sx={{ display: 'flex', p: 0.5 }}>
               <Image src="/bankdash.svg" alt="Logo" sx={{ width: 25 }} />
             </Link>
             <IconButton onClick={onDrawerToggle} sx={{ display: { md: 'none' } }}>

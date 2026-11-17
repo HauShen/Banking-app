@@ -1,32 +1,19 @@
 import { Alert, Box, Button, Grid, IconButton, InputAdornment, TextField } from '@mui/material';
-import { ApiError, NetworkError } from 'api/client';
 import IconifyIcon from 'components/base/IconifyIcon';
+import { errorMessage, formatWait } from 'lib/errors';
 import { useAuth } from 'providers/AuthProvider';
 import { useBreakpoints } from 'providers/useBreakpoints';
 import { FormEvent, useState } from 'react';
 
-const formatWait = (seconds: number): string => {
-  if (seconds < 60) return `${seconds} second${seconds === 1 ? '' : 's'}`;
-  const minutes = Math.ceil(seconds / 60);
-  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-};
-
-const loginErrorMessage = (err: unknown): string => {
-  if (err instanceof NetworkError) {
-    return "Can't reach the server. Check that the backend is running.";
-  }
-  if (err instanceof ApiError) {
-    if (err.status === 401) return 'Invalid username or password.';
-    if (err.status === 429) {
-      return err.retryAfterSeconds
-        ? `Too many failed attempts. Try again in ${formatWait(err.retryAfterSeconds)}.`
-        : 'Too many failed attempts. Try again later.';
-    }
-    if (err.status === 400) return 'Please enter your username and password.';
-    return err.message;
-  }
-  return 'Something went wrong. Please try again.';
-};
+const loginErrorMessage = (err: unknown): string =>
+  errorMessage(err, {
+    400: 'Please enter your username and password.',
+    401: 'Invalid username or password.',
+    429: (e) =>
+      e.retryAfterSeconds
+        ? `Too many failed attempts. Try again in ${formatWait(e.retryAfterSeconds)}.`
+        : 'Too many failed attempts. Try again later.',
+  });
 
 const LoginForm = () => {
   const { login } = useAuth();

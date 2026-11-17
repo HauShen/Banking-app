@@ -1,6 +1,6 @@
 import { Link, ListItem, ListItemIcon, ListItemText, Typography } from '@mui/material';
 import { menuLinks, MenuLinkType } from 'layouts/main-layout/sidebar/MenuLinks';
-import { useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 interface MenuListProps {
   menuItem: MenuLinkType;
   onDrawerClose?: () => void;
@@ -36,8 +36,9 @@ const MenuListItem = ({ menuItem, onDrawerClose }: MenuListProps) => {
       }}
     >
       <Link
-        href={menuItem.link}
-        onClick={onDrawerClose}
+        {...(menuItem.available
+          ? { component: RouterLink, to: menuItem.link, onClick: onDrawerClose }
+          : { component: 'div', 'aria-disabled': true })}
         sx={{
           py: 1.5,
           px: 3,

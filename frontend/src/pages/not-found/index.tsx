@@ -1,6 +1,7 @@
-import { Box, Button, Container, Link, Typography } from '@mui/material';
+import { Box, Button, Container, Typography } from '@mui/material';
 import NotFoundSVG from 'assets/not-found.svg';
 import Image from 'components/base/Image';
+import { Link as RouterLink } from 'react-router-dom';
 const NotFoundPage = () => {
   return (
     <Container>
@@ -38,10 +39,10 @@ const NotFoundPage = () => {
         />
 
         <Button
-          href="/"
+          component={RouterLink}
+          to="/"
           size="large"
           variant="contained"
-          component={Link}
           sx={{ '&:hover': { color: 'common.white' } }}
         >
           Go Home

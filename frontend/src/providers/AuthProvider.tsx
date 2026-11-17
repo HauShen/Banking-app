@@ -1,6 +1,7 @@
 import * as authApi from 'api/auth';
 import { setAuthFailureListener } from 'api/client';
 import type { UserProfile } from 'api/types';
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
@@ -17,12 +18,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const AuthProvider = ({ children }: PropsWithChildren) => {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
+  const queryClient = useQueryClient();
 
   const signedIn = (profile: UserProfile) => {
     setUser(profile);
     setStatus('authenticated');
   };
   const signedOut = () => {
+    // Drop every cached API response, so the next user never sees this user's accounts or history.
+    queryClient.clear();
     setUser(null);
     setStatus('anonymous');
   };

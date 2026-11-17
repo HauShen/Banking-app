@@ -5,13 +5,16 @@ export interface AuthenticationResponse {
   expiresIn: number;
 }
 
+/** UserRole.java */
+export type Role = 'CUSTOMER' | 'ADMIN';
+
 /** Body of /api/users/me (UserProfileResponseBody.java). */
 export interface UserProfile {
   id: string;
   username: string;
   fullName: string;
   email: string;
-  role: string;
+  role: Role;
   createdAt: string;
   updatedAt: string;
 }

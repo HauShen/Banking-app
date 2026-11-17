@@ -1,6 +1,6 @@
 import { Link, Stack, Theme, Toolbar } from '@mui/material';
 import Logo from 'components/common/Logo';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link as RouterLink } from 'react-router-dom';
 
 const AuthLayout = () => {
   return (
@@ -28,7 +28,7 @@ const AuthLayout = () => {
           left: { xs: 10, sm: 12, md: 16 },
         }}
       >
-        <Link href="/" sx={{ display: 'flex', gap: 2 }}>
+        <Link component={RouterLink} to="/" sx={{ display: 'flex', gap: 2 }}>
           <Logo />
         </Link>
       </Toolbar>

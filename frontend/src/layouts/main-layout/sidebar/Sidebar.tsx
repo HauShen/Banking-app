@@ -1,6 +1,7 @@
 import { Drawer, List, Toolbar } from '@mui/material';
 import Logo from 'components/common/Logo';
-import { menuLinks } from 'layouts/main-layout/sidebar/MenuLinks';
+import { visibleMenuLinks } from 'layouts/main-layout/sidebar/MenuLinks';
+import { useAuth } from 'providers/AuthProvider';
 import MenuListItem from 'layouts/main-layout/sidebar/MenuListItem';
 import SimpleBar from 'simplebar-react';
 interface SidebarProps {
@@ -11,6 +12,7 @@ interface SidebarProps {
   };
 }
 const Sidebar = ({ drawerWidth }: SidebarProps) => {
+  const { user } = useAuth();
   return (
     <Drawer
       variant="permanent"
@@ -41,7 +43,7 @@ const Sidebar = ({ drawerWidth }: SidebarProps) => {
 
       <SimpleBar style={{ maxHeight: 'calc(100vh - 100px)' }}>
         <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {menuLinks.map((menu) => (
+          {visibleMenuLinks(user?.role).map((menu) => (
             <MenuListItem key={menu.id} menuItem={menu} />
           ))}
         </List>

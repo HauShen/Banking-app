@@ -4,7 +4,7 @@ import BankLogo from 'assets/bank-logo.svg';
 import ChipCardBlack from 'assets/chip_black.png';
 import ChipCardWhite from 'assets/chip_white.png';
 import Image from 'components/base/Image';
-import { currencyFormat } from 'helpers/utils';
+import { formatMoney } from 'lib/money';
 
 export interface CreditCardData {
   balance: string;
@@ -83,7 +83,7 @@ const CreditCard = ({ theme = 'white', cardData }: CreditCardProps) => {
               Balance
             </Typography>
             <Typography sx={{ fontSize: { xs: 'body2.fontSize', md: 'h4.fontSize' } }}>
-              {currencyFormat(Number(balance))}
+              {formatMoney(balance)}
             </Typography>
           </div>
           <Image src={chipCard} alt="chip-card" sx={{ width: { xs: 30, md: 35 } }} />
