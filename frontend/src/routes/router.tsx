@@ -9,6 +9,7 @@ const App = lazy(() => import('App'));
 const MainLayout = lazy(() => import('layouts/main-layout'));
 const AuthLayout = lazy(() => import('layouts/auth-layout'));
 const Dashboard = lazy(() => import('pages/dashboard'));
+const TransactionsPage = lazy(() => import('pages/transactions'));
 const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
@@ -47,7 +48,7 @@ export const routes = [
           },
           {
             path: paths.transactions,
-            element: <Dashboard />,
+            element: <TransactionsPage />,
           },
         ],
       },

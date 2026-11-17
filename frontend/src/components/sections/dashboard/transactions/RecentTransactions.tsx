@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, List, ListItem, Skeleton, Stack, Typography } from '@mui/material';
+import { Alert, Box, Chip, Link, List, ListItem, Skeleton, Stack, Typography } from '@mui/material';
 import { useAccountTransactions } from 'api/transactions';
 import type { Transaction } from 'api/types';
 import IconifyIcon from 'components/base/IconifyIcon';
@@ -7,6 +7,8 @@ import { formatDateTime } from 'lib/dates';
 import { errorMessage } from 'lib/errors';
 import { formatMoney, formatRate, formatSignedMoney } from 'lib/money';
 import { describeTransaction } from 'lib/transactions';
+import { Link as RouterLink } from 'react-router-dom';
+import paths from 'routes/path';
 
 const RECENT_COUNT = 5;
 
@@ -126,7 +128,18 @@ const RecentTransactions = ({ accountNumber }: RecentTransactionsProps) => {
   }
 
   return (
-    <CardContainer title="Recent Transactions">
+    <CardContainer
+      title="Recent Transactions"
+      action={
+        <Link
+          component={RouterLink}
+          to={`${paths.transactions}?account=${accountNumber}`}
+          sx={{ fontWeight: 600, fontSize: { xs: 'caption.fontSize', md: 'body1.fontSize' } }}
+        >
+          See all
+        </Link>
+      }
+    >
       <Box sx={{ p: { xs: 0.5, xl: 1 }, pb: { xs: 2, xl: 3 } }}>{body}</Box>
     </CardContainer>
   );

@@ -8,6 +8,18 @@ export interface TransactionView {
   counterparty: string;
 }
 
+export const TRANSACTION_TYPE_LABEL: Record<Transaction['type'], string> = {
+  TRANSFER: 'Transfer',
+  CASH_DEPOSIT: 'Cash deposit',
+  FOREIGN_REMITTANCE: 'Foreign remittance',
+};
+
+export const TRANSACTION_STATUS_LABEL: Record<Transaction['status'], string> = {
+  SUCCESS: 'Completed',
+  PENDING: 'Pending',
+  FAILED: 'Failed',
+};
+
 /** 10-digit account numbers as "1234 567 890"; anything else unchanged. */
 export const formatAccountNumber = (accountNumber: string): string =>
   /^\d{10}$/.test(accountNumber)

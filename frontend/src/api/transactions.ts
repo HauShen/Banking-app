@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import { queryKeys } from './queryKeys';
 import type { Page, Transaction } from './types';
@@ -19,5 +19,8 @@ export const useAccountTransactions = (accountNumber: string | undefined, page =
     queryKey: queryKeys.transactions.byAccount(accountNumber ?? '', page, size),
     queryFn: () => getAccountTransactions(accountNumber as string, page, size),
     enabled: Boolean(accountNumber),
-    placeholderData: keepPreviousData, // keep showing the old list while the next one loads
+    // While the next page of the SAME account loads, keep showing the current page. Never show another
+    // account's rows: their in/out direction would be wrong for this account.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[2] === accountNumber ? previous : undefined,
   });

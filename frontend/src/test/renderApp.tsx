@@ -15,12 +15,14 @@ import { API, server } from './server';
 
 /**
  * Renders the real auth setup (theme, query client, AuthProvider, RequireAuth, GuestOnly) with
- * `home` at / (a stand-in "Dashboard" by default) and the given pages under the guest-only routes.
+ * `home` at / (a stand-in "Dashboard" by default), `signedInPages` behind RequireAuth, and
+ * `guestPages` behind GuestOnly.
  */
 export const renderApp = (
   startAt: string,
   guestPages: Record<string, ReactElement> = {},
   home: ReactElement = <p>Dashboard</p>,
+  signedInPages: Record<string, ReactElement> = {},
 ) =>
   render(
     <ThemeProvider theme={theme}>
@@ -30,6 +32,9 @@ export const renderApp = (
             <AuthProvider>
               <Routes>
                 <Route path={paths.default} element={<RequireAuth>{home}</RequireAuth>} />
+                {Object.entries(signedInPages).map(([path, page]) => (
+                  <Route key={path} path={path} element={<RequireAuth>{page}</RequireAuth>} />
+                ))}
                 {Object.entries(guestPages).map(([path, page]) => (
                   <Route key={path} path={path} element={<GuestOnly>{page}</GuestOnly>} />
                 ))}

@@ -3,13 +3,23 @@ import { ReactNode } from 'react';
 
 interface CardContainerProps {
   title: string;
+  /** Shown at the right of the title, e.g. a "See all" link. */
+  action?: ReactNode;
   children: ReactNode;
 }
 
-const CardContainer = ({ title, children }: CardContainerProps) => {
+const CardContainer = ({ title, action, children }: CardContainerProps) => {
   return (
     <Stack sx={{ overflow: 'auto', height: 1, justifyContent: 'space-between' }}>
-      <Box sx={{ mb: { xs: 1.5, sm: 2.5 }, mt: { xs: 1, sm: 3 } }}>
+      <Box
+        sx={{
+          mb: { xs: 1.5, sm: 2.5 },
+          mt: { xs: 1, sm: 3 },
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+        }}
+      >
         <Typography
           sx={{
             fontSize: {
@@ -22,6 +32,7 @@ const CardContainer = ({ title, children }: CardContainerProps) => {
         >
           {title}
         </Typography>
+        {action}
       </Box>
       <Card sx={{ backgroundColor: 'common.white', width: 1, flex: 1 }}>
         <CardContent

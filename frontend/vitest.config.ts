@@ -11,5 +11,6 @@ export default defineConfig({
     // Node's fetch needs absolute URLs; in the browser the app uses '' (same origin).
     env: { VITE_API_BASE_URL: 'http://localhost' },
     css: false,
+    testTimeout: 15000, // room for the 5 s findBy wait (see src/test/setup.ts)
   },
 });

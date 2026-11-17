@@ -34,9 +34,9 @@ export const menuLinks: MenuLinkType[] = [
   {
     id: 2,
     title: linkEnum.Transactions,
-    link: '#!',
+    link: '/transactions',
     icon: TransferIcon,
-    available: false,
+    available: true,
   },
   {
     id: 3,
