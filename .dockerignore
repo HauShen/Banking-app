@@ -10,6 +10,7 @@ build
 _to_delete
 Claude outputs
 screenshots
+frontend
 curl-commands.txt
 *.md
 Dockerfile

@@ -15,6 +15,17 @@ npm run dev      # http://localhost:5173
 
 Other scripts: `npm run build`, `npm run lint`, `npm run format`, `npm run preview`.
 
+## Tests
+
+```bash
+npm test            # run once (also in CI)
+npm run test:watch  # re-run on every change
+```
+
+Vitest + React Testing Library in jsdom. The backend is mocked with [MSW](https://mswjs.io/)
+(`src/test/server.ts`): each test declares the endpoints it needs, and any other request fails the test.
+The CI job `frontend` (`.github/workflows/ci.yml`) runs lint, tests and build on every pull request.
+
 ## Configuration
 
 Copy `.env.example` to `.env.local` to override:
