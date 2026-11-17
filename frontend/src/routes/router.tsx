@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import GuestOnly from './GuestOnly';
 import paths, { rootPaths } from './path';
+import RequireAuth from './RequireAuth';
 
 /* ---------------- Lazy loads various components ------------------------- */
 const App = lazy(() => import('App'));
@@ -32,11 +34,13 @@ export const routes = [
       {
         path: paths.default,
         element: (
-          <MainLayout>
-            <Suspense fallback={<LoadingProgress />}>
-              <Outlet />
-            </Suspense>
-          </MainLayout>
+          <RequireAuth>
+            <MainLayout>
+              <Suspense fallback={<LoadingProgress />}>
+                <Outlet />
+              </Suspense>
+            </MainLayout>
+          </RequireAuth>
         ),
         children: [
           {
@@ -51,7 +55,11 @@ export const routes = [
       },
       {
         path: rootPaths.authRoot,
-        element: <AuthLayout />,
+        element: (
+          <GuestOnly>
+            <AuthLayout />
+          </GuestOnly>
+        ),
         children: [
           {
             path: paths.login,

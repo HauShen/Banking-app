@@ -1,6 +1,7 @@
-import { Box, Button, Card, Container, Divider, Link, Stack, Typography } from '@mui/material';
-import IconifyIcon from 'components/base/IconifyIcon';
+import { Box, Card, Container, Link, Stack, Typography } from '@mui/material';
 import LoginForm from 'components/sections/authentication/LoginForm';
+import { Link as RouterLink } from 'react-router-dom';
+import paths from 'routes/path';
 
 const LoginPage = () => {
   return (
@@ -31,32 +32,14 @@ const LoginPage = () => {
             >
               Don’t have an account?
               <Link
-                href="/authentication/sign-up"
+                component={RouterLink}
+                to={paths.signup}
                 variant="subtitle2"
                 sx={{ ml: 0.75, '&:hover': { color: 'primary.light' } }}
               >
                 Create One Now!
               </Link>
             </Typography>
-
-            <Stack direction="row" spacing={{ xs: 1, sm: 2 }}>
-              <Button fullWidth size="large" color="neutral" variant="outlined" sx={{ p: 1 }}>
-                <IconifyIcon icon="eva:google-fill" color="error.main" />
-              </Button>
-              <Button fullWidth size="large" color="neutral" variant="outlined" sx={{ p: 1 }}>
-                <IconifyIcon icon="gg:facebook" color="primary.main" width={22} />
-              </Button>
-
-              <Button fullWidth size="large" color="neutral" variant="outlined" sx={{ p: 1 }}>
-                <IconifyIcon icon="logos:twitter" />
-              </Button>
-            </Stack>
-
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                OR
-              </Typography>
-            </Divider>
 
             <LoginForm />
           </Card>

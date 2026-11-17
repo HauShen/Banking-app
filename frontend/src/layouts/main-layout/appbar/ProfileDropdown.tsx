@@ -9,8 +9,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import ProfileImage from 'assets/avatar.jpg';
 import IconifyIcon from 'components/base/IconifyIcon';
+import { useAuth } from 'providers/AuthProvider';
 import { MouseEvent, useState } from 'react';
 import { Fragment } from 'react/jsx-runtime';
 
@@ -25,8 +25,17 @@ const profileData = [
   },
 ];
 /* -------------------------------------------------------------------------- */
+const initials = (name?: string): string =>
+  (name ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('');
+
 const ProfileDropdown = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
 
   const handleOpenDropdown = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -34,25 +43,23 @@ const ProfileDropdown = () => {
   const handleClose = () => {
     setAnchorEl(null);
   };
+  const handleLogout = () => {
+    handleClose();
+    void logout(); // RequireAuth sends the user to the login page once signed out
+  };
   return (
     <Fragment>
       <IconButton sx={{ p: 0, position: 'relative' }} onClick={handleOpenDropdown}>
         <Avatar
-          alt="Avatar"
-          src={ProfileImage}
-          slotProps={{
-            img: {
-              sx: {
-                objectFit: 'cover',
-                position: 'absolute',
-                top: '75%',
-                left: '30%',
-                transform: 'translate(-50%, -50%) scale(1.5)',
-              },
-            },
+          alt={user?.fullName}
+          sx={{
+            width: { xs: 40, md: 45, xl: 60 },
+            height: { xs: 40, md: 45, xl: 60 },
+            bgcolor: 'primary.main',
           }}
-          sx={{ width: { xs: 40, md: 45, xl: 60 }, height: { xs: 40, md: 45, xl: 60 } }}
-        />
+        >
+          {initials(user?.fullName)}
+        </Avatar>
       </IconButton>
       {/* Profile Menu Dropdown*/}
       <Menu
@@ -75,13 +82,15 @@ const ProfileDropdown = () => {
             User Profile
           </Typography>
           <Stack direction="row" py={2.5} spacing={1.5} alignItems="center">
-            <Avatar src={ProfileImage} alt="Profile Image" sx={{ width: 65, height: 65 }} />
+            <Avatar alt={user?.fullName} sx={{ width: 65, height: 65, bgcolor: 'primary.main' }}>
+              {initials(user?.fullName)}
+            </Avatar>
             <Box>
               <Typography variant="subtitle2" color="text.primary" fontWeight={600}>
-                Charlene Reed
+                {user?.fullName}
               </Typography>
               <Typography variant="caption" color="textSecondary">
-                Designer
+                {user?.role}
               </Typography>
               <Typography
                 variant="subtitle2"
@@ -91,7 +100,7 @@ const ProfileDropdown = () => {
                 gap={0.5}
               >
                 <IconifyIcon icon="majesticons:mail-line" />
-                info@dashbank.com
+                {user?.email}
               </Typography>
             </Box>
           </Stack>
@@ -148,7 +157,7 @@ const ProfileDropdown = () => {
             </Box>
           ))}
           <Box mt={1.25}>
-            <Button onClick={handleClose} variant="outlined" color="error" fullWidth>
+            <Button onClick={handleLogout} variant="outlined" color="error" fullWidth>
               Logout
             </Button>
           </Box>
