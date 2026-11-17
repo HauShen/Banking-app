@@ -14,8 +14,6 @@ const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'))
 
 const LoginPage = lazy(() => import('pages/authentication/login'));
 const SignUpPage = lazy(() => import('pages/authentication/signup'));
-const ForgetPasswordPage = lazy(() => import('pages/authentication/forget-password'));
-const ResetPasswordPage = lazy(() => import('pages/authentication/reset-password'));
 
 const NotFoundPage = lazy(() => import('pages/not-found'));
 /* -------------------------------------------------------------------------- */
@@ -68,14 +66,6 @@ export const routes = [
           {
             path: paths.signup,
             element: <SignUpPage />,
-          },
-          {
-            path: paths.forgetPassword,
-            element: <ForgetPasswordPage />,
-          },
-          {
-            path: paths.resetPassword,
-            element: <ResetPasswordPage />,
           },
         ],
       },

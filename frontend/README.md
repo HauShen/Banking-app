@@ -1,39 +1,37 @@
-## Bankdash [(Free version)](https://themewagon.github.io/bankdash/)
+# Banking App — frontend
 
-![license](https://img.shields.io/badge/license-MIT-blue.svg)
+React frontend for the [Banking App](../README.md) Spring Boot API.
 
-> Free React Admin Dashboard made with Material-UI components and React.
+**Stack:** React 18, TypeScript, Vite, MUI 5, React Router 6.
 
-![preview](public/preview.png)
+## Run locally
 
-## Demo
+Requires Node.js 18+ and the backend running on `http://localhost:8080` (see the root README).
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/themewagon/bankdash)
+```bash
+npm install
+npm run dev      # http://localhost:5173
+```
 
-- [Dashboard Page](https://themewagon.github.io/bankdash/)
-- [Login Page](https://themewagon.github.io/bankdash/authentication/login)
-- [Register Page](https://themewagon.github.io/bankdash/authentication/sign-up)
-- [Forgot Password](https://themewagon.github.io/bankdash/authentication/forget-password)
-- [Not Found Page](https://themewagon.github.io/bankdash/error/404)
+Other scripts: `npm run build`, `npm run lint`, `npm run format`, `npm run preview`.
 
-## Quick start
+## Configuration
 
-- [Download from Github](https://github.com/themewagon/bankdash/archive/refs/heads/main.zip) or clone the repo : `git clone https://github.com/themewagon/bankdash.git`
-- Recommended `Node.js v18.x`.
-- **Install:** `npm install`
-- **Start:** `npm run dev`
-- **Build:** `npm run build`
+Copy `.env.example` to `.env.local` to override:
 
-## License
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_API_BASE_URL` | *(empty)* | API origin. Empty = same origin (`/api`), via the Vite dev proxy or a reverse proxy in production. |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8080` | Where the Vite dev server forwards `/api`. |
 
-Distributed under the MIT License. See [LICENSE](https://github.com/minimal-ui-kit/minimal.free/blob/main/LICENSE.md) for more information.
+## Authentication
 
-<a name="readme-top">
-<div align="center">
-<a align="center" href="https://github.com/themewagon/Argon-Dashboard-2/graphs/contributors">
-<img src="https://contrib.rocks/image?repo=themewagon/Argon-Dashboard-2" /><br />
-</a></a></div>
+- The access token (15 min) is kept **in memory only**, never in `localStorage`.
+- The refresh token is an **httpOnly, SameSite=Strict cookie** scoped to `/api/auth`; it restores the session after a
+  reload and is rotated on every refresh.
+- `src/api/client.ts` adds the Bearer token, and on a 401 refreshes once and retries. Parallel requests share one
+  refresh, because the backend rotates the refresh token on every use.
 
-## Contact us
+## Credits
 
-Email: support@themewagon.com
+UI based on [BankDash](https://github.com/themewagon/bankdash) by ThemeWagon (MIT License).
