@@ -3,9 +3,9 @@ import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { server } from './server';
 
-// findBy*/waitFor wait up to 5 s instead of 1 s: the first test that renders MUI's DataGrid spends
-// ~2.5 s loading it, and CI runners are slower than a laptop.
-configure({ asyncUtilTimeout: 5000 });
+// findBy*/waitFor wait up to 10 s instead of 1 s: the first DataGrid render in a test file takes
+// ~2.5 s on a quiet machine and over 7 s when many test files run in parallel (as on CI runners).
+configure({ asyncUtilTimeout: 10000 });
 
 // Icons load their SVG data from the Iconify API at runtime; tests stay offline.
 vi.mock('components/base/IconifyIcon', () => ({ default: () => null }));

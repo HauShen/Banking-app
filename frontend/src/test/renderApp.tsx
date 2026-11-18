@@ -50,7 +50,7 @@ export const renderApp = (
   );
 
 /** A valid refresh cookie: the app starts signed in as `user`. */
-export const mockSession = (user: Record<string, unknown>) =>
+export const mockSession = (user: object) =>
   server.use(
     http.post(`${API}/api/auth/refresh`, () =>
       HttpResponse.json({ accessToken: 'session-token', tokenType: 'Bearer', expiresIn: 900 }),

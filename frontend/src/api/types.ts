@@ -85,3 +85,11 @@ export interface Page<T> {
   number: number;
   size: number;
 }
+
+/** PageResult.java (the admin user list; not Spring's Page). */
+export interface PageResult<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+}

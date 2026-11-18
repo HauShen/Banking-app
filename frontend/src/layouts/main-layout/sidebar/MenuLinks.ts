@@ -15,7 +15,7 @@ export enum linkEnum {
   Rates = 'exchange rates',
   Accounts = 'accounts',
   Profile = 'profile',
-  Admin = 'admin',
+  Users = 'users',
 }
 
 export interface MenuLinkType {
@@ -72,10 +72,10 @@ export const menuLinks: MenuLinkType[] = [
   },
   {
     id: 5,
-    title: linkEnum.Admin,
-    link: '/admin',
+    title: linkEnum.Users,
+    link: '/admin/users',
     icon: AdminIcon,
-    available: false, // admin pages come in phase F3
+    available: true,
     roles: ['ADMIN'],
   },
 ];

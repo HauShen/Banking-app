@@ -7,6 +7,12 @@ export const queryKeys = {
     all: ['accounts'] as const,
     summary: () => ['accounts', 'summary'] as const,
   },
+  admin: {
+    users: {
+      all: ['admin', 'users'] as const,
+      list: (params: object) => ['admin', 'users', 'list', params] as const,
+    },
+  },
   fx: {
     rates: () => ['fx', 'rates'] as const,
     quote: (currency: string, amount: string, direction: string) =>

@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import GuestOnly from './GuestOnly';
 import paths, { rootPaths } from './path';
 import RequireAuth from './RequireAuth';
+import RequireRole from './RequireRole';
 
 /* ---------------- Lazy loads various components ------------------------- */
 const App = lazy(() => import('App'));
@@ -13,6 +14,7 @@ const TransactionsPage = lazy(() => import('pages/transactions'));
 const TransferPage = lazy(() => import('pages/transfer'));
 const RatesPage = lazy(() => import('pages/rates'));
 const ProfilePage = lazy(() => import('pages/profile'));
+const AdminUsersPage = lazy(() => import('pages/admin/users'));
 const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
@@ -64,6 +66,14 @@ export const routes = [
           {
             path: paths.profile,
             element: <ProfilePage />,
+          },
+          {
+            path: paths.adminUsers,
+            element: (
+              <RequireRole role="ADMIN">
+                <AdminUsersPage />
+              </RequireRole>
+            ),
           },
         ],
       },
