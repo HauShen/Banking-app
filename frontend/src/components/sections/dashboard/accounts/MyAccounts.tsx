@@ -13,6 +13,8 @@ interface MyAccountsProps {
   onRetry: () => void;
   selectedAccountNumber: string | undefined;
   onSelect: (accountNumber: string) => void;
+  /** Opens the cash-deposit dialog for the selected account. */
+  onTopUp: () => void;
 }
 
 const Heading = ({ summary }: { summary?: AccountSummary }) => (
@@ -67,6 +69,7 @@ const MyAccounts = ({
   onRetry,
   selectedAccountNumber,
   onSelect,
+  onTopUp,
 }: MyAccountsProps) => {
   const { user } = useAuth();
 
@@ -109,6 +112,28 @@ const MyAccounts = ({
         </Stack>
       </SimpleBar>
     );
+    const selected = summary.accounts.find((a) => a.accountNumber === selectedAccountNumber);
+    if (selected) {
+      body = (
+        <>
+          {body}
+          <Stack direction="row" alignItems="center" gap={2} sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={onTopUp}
+              disabled={selected.accountStatus !== 'ACTIVE'}
+            >
+              Cash deposit
+            </Button>
+            {selected.accountStatus !== 'ACTIVE' && (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Locked accounts can't receive deposits.
+              </Typography>
+            )}
+          </Stack>
+        </>
+      );
+    }
   }
 
   return (

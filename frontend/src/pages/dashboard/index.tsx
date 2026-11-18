@@ -1,13 +1,18 @@
-import { Grid } from '@mui/material';
+import { Alert, Grid, Snackbar } from '@mui/material';
 import { useAccountSummary } from 'api/accounts';
 import MyAccounts from 'components/sections/dashboard/accounts/MyAccounts';
+import TopUpDialog from 'components/sections/dashboard/accounts/TopUpDialog';
 import RecentTransactions from 'components/sections/dashboard/transactions/RecentTransactions';
 import QuickTransfer from 'components/sections/dashboard/transfer/QuickTransfer';
+import { formatMoney } from 'lib/money';
+import { formatAccountNumber } from 'lib/transactions';
 import { useState } from 'react';
 
 const Dashboard = () => {
   const { data: summary, isLoading, error, refetch } = useAccountSummary();
   const [chosenAccountNumber, setChosenAccountNumber] = useState<string>();
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const [deposited, setDeposited] = useState<string>();
 
   // The chosen card, or the first account until the user picks one (or if the chosen one disappeared).
   const accounts = summary?.accounts ?? [];
@@ -24,6 +29,7 @@ const Dashboard = () => {
           onRetry={() => void refetch()}
           selectedAccountNumber={selected?.accountNumber}
           onSelect={setChosenAccountNumber}
+          onTopUp={() => setTopUpOpen(true)}
         />
       </Grid>
       {selected && (
@@ -36,6 +42,30 @@ const Dashboard = () => {
           <QuickTransfer key={selected.accountNumber} account={selected} />
         </Grid>
       )}
+      {selected && (
+        <TopUpDialog
+          key={selected.accountNumber}
+          account={selected}
+          open={topUpOpen}
+          onClose={() => setTopUpOpen(false)}
+          onDeposited={(amount, account) =>
+            setDeposited(
+              `${formatMoney(amount)} deposited into ${formatAccountNumber(account.accountNumber)}. ` +
+                `New balance: ${formatMoney(account.balance)}.`,
+            )
+          }
+        />
+      )}
+      <Snackbar
+        open={Boolean(deposited)}
+        autoHideDuration={6000}
+        onClose={() => setDeposited(undefined)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setDeposited(undefined)}>
+          {deposited}
+        </Alert>
+      </Snackbar>
     </Grid>
   );
 };

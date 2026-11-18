@@ -138,9 +138,9 @@ describe('dashboard', () => {
 
     const lunch = await screen.findByText('Lunch');
     expect(text(lunch.closest('li') as HTMLElement)).toContain('−RM 20.00');
-    expect(text(screen.getByText('Cash deposit').closest('li') as HTMLElement)).toContain(
-      '+RM 100.00',
-    );
+    expect(
+      text(screen.getByText('Cash deposit', { selector: 'li *' }).closest('li') as HTMLElement),
+    ).toContain('+RM 100.00');
     expect(requested[0]).toBe('1111111111?page=0&size=5');
 
     await userEvent.click(screen.getByRole('button', { name: /current account 2222222222/i }));
