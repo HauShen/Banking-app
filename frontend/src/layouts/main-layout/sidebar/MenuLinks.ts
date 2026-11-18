@@ -14,7 +14,7 @@ export enum linkEnum {
   Transactions = 'transactions',
   Rates = 'exchange rates',
   Accounts = 'accounts',
-  Setting = 'Setting',
+  Profile = 'profile',
   Admin = 'admin',
 }
 
@@ -65,10 +65,10 @@ export const menuLinks: MenuLinkType[] = [
   },
   {
     id: 4,
-    title: linkEnum.Setting,
-    link: '#!',
+    title: linkEnum.Profile,
+    link: '/profile',
     icon: SettingsIcon,
-    available: false,
+    available: true,
   },
   {
     id: 5,

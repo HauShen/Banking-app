@@ -13,6 +13,7 @@ const signedInAs = (role: Role) => {
     user: { username: 'someone', role } as UserProfile,
     login: vi.fn(),
     register: vi.fn(),
+    updateProfile: vi.fn(),
     logout: vi.fn(),
   });
 };

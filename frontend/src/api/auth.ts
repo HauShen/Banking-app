@@ -43,6 +43,15 @@ export const logout = async (): Promise<void> => {
 
 export const getCurrentUser = (): Promise<UserProfile> => apiFetch<UserProfile>('/api/users/me');
 
+export interface ProfileUpdate {
+  fullName: string;
+  email: string;
+}
+
+/** PUT /api/users/me: the signed-in user's own name and email (the username can't be changed). */
+export const updateMyProfile = (update: ProfileUpdate): Promise<UserProfile> =>
+  apiFetch<UserProfile>('/api/users/me', { method: 'PUT', body: update });
+
 let restoring: Promise<UserProfile | null> | null = null;
 
 /**

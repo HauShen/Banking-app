@@ -13,6 +13,7 @@ const paths = {
   transactions: `${rootPaths.pagesRoot}transactions`,
   transfer: `${rootPaths.pagesRoot}transfer`,
   rates: `${rootPaths.pagesRoot}rates`,
+  profile: `${rootPaths.pagesRoot}profile`,
   accounts: `${rootPaths.pagesRoot}accounts`,
   login: `${rootPaths.authRoot}/login`,
   signup: `${rootPaths.authRoot}/sign-up`,

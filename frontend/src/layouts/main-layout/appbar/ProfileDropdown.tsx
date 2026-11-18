@@ -12,12 +12,13 @@ import {
 import IconifyIcon from 'components/base/IconifyIcon';
 import { useAuth } from 'providers/AuthProvider';
 import { MouseEvent, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { Fragment } from 'react/jsx-runtime';
 
 /* ------------------------Profile dropdown Data --------------------------- */
 const profileData = [
   {
-    href: '#!',
+    href: '/profile',
     title: 'My Profile',
     subtitle: 'Account Settings',
     icon: 'fa:user-circle-o',
@@ -107,7 +108,7 @@ const ProfileDropdown = () => {
           <Divider />
           {profileData.map((profileItem) => (
             <Box key={profileItem.title} sx={{ py: 1.5, px: 0 }}>
-              <Link href={profileItem.href}>
+              <Link component={RouterLink} to={profileItem.href} onClick={handleClose}>
                 <Stack direction="row" spacing={1.5}>
                   <Stack
                     direction="row"

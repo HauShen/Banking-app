@@ -12,6 +12,7 @@ const Dashboard = lazy(() => import('pages/dashboard'));
 const TransactionsPage = lazy(() => import('pages/transactions'));
 const TransferPage = lazy(() => import('pages/transfer'));
 const RatesPage = lazy(() => import('pages/rates'));
+const ProfilePage = lazy(() => import('pages/profile'));
 const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
@@ -59,6 +60,10 @@ export const routes = [
           {
             path: paths.rates,
             element: <RatesPage />,
+          },
+          {
+            path: paths.profile,
+            element: <ProfilePage />,
           },
         ],
       },

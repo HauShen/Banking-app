@@ -18,7 +18,8 @@ export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 30;
 export const FULL_NAME_MAX = 100;
 export const PASSWORD_MIN = 8;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Same regex as UserProfile.java. */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const validateSignup = (values: SignupValues): SignupErrors => {
   const errors: SignupErrors = {};

@@ -11,6 +11,8 @@ interface AuthContextValue {
   user: UserProfile | null;
   login: (username: string, password: string) => Promise<void>;
   register: (input: authApi.RegisterInput) => Promise<void>;
+  /** Saves the user's name and email; everything that shows the user updates at once. */
+  updateProfile: (update: authApi.ProfileUpdate) => Promise<UserProfile>;
   logout: () => Promise<void>;
 }
 
@@ -66,6 +68,11 @@ const AuthProvider = ({ children }: PropsWithChildren) => {
       register: async (input) => {
         await authApi.register(input);
         signedIn(await authApi.getCurrentUser());
+      },
+      updateProfile: async (update) => {
+        const updated = await authApi.updateMyProfile(update);
+        setUser(updated);
+        return updated;
       },
       logout: async () => {
         try {
