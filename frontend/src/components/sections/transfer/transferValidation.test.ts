@@ -24,6 +24,7 @@ const values = (overrides: Partial<TransferValues> = {}): TransferValues => ({
   fromAccountNumber: '1111111111',
   toAccountNumber: '3333 333 333',
   amount: '50',
+  currency: 'MYR',
   description: '  Rent  ',
   ...overrides,
 });
@@ -36,6 +37,7 @@ describe('validateTransfer', () => {
         fromAccountNumber: '1111111111',
         toAccountNumber: '3333333333',
         amount: '50.00',
+        currency: 'MYR',
         description: 'Rent',
       },
     });
@@ -110,5 +112,47 @@ describe('transferProblem', () => {
   it('falls back to the general error message', () => {
     expect(transferProblem(new NetworkError()).message).toMatch(/can't reach the server/i);
     expect(transferProblem(new ApiError(500, 'boom')).field).toBeUndefined();
+  });
+});
+
+describe('foreign currency', () => {
+  it('uses the decimals of the chosen currency', () => {
+    expect(
+      validateTransfer(values({ currency: 'USD', amount: '100.5' }), [active]).transfer,
+    ).toMatchObject({
+      currency: 'USD',
+      amount: '100.50',
+    });
+    expect(
+      validateTransfer(values({ currency: 'JPY', amount: '1000' }), [active]).transfer?.amount,
+    ).toBe('1000');
+    expect(
+      validateTransfer(values({ currency: 'JPY', amount: '10.5' }), [active]).errors.amount,
+    ).toBe('Enter a whole number of JPY, e.g. 1000.');
+  });
+
+  it('asks for a new rate when the locked quote has expired or was used', () => {
+    expect(transferProblem(new ApiError(400, 'The quote has expired'))).toMatchObject({
+      quoteExpired: true,
+    });
+    expect(transferProblem(new ApiError(400, 'The quote has already been used'))).toMatchObject({
+      quoteExpired: true,
+    });
+    expect(transferProblem(new ApiError(400, 'Quote not found'))).toMatchObject({
+      quoteExpired: true,
+    });
+  });
+
+  it('puts currency-amount problems on the amount field', () => {
+    expect(transferProblem(new ApiError(400, 'JPY amounts cannot have decimal places'))).toEqual({
+      field: 'amount',
+      message: 'JPY amounts cannot have decimal places.',
+    });
+    expect(
+      transferProblem(new ApiError(400, 'The converted amount is less than RM 0.01')).field,
+    ).toBe('amount');
+    expect(transferProblem(new ApiError(400, 'Currency XYZ is not supported')).field).toBe(
+      'currency',
+    );
   });
 });

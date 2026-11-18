@@ -4,6 +4,7 @@ import type { Account } from 'api/types';
 import { clearAccessToken } from 'api/tokenStore';
 import { http, HttpResponse } from 'msw';
 import paths from 'routes/path';
+import { mockQuotes, mockRates } from 'test/fx';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -87,6 +88,8 @@ const plain = (text: string | null | undefined) => (text ?? '').replace(/\s/g, '
 beforeEach(() => {
   clearAccessToken();
   mockSession(customer);
+  mockRates();
+  mockQuotes();
 });
 
 describe('transfer page', () => {

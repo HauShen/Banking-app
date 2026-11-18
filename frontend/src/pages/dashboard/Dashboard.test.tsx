@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { Account, Transaction } from 'api/types';
 import { clearAccessToken } from 'api/tokenStore';
 import { http, HttpResponse } from 'msw';
+import { mockRates } from 'test/fx';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -190,6 +191,7 @@ describe('dashboard', () => {
   it('starts a transfer from the quick-transfer card with the details filled in', async () => {
     mockSession(customer);
     mockBank([savings]);
+    mockRates();
     renderApp('/', {}, <Dashboard />, { [paths.transfer]: <TransferPage /> });
 
     const user = userEvent.setup();

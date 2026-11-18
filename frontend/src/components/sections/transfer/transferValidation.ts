@@ -1,12 +1,15 @@
 import { ApiError } from 'api/client';
 import type { Account } from 'api/types';
 import { errorMessage, fieldErrorsOf } from 'lib/errors';
-import { normalizeAmountInput } from 'lib/money';
+import { currencyDecimals, DEFAULT_CURRENCY, normalizeAmountInput } from 'lib/money';
 
 export interface TransferValues {
   fromAccountNumber: string;
   toAccountNumber: string;
+  /** In `currency`. */
   amount: string;
+  /** MYR, or a foreign currency the bank offers (the MYR equivalent leaves the account). */
+  currency: string;
   description: string;
 }
 
@@ -18,8 +21,12 @@ export interface ValidTransfer {
   fromAccountNumber: string;
   toAccountNumber: string;
   amount: string;
+  currency: string;
   description: string;
 }
+
+export const isForeign = (transfer: Pick<ValidTransfer, 'currency'>): boolean =>
+  transfer.currency !== DEFAULT_CURRENCY;
 
 /** Account.MINIMUM_BALANCE in the backend. */
 export const MINIMUM_BALANCE_TEXT = 'RM 20.00';
@@ -35,7 +42,8 @@ export const validateTransfer = (
   const errors: TransferErrors = {};
   const from = ownAccounts.find((a) => a.accountNumber === values.fromAccountNumber);
   const to = values.toAccountNumber.replace(/\s/g, '');
-  const amount = normalizeAmountInput(values.amount);
+  const currency = values.currency || DEFAULT_CURRENCY;
+  const amount = normalizeAmountInput(values.amount, currency);
   const description = values.description.trim();
 
   if (!from) errors.fromAccountNumber = 'Choose the account to send from.';
@@ -46,7 +54,12 @@ export const validateTransfer = (
     errors.toAccountNumber = 'Choose an account other than the one you send from.';
   }
 
-  if (!amount) errors.amount = 'Enter an amount, e.g. 50 or 12.50.';
+  if (!amount) {
+    errors.amount =
+      currencyDecimals(currency) === 0
+        ? `Enter a whole number of ${currency}, e.g. 1000.`
+        : 'Enter an amount, e.g. 50 or 12.50.';
+  }
 
   if (!description) errors.description = 'Add a short description, e.g. "Rent".';
   else if (description.length > DESCRIPTION_MAX) {
@@ -60,6 +73,7 @@ export const validateTransfer = (
       fromAccountNumber: values.fromAccountNumber,
       toAccountNumber: to,
       amount,
+      currency,
       description,
     },
   };
@@ -71,12 +85,20 @@ export interface TransferProblem {
   message: string;
   /** The key was used for a different transfer: the next attempt needs a new key. */
   newKeyNeeded?: boolean;
+  /** The locked rate can't be used any more (expired or used): get a new one. */
+  quoteExpired?: boolean;
 }
 
 /** Turns a transfer error from the backend into words for the customer, on the field it concerns. */
 export const transferProblem = (error: unknown): TransferProblem => {
   const fields = fieldErrorsOf(error);
-  for (const field of ['toAccountNumber', 'amount', 'description', 'fromAccountNumber'] as const) {
+  for (const field of [
+    'toAccountNumber',
+    'amount',
+    'currency',
+    'description',
+    'fromAccountNumber',
+  ] as const) {
     if (fields[field]) return { field, message: fields[field] };
   }
   if (error instanceof ApiError) {
@@ -101,6 +123,30 @@ export const transferProblem = (error: unknown): TransferProblem => {
     }
     if (/locked account/i.test(message)) {
       return { message: "Your account is locked, so you can't send money from it." };
+    }
+    if (/^the quote has (expired|already been used)/i.test(message)) {
+      return {
+        message: 'The locked rate has expired. Get a new rate to continue.',
+        quoteExpired: true,
+      };
+    }
+    if (/^quote not found|different currency or amount/i.test(message)) {
+      return {
+        message: 'The locked rate no longer matches this transfer. Get a new rate.',
+        quoteExpired: true,
+      };
+    }
+    if (/cannot have decimal places|at most \d+ decimal places/i.test(message)) {
+      return { field: 'amount', message: `${message}.` };
+    }
+    if (/less than RM 0\.01/i.test(message)) {
+      return {
+        field: 'amount',
+        message: 'This amount is worth less than RM 0.01. Enter a larger amount.',
+      };
+    }
+    if (/is not supported$|MYR needs no conversion/i.test(message)) {
+      return { field: 'currency', message: 'This currency is not offered.' };
     }
     if (/idempotencyKey/i.test(message)) {
       return {

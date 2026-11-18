@@ -7,6 +7,11 @@ export const queryKeys = {
     all: ['accounts'] as const,
     summary: () => ['accounts', 'summary'] as const,
   },
+  fx: {
+    rates: () => ['fx', 'rates'] as const,
+    quote: (currency: string, amount: string, direction: string) =>
+      ['fx', 'quote', currency, amount, direction] as const,
+  },
   transactions: {
     all: ['transactions'] as const,
     byAccount: (accountNumber: string, page: number, size: number) =>

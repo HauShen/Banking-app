@@ -2,7 +2,7 @@ import { Alert, Box, Button, Divider, Stack, Typography } from '@mui/material';
 import type { TransferResult } from 'api/transfers';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { formatDateTime } from 'lib/dates';
-import { formatMoney } from 'lib/money';
+import { formatMoney, formatRate } from 'lib/money';
 import { formatAccountNumber } from 'lib/transactions';
 import { ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
@@ -26,12 +26,17 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 
 const TransferReceipt = ({ result, transfer, onNewTransfer }: TransferReceiptProps) => {
   const duplicate = result.message.toLowerCase().startsWith('duplicate');
+  const foreign = result.originalCurrency !== null && result.originalAmount !== null;
+  const sent = foreign
+    ? formatMoney(result.originalAmount, result.originalCurrency ?? undefined)
+    : formatMoney(result.amount);
+
   return (
     <Stack gap={3}>
       <Stack alignItems="center" gap={1} sx={{ color: 'success.main', textAlign: 'center' }}>
         <IconifyIcon icon="mdi:check-circle" width={56} />
         <Typography variant="h4" sx={{ color: 'text.primary' }}>
-          {formatMoney(result.amount)} sent
+          {sent} sent
         </Typography>
         <Typography sx={{ color: 'text.secondary' }}>
           to {formatAccountNumber(transfer.toAccountNumber)}
@@ -45,6 +50,16 @@ const TransferReceipt = ({ result, transfer, onNewTransfer }: TransferReceiptPro
       )}
       <Box>
         <Row label="Reference">{result.transactionReference}</Row>
+        {foreign && (
+          <>
+            <Divider />
+            <Row label="Paid from your account">{formatMoney(result.amount)}</Row>
+            <Divider />
+            <Row label="Exchange rate">
+              1 {result.originalCurrency} = RM {formatRate(result.exchangeRate)}
+            </Row>
+          </>
+        )}
         <Divider />
         <Row label="From">{formatAccountNumber(transfer.fromAccountNumber)}</Row>
         <Divider />

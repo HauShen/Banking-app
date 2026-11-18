@@ -11,6 +11,7 @@ const AuthLayout = lazy(() => import('layouts/auth-layout'));
 const Dashboard = lazy(() => import('pages/dashboard'));
 const TransactionsPage = lazy(() => import('pages/transactions'));
 const TransferPage = lazy(() => import('pages/transfer'));
+const RatesPage = lazy(() => import('pages/rates'));
 const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
@@ -54,6 +55,10 @@ export const routes = [
           {
             path: paths.transfer,
             element: <TransferPage />,
+          },
+          {
+            path: paths.rates,
+            element: <RatesPage />,
           },
         ],
       },

@@ -1,6 +1,7 @@
 import { SvgIconProps } from '@mui/material';
 import type { Role } from 'api/types';
 import AdminIcon from 'components/icons/menu-icons/AdminIcon';
+import ExchangeIcon from 'components/icons/menu-icons/ExchangeIcon';
 import HomeIcon from 'components/icons/menu-icons/HomeIcon';
 import SendIcon from 'components/icons/menu-icons/SendIcon';
 import SettingsIcon from 'components/icons/menu-icons/SettingsIcon';
@@ -11,6 +12,7 @@ export enum linkEnum {
   Dashboard = 'dashboard',
   Transfer = 'transfer',
   Transactions = 'transactions',
+  Rates = 'exchange rates',
   Accounts = 'accounts',
   Setting = 'Setting',
   Admin = 'admin',
@@ -45,6 +47,13 @@ export const menuLinks: MenuLinkType[] = [
     title: linkEnum.Transactions,
     link: '/transactions',
     icon: TransferIcon,
+    available: true,
+  },
+  {
+    id: 7,
+    title: linkEnum.Rates,
+    link: '/rates',
+    icon: ExchangeIcon,
     available: true,
   },
   {
