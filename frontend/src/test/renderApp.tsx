@@ -6,12 +6,15 @@ import { http, HttpResponse } from 'msw';
 import AuthProvider from 'providers/AuthProvider';
 import BreakpointsProvider from 'providers/useBreakpoints';
 import { ReactElement } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, MemoryRouterProps, Route, Routes } from 'react-router-dom';
 import GuestOnly from 'routes/GuestOnly';
 import paths from 'routes/path';
 import RequireAuth from 'routes/RequireAuth';
 import { theme } from 'theme/theme';
 import { API, server } from './server';
+
+/** A URL, or { pathname, state } to start with router state (e.g. a pre-filled form). */
+type StartAt = NonNullable<MemoryRouterProps['initialEntries']>[number];
 
 /**
  * Renders the real auth setup (theme, query client, AuthProvider, RequireAuth, GuestOnly) with
@@ -19,7 +22,7 @@ import { API, server } from './server';
  * `guestPages` behind GuestOnly.
  */
 export const renderApp = (
-  startAt: string,
+  startAt: StartAt,
   guestPages: Record<string, ReactElement> = {},
   home: ReactElement = <p>Dashboard</p>,
   signedInPages: Record<string, ReactElement> = {},

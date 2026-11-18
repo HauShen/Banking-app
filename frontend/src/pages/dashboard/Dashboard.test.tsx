@@ -6,6 +6,8 @@ import { http, HttpResponse } from 'msw';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
+import TransferPage from 'pages/transfer';
+import paths from 'routes/path';
 import Dashboard from '.';
 
 const customer = {
@@ -183,5 +185,20 @@ describe('dashboard', () => {
     expect(
       await screen.findByRole('button', { name: /savings account 1111111111/i }),
     ).toBeInTheDocument();
+  });
+
+  it('starts a transfer from the quick-transfer card with the details filled in', async () => {
+    mockSession(customer);
+    mockBank([savings]);
+    renderApp('/', {}, <Dashboard />, { [paths.transfer]: <TransferPage /> });
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText(/to account number/i), '3333333333');
+    await user.type(screen.getByLabelText(/^amount/i), '42');
+    await user.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(await screen.findByText('Send money')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('3333333333')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('42')).toBeInTheDocument();
   });
 });

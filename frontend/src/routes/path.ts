@@ -11,6 +11,7 @@ export const rootPaths = {
 const paths = {
   default: `${rootPaths.root}`,
   transactions: `${rootPaths.pagesRoot}transactions`,
+  transfer: `${rootPaths.pagesRoot}transfer`,
   accounts: `${rootPaths.pagesRoot}accounts`,
   login: `${rootPaths.authRoot}/login`,
   signup: `${rootPaths.authRoot}/sign-up`,

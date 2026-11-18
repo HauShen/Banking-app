@@ -2,12 +2,14 @@ import { SvgIconProps } from '@mui/material';
 import type { Role } from 'api/types';
 import AdminIcon from 'components/icons/menu-icons/AdminIcon';
 import HomeIcon from 'components/icons/menu-icons/HomeIcon';
+import SendIcon from 'components/icons/menu-icons/SendIcon';
 import SettingsIcon from 'components/icons/menu-icons/SettingsIcon';
 import TransferIcon from 'components/icons/menu-icons/TransferIcon';
 import UserIcon from 'components/icons/menu-icons/UserIcon';
 
 export enum linkEnum {
   Dashboard = 'dashboard',
+  Transfer = 'transfer',
   Transactions = 'transactions',
   Accounts = 'accounts',
   Setting = 'Setting',
@@ -29,6 +31,13 @@ export const menuLinks: MenuLinkType[] = [
     title: linkEnum.Dashboard,
     link: '/',
     icon: HomeIcon,
+    available: true,
+  },
+  {
+    id: 6,
+    title: linkEnum.Transfer,
+    link: '/transfer',
+    icon: SendIcon,
     available: true,
   },
   {

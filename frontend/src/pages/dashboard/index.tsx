@@ -2,6 +2,7 @@ import { Grid } from '@mui/material';
 import { useAccountSummary } from 'api/accounts';
 import MyAccounts from 'components/sections/dashboard/accounts/MyAccounts';
 import RecentTransactions from 'components/sections/dashboard/transactions/RecentTransactions';
+import QuickTransfer from 'components/sections/dashboard/transfer/QuickTransfer';
 import { useState } from 'react';
 
 const Dashboard = () => {
@@ -28,6 +29,11 @@ const Dashboard = () => {
       {selected && (
         <Grid item xs={12} xl={4} zIndex={1}>
           <RecentTransactions accountNumber={selected.accountNumber} />
+        </Grid>
+      )}
+      {selected && (
+        <Grid item xs={12} xl={8} zIndex={1}>
+          <QuickTransfer key={selected.accountNumber} account={selected} />
         </Grid>
       )}
     </Grid>
