@@ -16,6 +16,8 @@ import ConfirmDialog from 'components/common/ConfirmDialog';
 import { formatDateTime } from 'lib/dates';
 import { errorMessage } from 'lib/errors';
 import { ReactNode, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import paths from 'routes/path';
 import { ROLE_LABEL } from './UsersTable';
 
 interface UserDrawerProps {
@@ -102,6 +104,14 @@ const UserDrawer = ({ user, currentUserId, onClose, onChanged }: UserDrawerProps
           <Row label="Last updated">{formatDateTime(user.updatedAt)}</Row>
           <Row label="User ID">{user.id}</Row>
           <Divider sx={{ mb: 3 }} />
+          <Button
+            component={RouterLink}
+            to={`${paths.adminAccounts}?user=${encodeURIComponent(user.id)}`}
+            variant="contained"
+            sx={{ mb: 2 }}
+          >
+            Accounts of this user
+          </Button>
 
           {isSelf ? (
             <Alert severity="info">

@@ -15,6 +15,7 @@ const paths = {
   rates: `${rootPaths.pagesRoot}rates`,
   profile: `${rootPaths.pagesRoot}profile`,
   adminUsers: `${rootPaths.pagesRoot}admin/users`,
+  adminAccounts: `${rootPaths.pagesRoot}admin/accounts`,
   accounts: `${rootPaths.pagesRoot}accounts`,
   login: `${rootPaths.authRoot}/login`,
   signup: `${rootPaths.authRoot}/sign-up`,

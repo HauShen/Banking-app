@@ -8,6 +8,7 @@ import RequireRole from 'routes/RequireRole';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
+import AdminAccountsPage from 'pages/admin/accounts';
 import AdminUsersPage from '.';
 
 const person = (id: string, username: string, role: UserProfile['role']): UserProfile => ({
@@ -219,5 +220,25 @@ describe('admin users page', () => {
 
     expect(await screen.findByText('Dashboard')).toBeInTheDocument();
     expect(api.requests).toHaveLength(0);
+  });
+
+  it("opens the user's accounts from the user panel", async () => {
+    mockSession(devadmin);
+    mockAdminApi([devadmin, person('c1', 'hau', 'CUSTOMER')]);
+    server.use(
+      http.get(`${API}/api/admin/users/:id`, () =>
+        HttpResponse.json(person('c1', 'hau', 'CUSTOMER')),
+      ),
+      http.get(`${API}/api/accounts/get_all/:userId`, () => HttpResponse.json([])),
+    );
+    renderApp(paths.adminUsers, {}, <p>Dashboard</p>, {
+      [paths.adminUsers]: <AdminUsersPage />,
+      [paths.adminAccounts]: <AdminAccountsPage />,
+    });
+
+    const details = await openUser('hau');
+    await userEvent.click(within(details).getByRole('link', { name: /accounts of this user/i }));
+
+    expect(await screen.findByText('Accounts of Hau User (hau)')).toBeInTheDocument();
   });
 });

@@ -28,6 +28,17 @@ export const useUsers = (params: UserListParams) =>
     placeholderData: keepPreviousData,
   });
 
+/** GET /api/admin/users/{id}. */
+export const getUser = (id: string) =>
+  apiFetch<UserProfile>(`/api/admin/users/${encodeURIComponent(id)}`);
+
+export const useUser = (id: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.admin.user(id ?? ''),
+    queryFn: () => getUser(id as string),
+    enabled: Boolean(id),
+  });
+
 /** UserProfileRequestBody.java */
 export interface NewAdmin {
   username: string;

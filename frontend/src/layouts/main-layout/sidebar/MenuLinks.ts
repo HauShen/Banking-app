@@ -59,9 +59,10 @@ export const menuLinks: MenuLinkType[] = [
   {
     id: 3,
     title: linkEnum.Accounts,
-    link: '#!',
+    link: '/admin/accounts',
     icon: UserIcon,
-    available: false,
+    available: true,
+    roles: ['ADMIN'],
   },
   {
     id: 4,

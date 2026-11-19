@@ -8,6 +8,12 @@ export const queryKeys = {
     summary: () => ['accounts', 'summary'] as const,
   },
   admin: {
+    accounts: {
+      all: ['admin', 'accounts'] as const,
+      list: (filter: { status?: string; userId?: string }) =>
+        ['admin', 'accounts', 'list', filter] as const,
+    },
+    user: (id: string) => ['admin', 'users', 'one', id] as const,
     users: {
       all: ['admin', 'users'] as const,
       list: (params: object) => ['admin', 'users', 'list', params] as const,
