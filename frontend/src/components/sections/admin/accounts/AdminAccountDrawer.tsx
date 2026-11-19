@@ -9,6 +9,8 @@ import { formatMoney } from 'lib/money';
 import { formatAccountNumber } from 'lib/transactions';
 import { ReactNode, useState } from 'react';
 import { ACCOUNT_TYPE_LABEL } from './AdminAccountsTable';
+import RemittanceDialog from './RemittanceDialog';
+import type { RemittanceResult } from 'api/remittances';
 
 interface AdminAccountDrawerProps {
   account: Account | null;
@@ -16,6 +18,7 @@ interface AdminAccountDrawerProps {
   onClose: () => void;
   onChanged: (account: Account) => void;
   onDeleted: (account: Account) => void;
+  onRemittance: (result: RemittanceResult) => void;
 }
 
 const Row = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -34,9 +37,11 @@ const AdminAccountDrawer = ({
   onClose,
   onChanged,
   onDeleted,
+  onRemittance,
 }: AdminAccountDrawerProps) => {
   const [pending, setPending] = useState<'status' | 'delete'>();
   const [problem, setProblem] = useState<string | null>(null);
+  const [receiving, setReceiving] = useState(false);
   const changeStatus = useChangeAccountStatus();
   const deleteAccount = useDeleteAccount();
   const locked = account?.accountStatus === 'LOCKED';
@@ -102,6 +107,14 @@ const AdminAccountDrawer = ({
           <Row label="Opened">{formatDateTime(account.createdAt)}</Row>
           <Row label="Account ID">{account.accountId}</Row>
           <Divider sx={{ mb: 3 }} />
+          <Button
+            variant="contained"
+            onClick={() => setReceiving(true)}
+            disabled={locked}
+            sx={{ mb: 2 }}
+          >
+            Receive remittance
+          </Button>
           <Stack direction="row" gap={2} flexWrap="wrap">
             <Button variant="outlined" onClick={() => setPending('status')}>
               {locked ? 'Unlock account' : 'Lock account'}
@@ -112,9 +125,16 @@ const AdminAccountDrawer = ({
           </Stack>
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
             Only accounts without transactions can be deleted. Lock an account to stop all money
-            moving in or out.
+            moving in or out (locked accounts can't receive remittances).
           </Typography>
 
+          <RemittanceDialog
+            key={account.accountId}
+            account={account}
+            open={receiving}
+            onClose={() => setReceiving(false)}
+            onReceived={onRemittance}
+          />
           <ConfirmDialog
             open={pending === 'status'}
             title={locked ? 'Unlock account?' : 'Lock account?'}

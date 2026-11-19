@@ -133,6 +133,11 @@ const AdminAccountsPage = () => {
             }.`,
           )
         }
+        onRemittance={(result) =>
+          setNotice(
+            `${formatMoney(result.amount)} credited to ${formatAccountNumber(result.toAccountNumber)}.`,
+          )
+        }
         onDeleted={(account: Account) => {
           setSelectedId(undefined);
           setNotice(`Account ${formatAccountNumber(account.accountNumber)} deleted.`);
