@@ -9,6 +9,7 @@ import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import AdminAccountsPage from 'pages/admin/accounts';
+import { useAuth } from 'providers/AuthProvider';
 import AdminUsersPage from '.';
 
 const person = (id: string, username: string, role: UserProfile['role']): UserProfile => ({
@@ -240,5 +241,110 @@ describe('admin users page', () => {
     await userEvent.click(within(details).getByRole('link', { name: /accounts of this user/i }));
 
     expect(await screen.findByText('Accounts of Hau User (hau)')).toBeInTheDocument();
+  });
+
+  describe('editing name and email', () => {
+    /** PUT /api/admin/users/:id and PUT /api/users/me, recorded; `adminReply` can replace the admin answer. */
+    const mockEdits = (store: UserProfile[], adminReply?: () => Response) => {
+      const edits: string[] = [];
+      const bodies: unknown[] = [];
+      const save = (id: string, body: { fullName: string; email: string }) => {
+        const index = store.findIndex((u) => u.id === id);
+        store[index] = {
+          ...store[index],
+          ...body,
+          email: body.email.toLowerCase(),
+          updatedAt: '2026-11-19T15:00:00Z',
+        };
+        return store[index];
+      };
+      server.use(
+        http.put(`${API}/api/admin/users/:id`, async ({ params, request }) => {
+          const body = (await request.json()) as { fullName: string; email: string };
+          edits.push(`admin ${params.id}`);
+          bodies.push(body);
+          if (adminReply) return adminReply();
+          return HttpResponse.json(save(params.id as string, body));
+        }),
+        http.put(`${API}/api/users/me`, async ({ request }) => {
+          const body = (await request.json()) as { fullName: string; email: string };
+          edits.push('me');
+          bodies.push(body);
+          return HttpResponse.json(save(devadmin.id, body));
+        }),
+      );
+      return { edits, bodies };
+    };
+
+    const editDetails = async (details: HTMLElement, fullName: string, email?: string) => {
+      const user = userEvent.setup();
+      await user.click(within(details).getByRole('button', { name: /edit details/i }));
+      const dialog = await screen.findByRole('dialog', { name: /^edit /i });
+      const name = within(dialog).getByLabelText(/full name/i);
+      await user.clear(name);
+      await user.type(name, fullName);
+      if (email !== undefined) {
+        const field = within(dialog).getByLabelText(/email address/i);
+        await user.clear(field);
+        await user.type(field, email);
+      }
+      await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
+      return dialog;
+    };
+
+    it("saves another user's changes through the admin endpoint", async () => {
+      mockSession(devadmin);
+      const store = [devadmin, person('c1', 'hau', 'CUSTOMER')];
+      mockAdminApi(store);
+      const api = mockEdits(store);
+      renderUsers();
+
+      const details = await openUser('hau');
+      await editDetails(details, '  Hau Shen Tan ', 'Hau.Tan@Banking.local');
+
+      expect(await screen.findByText('Saved the changes to hau.')).toBeInTheDocument();
+      expect(api.edits).toEqual(['admin c1']);
+      expect(api.bodies).toEqual([{ fullName: 'Hau Shen Tan', email: 'Hau.Tan@Banking.local' }]);
+      expect(await within(details).findByText('hau.tan@banking.local')).toBeInTheDocument();
+    });
+
+    it('shows "already used" on the email field', async () => {
+      mockSession(devadmin);
+      const store = [devadmin, person('c1', 'hau', 'CUSTOMER')];
+      mockAdminApi(store);
+      mockEdits(store, () =>
+        HttpResponse.json({ status: 409, message: 'Email already exists' }, { status: 409 }),
+      );
+      renderUsers();
+
+      const details = await openUser('hau');
+      const dialog = await editDetails(details, 'Hau', 'taken@banking.local');
+
+      expect(
+        await within(dialog).findByText('This email is already used by another account.'),
+      ).toBeInTheDocument();
+    });
+
+    it('saves your own entry through /api/users/me, so the signed-in name updates too', async () => {
+      mockSession(devadmin);
+      const store = [devadmin];
+      mockAdminApi(store);
+      const api = mockEdits(store);
+      const SignedInAs = () => <p>Signed in as {useAuth().user?.fullName}</p>;
+      renderApp(paths.adminUsers, {}, <p>Dashboard</p>, {
+        [paths.adminUsers]: (
+          <>
+            <SignedInAs />
+            <AdminUsersPage />
+          </>
+        ),
+      });
+
+      const details = await openUser('devadmin');
+      await editDetails(details, 'Dev Admin Renamed');
+
+      expect(await screen.findByText('Signed in as Dev Admin Renamed')).toBeInTheDocument();
+      expect(api.edits).toEqual(['me']);
+    });
   });
 });

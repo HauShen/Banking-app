@@ -62,6 +62,24 @@ export const changeRole = ({ id, role }: { id: string; role: Role }) =>
 export const deleteUser = (id: string) =>
   apiFetch<void>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
+/**
+ * PUT /api/admin/users/{id}: another user's full name and email. The backend audits it as an edit by
+ * another user. (For your own entry use PUT /api/users/me, like the profile page.)
+ */
+export const updateUser = ({
+  id,
+  fullName,
+  email,
+}: {
+  id: string;
+  fullName: string;
+  email: string;
+}) =>
+  apiFetch<UserProfile>(`/api/admin/users/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: { fullName, email },
+  });
+
 /** Mutations that change the user list re-fetch every page of it afterwards. */
 const useUserMutation = <TArgs, TResult>(mutationFn: (args: TArgs) => Promise<TResult>) => {
   const queryClient = useQueryClient();
@@ -74,3 +92,4 @@ const useUserMutation = <TArgs, TResult>(mutationFn: (args: TArgs) => Promise<TR
 export const useCreateAdmin = () => useUserMutation(createAdmin);
 export const useChangeRole = () => useUserMutation(changeRole);
 export const useDeleteUser = () => useUserMutation(deleteUser);
+export const useUpdateUser = () => useUserMutation(updateUser);

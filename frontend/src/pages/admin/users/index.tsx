@@ -61,11 +61,9 @@ const AdminUsersPage = () => {
         user={selected}
         currentUserId={me?.id}
         onClose={() => setSelected(null)}
-        onChanged={(updated) => {
+        onChanged={(updated, message) => {
           setSelected(updated);
-          setNotice(
-            `${updated.username} is now ${updated.role === 'ADMIN' ? 'an administrator' : 'a customer'}.`,
-          );
+          setNotice(message);
         }}
       />
       <CreateAdminDialog

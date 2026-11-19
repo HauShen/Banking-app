@@ -18,14 +18,15 @@ import { errorMessage } from 'lib/errors';
 import { ReactNode, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import paths from 'routes/path';
+import EditUserDialog from './EditUserDialog';
 import { ROLE_LABEL } from './UsersTable';
 
 interface UserDrawerProps {
   user: UserProfile | null;
   currentUserId: string | undefined;
   onClose: () => void;
-  /** After a role change: the user as the backend returned it. */
-  onChanged: (user: UserProfile) => void;
+  /** After a role change or an edit: the user as the backend returned it, and what changed. */
+  onChanged: (user: UserProfile, message: string) => void;
 }
 
 type PendingAction = { kind: 'role'; role: Role } | { kind: 'delete' };
@@ -43,6 +44,7 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
 const UserDrawer = ({ user, currentUserId, onClose, onChanged }: UserDrawerProps) => {
   const [pending, setPending] = useState<PendingAction>();
   const [problem, setProblem] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const changeRole = useChangeRole();
   const deleteUser = useDeleteUser();
   const isSelf = user?.id === currentUserId;
@@ -62,7 +64,10 @@ const UserDrawer = ({ user, currentUserId, onClose, onChanged }: UserDrawerProps
         {
           onSuccess: (updated) => {
             setPending(undefined);
-            onChanged(updated);
+            onChanged(
+              updated,
+              `${updated.username} is now ${updated.role === 'ADMIN' ? 'an administrator' : 'a customer'}.`,
+            );
           },
           onError,
         },
@@ -112,6 +117,9 @@ const UserDrawer = ({ user, currentUserId, onClose, onChanged }: UserDrawerProps
           >
             Accounts of this user
           </Button>
+          <Button variant="outlined" onClick={() => setEditing(true)} sx={{ mb: 2, ml: 2 }}>
+            Edit details
+          </Button>
 
           {isSelf ? (
             <Alert severity="info">
@@ -135,6 +143,13 @@ const UserDrawer = ({ user, currentUserId, onClose, onChanged }: UserDrawerProps
             </Stack>
           )}
 
+          <EditUserDialog
+            key={`${user.id}-${user.updatedAt}`}
+            user={user}
+            open={editing}
+            onClose={() => setEditing(false)}
+            onSaved={(updated) => onChanged(updated, `Saved the changes to ${updated.username}.`)}
+          />
           <ConfirmDialog
             open={pending?.kind === 'role'}
             title={newRole === 'ADMIN' ? 'Make administrator?' : 'Remove admin rights?'}
