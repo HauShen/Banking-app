@@ -215,7 +215,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | POST | `/api/auth/refresh` | Refresh cookie | New access token + new refresh cookie (the old one is used up) |
 | POST | `/api/auth/logout` | Logged in | Log out on every device: all access and refresh tokens stop working, cookie cleared (204) |
 | POST | `/api/auth/change-password` | Logged in | `currentPassword` + `newPassword` (8–100 characters): every other session ends, this one gets a new access token and cookie. Wrong or unchanged password → 400 on that field |
-| GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
+| GET | `/api/auth/bootstrap-status` | Public | `bootstrapEnabled`, `adminExists`, `allowed` — nothing more (no user count) |
 
 #### Health
 | Method | Endpoint | Access | Description |

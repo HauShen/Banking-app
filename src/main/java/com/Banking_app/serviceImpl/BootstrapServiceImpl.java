@@ -27,9 +27,8 @@ public class BootstrapServiceImpl implements BootstrapService {
     private boolean bootstrapEnabled;
     public BootstrapStatusResponse getStatus() {
         boolean adminExists = userProfileJpaRepository.existsByRole(UserRole.ADMIN);
-        long userCount = userProfileJpaRepository.count();
-        boolean allowed = bootstrapEnabled && !adminExists; // optionally && userCount == 0
-        return new BootstrapStatusResponse(bootstrapEnabled, adminExists, userCount, allowed);
+        boolean allowed = bootstrapEnabled && !adminExists;
+        return new BootstrapStatusResponse(bootstrapEnabled, adminExists, allowed);
     }
     @Override
     @Transactional
