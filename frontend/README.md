@@ -26,6 +26,21 @@ Vitest + React Testing Library in jsdom. The backend is mocked with [MSW](https:
 (`src/test/server.ts`): each test declares the endpoints it needs, and any other request fails the test.
 The CI job `frontend` (`.github/workflows/ci.yml`) runs lint, tests and build on every pull request.
 
+## Docker
+
+`Dockerfile` builds the app (`npm ci`, `npm run build`) and serves `dist/` with nginx (non-root, port 8080).
+nginx forwards `/api` to the backend (`API_UPSTREAM`, default `http://app:8080`), so the browser sees one origin.
+Unknown paths get `index.html` (React Router), hashed assets are cached for a year, `index.html` never.
+
+From the repository root, together with PostgreSQL and the backend:
+
+```bash
+docker compose --profile app up --build
+```
+
+Then open **http://localhost:3000**. Use `localhost`, not `127.0.0.1`: the refresh cookie is `Secure`, and
+browsers accept Secure cookies over plain http only on `localhost`.
+
 ## Configuration
 
 Copy `.env.example` to `.env.local` to override:

@@ -1,0 +1,49 @@
+# Serves the React build and forwards /api to the backend, so the browser sees ONE origin:
+# no CORS, and the refresh cookie (SameSite=Strict, Path=/api/auth) works as in development.
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Don't advertise the nginx version.
+    server_tokens off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # API: everything under /api goes to Spring Boot unchanged (same paths as in development).
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_http_version 1.1;
+        # Host with the port the browser used (e.g. localhost:3000), and the client's address and scheme.
+        # The backend trusts these from internal addresses (server.forward-headers-strategy=native), so login
+        # throttling counts per real client IP instead of per nginx container.
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # Built assets have a content hash in their file names: they never change, so cache them for a year.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        # add_header in a location replaces the server-level ones: repeat them.
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        try_files $uri =404;
+    }
+
+    # Single-page app: unknown paths (/transactions, /admin/users, ...) get index.html and React Router
+    # shows the page. index.html itself is never cached, so a new deployment is picked up at once.
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    }
+}

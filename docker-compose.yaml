@@ -41,6 +41,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abc123}
       # No value here = passed through from .env. No default on purpose: the secret is never written in this file.
       JWT_SECRET:
+      # The frontend's nginx forwards /api here: take the client address from its X-Forwarded-For header
+      # (trusted only from internal addresses), so login throttling counts real clients, not the nginx container.
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+      # Browser origins: the Vite dev server and the frontend container below.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    networks:
+      - app-network
+
+  # The React frontend: nginx serves the build and forwards /api to the app service (one origin, no CORS).
+  # Started together with the backend:  docker compose --profile app up --build  ->  http://localhost:3000
+  # Use "localhost" (not 127.0.0.1 or a LAN address): the refresh cookie is Secure, and browsers accept
+  # Secure cookies over plain http only on localhost.
+  frontend:
+    profiles: ["app"]
+    build: ./frontend
+    image: banking-frontend:local
+    container_name: banking_frontend
+    depends_on:
+      - app
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      API_UPSTREAM: http://app:8080
     networks:
       - app-network
 

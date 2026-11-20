@@ -55,8 +55,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # Builds the Docker image and proves that it really starts: the backend and PostgreSQL come up with
-  # Docker Compose, and the backend must answer UP on /actuator/health. This job pushes nothing.
+  # Builds the Docker images and proves that they really start: PostgreSQL, the backend and the frontend
+  # come up with Docker Compose, the backend must answer UP on /actuator/health, and the frontend's nginx
+  # must serve the app and forward /api. This job pushes nothing.
   docker:
     name: docker
     runs-on: ubuntu-latest
@@ -67,7 +68,7 @@ jobs:
         uses: actions/checkout@v6
 
       # JWT_SECRET here is a throwaway value made for this run only. The real one never leaves your .env.
-      - name: Build the image and start the backend
+      - name: Build the images and start the backend and frontend
         run: |
           export JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
           docker compose --profile app up --build --detach
@@ -84,9 +85,20 @@ jobs:
           echo "Backend did not become healthy within 2 minutes."
           exit 1
 
-      - name: Show the backend log if something failed
+      # The frontend container serves the React app and forwards /api to the backend through nginx.
+      - name: Check the frontend and the API through nginx
+        run: |
+          curl --silent --fail http://localhost:3000/ | grep --quiet '<div id="root">'
+          echo "index.html served."
+          # A page that only exists in React Router must still get index.html (single-page app fallback).
+          curl --silent --fail http://localhost:3000/admin/users | grep --quiet '<div id="root">'
+          echo "SPA fallback works."
+          curl --silent --fail http://localhost:3000/api/actuator/health | grep --quiet '"status":"UP"'
+          echo "API reachable through nginx."
+
+      - name: Show the logs if something failed
         if: ${{ failure() }}
-        run: docker compose --profile app logs app
+        run: docker compose --profile app logs app frontend
 
   # Lints, tests and builds the React frontend in frontend/. Runs in parallel with the backend jobs.
   # The frontend is not part of the published image yet (it gets its own image later), so publish doesn't wait for it.
