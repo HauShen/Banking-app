@@ -357,6 +357,8 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - Registration has no `role` field: nobody can sign themselves up as admin.
 - Every error, including 401/403 from the security layer, uses the same JSON body
   (`timestamp`, `status`, `error`, `message`, `path`); unexpected errors are logged, never shown to the client.
+- A missing query parameter or one of the wrong type (`?page=abc`) is answered with 400 and the parameter's name,
+  never with a 500.
 - CORS only allows the configured frontend origin (`CORS_ALLOWED_ORIGINS`, default `http://localhost:5173`)
   and only the `Authorization` and `Content-Type` headers.
 - Swagger UI and the API docs are only enabled in the `dev` profile.
