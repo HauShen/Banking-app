@@ -88,9 +88,10 @@ flowchart LR
 | Spring Data JPA + Hibernate | ORM & database access |
 | PostgreSQL | Relational database |
 | Flyway | Database schema migrations |
+| Apache Kafka + Spring Kafka | Events after a money movement (in progress: broker and topics so far) |
 | Lombok | Boilerplate reduction |
 | springdoc-openapi (Swagger UI) | Interactive API documentation |
-| JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL |
+| JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL (and a real Kafka where needed) |
 
 ### Frontend
 | Technology | Purpose |
@@ -107,7 +108,7 @@ flowchart LR
 | Technology | Purpose |
 |---|---|
 | Docker | Multi-stage images: the backend (JDK 21 to build, JRE 21 to run) and the frontend (Node 22 to build, nginx to serve); both run as non-root users |
-| Docker Compose | PostgreSQL; with `--profile app` also the backend and the frontend |
+| Docker Compose | PostgreSQL and Kafka; with `--profile app` also the backend and the frontend; `--profile tools` adds a Kafka web UI |
 | GitHub Actions | CI: backend build and tests, a Docker smoke test of the whole stack, and the frontend's lint, tests and build on each push and pull request; CD: publishes the backend image after each merge to `master` |
 | GitHub Container Registry | Home of the published backend image: `ghcr.io/haushen/banking-app` (`latest`, one `sha-…` tag per commit, and a version tag per release) |
 
@@ -151,10 +152,13 @@ git clone https://github.com/HauShen/Banking-app.git
 cd Banking-app
 ```
 
-### 2. Start PostgreSQL with Docker
+### 2. Start PostgreSQL and Kafka with Docker
 ```bash
 docker compose up -d
 ```
+Kafka listens on `localhost:9092`. To look at topics and messages, also start the web UI
+(`docker compose --profile tools up -d`, then `http://localhost:8081`). To run the backend without Kafka,
+set `KAFKA_ENABLED=false`: no topics are created and nothing is sent.
 
 ### 3. Configure environment
 Secrets are never committed. Create a `.env` file in the project root (it is git-ignored and loaded at startup):
@@ -184,7 +188,7 @@ docker compose --profile app up --build
 This builds both images and starts them next to PostgreSQL: the backend with the `dev` profile on the same
 `http://localhost:8080`, and the frontend on **http://localhost:3000** (nginx serves the React app and forwards
 `/api` to the backend). It reads `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
-`bootRun` first, because both use port 8080. A plain `docker compose up -d` still starts PostgreSQL only.
+`bootRun` first, because both use port 8080. A plain `docker compose up -d` still starts PostgreSQL and Kafka only.
 
 Open `http://localhost:3000`, not `http://127.0.0.1:3000`: the refresh cookie is `Secure`, and browsers accept
 Secure cookies over plain http only on `localhost`.
