@@ -6,6 +6,9 @@ export const queryKeys = {
   accounts: {
     all: ['accounts'] as const,
     summary: () => ['accounts', 'summary'] as const,
+    /** Under 'accounts', so everything that refreshes the balances (transfer, top-up) refreshes it too. */
+    balanceHistory: (accountNumber: string, days: number) =>
+      ['accounts', 'balance-history', accountNumber, days] as const,
   },
   admin: {
     accounts: {

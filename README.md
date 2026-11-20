@@ -16,6 +16,11 @@ in a foreign currency at a locked rate), foreign remittances, and an admin area.
 
 ![Dashboard](screenshots/dashboard.png)
 
+**Balance history** — the selected account's closing balance per day over the last 7, 30 or 90 days, from
+`GET /api/transfers/account/{accountNumber}/balance-history` (see [Balance history](#-balance-history)).
+
+![Balance history](screenshots/balance-history.png)
+
 **Transfer paid in US dollars** — the review step locks the exchange rate for 60 seconds; confirming pays exactly
 that rate.
 
@@ -120,7 +125,7 @@ flowchart LR
 - See the bank's exchange rates and a quote before paying, or **lock a rate for 60 seconds** and pay at exactly
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
-- Daily balance history of own accounts (closing balance per day, for a chart)
+- Daily balance history of own accounts, shown as a chart on the dashboard (7, 30 or 90 days)
 - Update profile
 
 ### 🛡️ Admin

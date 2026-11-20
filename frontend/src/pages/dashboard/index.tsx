@@ -1,6 +1,7 @@
 import { Alert, Grid, Snackbar } from '@mui/material';
 import { useAccountSummary } from 'api/accounts';
 import MyAccounts from 'components/sections/dashboard/accounts/MyAccounts';
+import BalanceHistory from 'components/sections/dashboard/balance/BalanceHistory';
 import TopUpDialog from 'components/sections/dashboard/accounts/TopUpDialog';
 import RecentTransactions from 'components/sections/dashboard/transactions/RecentTransactions';
 import QuickTransfer from 'components/sections/dashboard/transfer/QuickTransfer';
@@ -35,6 +36,11 @@ const Dashboard = () => {
       {selected && (
         <Grid item xs={12} xl={4} zIndex={1}>
           <RecentTransactions accountNumber={selected.accountNumber} />
+        </Grid>
+      )}
+      {selected && (
+        <Grid item xs={12} zIndex={1}>
+          <BalanceHistory accountNumber={selected.accountNumber} />
         </Grid>
       )}
       {selected && (
