@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +22,7 @@ class AccountModuleReceiveAdapterTest {
         @Override
         public AccountSnapshot lockForReceiving(String accountNumber) {
             return new AccountSnapshot(2L, accountNumber, "bob", AccountStatus.LOCKED, AccountCurrency.MYR,
-                    new BigDecimal("20.00"));
+                    new BigDecimal("20.00"), Instant.EPOCH);
         }
 
         @Override

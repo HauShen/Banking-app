@@ -35,6 +35,7 @@ public class AccountModuleDirectoryAdapter implements AccountDirectoryPort {
     }
 
     private static AccountRef toRef(AccountSnapshot account) {
-        return new AccountRef(account.id(), account.accountNumber(), account.ownerId(), account.currency().name());
+        return new AccountRef(account.id(), account.accountNumber(), account.ownerId(), account.currency().name(),
+                account.balance(), account.openedAt());
     }
 }

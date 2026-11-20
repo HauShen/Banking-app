@@ -33,6 +33,11 @@ public record LedgerEntry(Long id,
         }
     }
 
+    /** The account's balance just before this entry: what the entry started from. */
+    public BigDecimal balanceBefore() {
+        return type == LedgerType.CREDIT ? balanceAfter.subtract(amount) : balanceAfter.add(amount);
+    }
+
     static LedgerEntry debit(Long accountId, BigDecimal amount, BigDecimal balanceAfter, Instant postedAt) {
         return new LedgerEntry(null, accountId, LedgerType.DEBIT, amount, balanceAfter, postedAt);
     }

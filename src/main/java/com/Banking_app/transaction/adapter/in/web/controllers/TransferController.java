@@ -2,11 +2,14 @@ package com.Banking_app.transaction.adapter.in.web.controllers;
 
 import com.Banking_app.security.CurrentRequester;
 import com.Banking_app.shared.Requester;
+import com.Banking_app.transaction.adapter.in.web.dto.BalanceHistoryResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransactionResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferResponseBody;
 import com.Banking_app.transaction.adapter.in.web.mapper.TransactionWebMapper;
+import com.Banking_app.transaction.application.port.in.query.BalanceHistoryQuery;
 import com.Banking_app.transaction.application.port.in.query.ListAccountTransactionsQuery;
+import com.Banking_app.transaction.application.port.in.usecase.GetBalanceHistoryUseCase;
 import com.Banking_app.transaction.application.port.in.usecase.GetTransactionUseCase;
 import com.Banking_app.transaction.application.port.in.usecase.ListAccountTransactionsUseCase;
 import com.Banking_app.transaction.application.port.in.usecase.TransferMoneyUseCase;
@@ -28,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Same URLs, parameters, status codes and JSON as the old controllers.TransferController.
  *
  * Who may do what is decided in the use cases: the from-account's owner sends money; the sender, the recipient
- * and admins see a transaction; the owner and admins see an account's history.
+ * and admins see a transaction; the owner and admins see an account's history and balance history.
  */
 @RestController
 @RequestMapping("/api/transfers")
@@ -37,15 +40,18 @@ public class TransferController {
     private final TransferMoneyUseCase transferMoneyUseCase;
     private final GetTransactionUseCase getTransactionUseCase;
     private final ListAccountTransactionsUseCase listAccountTransactionsUseCase;
+    private final GetBalanceHistoryUseCase getBalanceHistoryUseCase;
     private final TransactionWebMapper mapper;
 
     public TransferController(TransferMoneyUseCase transferMoneyUseCase,
                               GetTransactionUseCase getTransactionUseCase,
                               ListAccountTransactionsUseCase listAccountTransactionsUseCase,
+                              GetBalanceHistoryUseCase getBalanceHistoryUseCase,
                               TransactionWebMapper mapper) {
         this.transferMoneyUseCase = transferMoneyUseCase;
         this.getTransactionUseCase = getTransactionUseCase;
         this.listAccountTransactionsUseCase = listAccountTransactionsUseCase;
+        this.getBalanceHistoryUseCase = getBalanceHistoryUseCase;
         this.mapper = mapper;
     }
 
@@ -74,5 +80,15 @@ public class TransferController {
         var result = listAccountTransactionsUseCase.list(
                 new ListAccountTransactionsQuery(accountNumber, page, size), requester);
         return ResponseEntity.ok(mapper.toPage(result));
+    }
+
+    /** Daily closing balances of the last {@code days} days (1..366, default 30), for the dashboard chart. */
+    @GetMapping("/account/{accountNumber}/balance-history")
+    public ResponseEntity<BalanceHistoryResponseBody> getBalanceHistory(
+            @PathVariable String accountNumber,
+            @RequestParam(defaultValue = "30") int days,
+            @CurrentRequester Requester requester) {
+        var result = getBalanceHistoryUseCase.get(new BalanceHistoryQuery(accountNumber, days), requester);
+        return ResponseEntity.ok(mapper.toResponse(result));
     }
 }

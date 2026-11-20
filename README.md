@@ -120,6 +120,7 @@ flowchart LR
 - See the bank's exchange rates and a quote before paying, or **lock a rate for 60 seconds** and pay at exactly
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
+- Daily balance history of own accounts (closing balance per day, for a chart)
 - Update profile
 
 ### 🛡️ Admin
@@ -256,6 +257,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | POST | `/api/transfers` | Owner of the from-account | Transfer funds (201); `idempotencyKey` makes retries safe (409 if reused for a different transfer); optional `currency` of the amount (default MYR) and `quoteId` (pay at a locked rate) |
 | GET | `/api/transfers/{reference}` | Sender, recipient or ADMIN | One transaction |
 | GET | `/api/transfers/account/{accountNumber}` | Owner or ADMIN | Transaction history of an account (paged) |
+| GET | `/api/transfers/account/{accountNumber}/balance-history?days=30` | Owner or ADMIN | Closing balance of each of the last `days` days (1–366, default 30), oldest first; see [Balance history](#-balance-history) |
 | POST | `/api/admin/remittances` | ADMIN | Money from abroad arrives for an account (201): converted at the buy rate, idempotent like transfers |
 
 #### Foreign exchange
@@ -304,6 +306,24 @@ comes in or goes out. The transaction remembers the original currency, amount an
   it through its own port (`CurrencyConversionPort`), so a transfer books exactly what the quote shows. Locked
   quotes are fx's own table (`fx_quotes`). A live rate feed would replace one adapter
   (`ConfiguredExchangeRateSource`) without touching any business code.
+
+---
+
+## 📈 Balance history
+
+`GET /api/transfers/account/{accountNumber}/balance-history?days=30` returns the balance at the end of each day:
+```json
+{ "accountNumber": "1234567890", "currency": "MYR", "timeZone": "Asia/Kuala_Lumpur",
+  "days": [ { "date": "2026-11-19", "closingBalance": 120.00 }, { "date": "2026-11-20", "closingBalance": 90.00 } ] }
+```
+- **Computed from the ledger, nothing extra is stored.** Every balance change (transfer, cash deposit, remittance)
+  writes a ledger entry with the balance right after it. A day closes at the last entry posted that day; a day
+  without entries keeps the previous day's balance. Two indexed queries per request: the last entry before the
+  period, and the entries in it (index on `ledgers (account_id, created_at, id)`, V11).
+- **Days are Malaysian days.** "Today" and midnight come from `bank.time-zone` (default `Asia/Kuala_Lumpur`), not
+  UTC: a transfer at 00:30 in Kuala Lumpur counts for that day, although it is still the day before in UTC.
+- The list ends today and starts `days − 1` days earlier, or on the day the account was opened if that is later.
+- Same access rule as the transaction history: the owner or an admin.
 
 ---
 
@@ -445,6 +465,7 @@ Feature tests in the same style cover the rest, for example:
 | Test Class | What It Covers |
 |---|---|
 | `ForeignCurrencyTransferTest` | Paying in USD / JPY moves the right MYR amount at the sell rate; history shows the original amount and rate; MYR unchanged; bad currency or decimals → 400; a retry after a rate change returns the original; mismatches → 409 |
+| `BalanceHistoryEndpointTest` | One closing balance per day, today at the current balance; owner or admin only (403 / 401 / 404); bad `days` → 400. Multi-day sums: `GetBalanceHistoryServiceTest`, `LedgerPersistenceAdapterTest` |
 | `RemittanceEndpointTest` | Admin-only remittances credited at the buy rate; "Foreign Remittance" in the history; locked / unknown account; idempotency; delete after a remittance → 409 |
 | `FxEndpointTest` | Rates list and quotes (PAY / RECEIVE), unsupported currency, bad parameters → 400 (never 500), login required; locking a quote (201, stored for the user, valid 60 s) |
 | `LockedQuoteTransferTest` | Paying at a locked rate even when today's differs; the quote works once; a failed transfer leaves it usable; expired, someone else's, unknown, other amount / currency, or with MYR → 400; a retry returns the original |

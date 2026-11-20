@@ -8,6 +8,7 @@ import com.Banking_app.transaction.application.port.out.TransferParties;
 import com.Banking_app.transaction.application.port.out.TransferParty;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,9 +23,11 @@ class FakeAccounts implements TransferAccountsPort, AccountDirectoryPort {
 
     static final class Acc {
         final Long id; final String number; final String owner; final boolean locked; BigDecimal balance;
-        Acc(Long id, String number, String owner, boolean locked, String balance) {
+        final Instant openedAt;
+        Acc(Long id, String number, String owner, boolean locked, String balance, Instant openedAt) {
             this.id = id; this.number = number; this.owner = owner; this.locked = locked;
             this.balance = new BigDecimal(balance);
+            this.openedAt = openedAt;
         }
     }
 
@@ -33,8 +36,15 @@ class FakeAccounts implements TransferAccountsPort, AccountDirectoryPort {
     int moveCalls;
     int findByIdsCalls;
 
+    /** Opened long ago (before any test date). */
+    static final Instant LONG_AGO = Instant.parse("2020-01-01T00:00:00Z");
+
     void add(Long id, String number, String owner, boolean locked, String balance) {
-        byId.put(id, new Acc(id, number, owner, locked, balance));
+        add(id, number, owner, locked, balance, LONG_AGO);
+    }
+
+    void add(Long id, String number, String owner, boolean locked, String balance, Instant openedAt) {
+        byId.put(id, new Acc(id, number, owner, locked, balance, openedAt));
     }
 
     BigDecimal balanceOf(Long id) {
@@ -51,7 +61,7 @@ class FakeAccounts implements TransferAccountsPort, AccountDirectoryPort {
     }
 
     private static AccountRef ref(Acc a) {
-        return new AccountRef(a.id, a.number, a.owner, "MYR");
+        return new AccountRef(a.id, a.number, a.owner, "MYR", a.balance, a.openedAt);
     }
 
     @Override
