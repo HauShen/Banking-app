@@ -13,6 +13,7 @@ export const queryKeys = {
   admin: {
     accounts: {
       all: ['admin', 'accounts'] as const,
+      byNumber: (accountNumber: string) => ['admin', 'accounts', 'number', accountNumber] as const,
       list: (filter: { status?: string; userId?: string }) =>
         ['admin', 'accounts', 'list', filter] as const,
     },

@@ -16,6 +16,7 @@ const RatesPage = lazy(() => import('pages/rates'));
 const ProfilePage = lazy(() => import('pages/profile'));
 const AdminUsersPage = lazy(() => import('pages/admin/users'));
 const AdminAccountsPage = lazy(() => import('pages/admin/accounts'));
+const AdminAccountHistoryPage = lazy(() => import('pages/admin/account-history'));
 const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
@@ -81,6 +82,14 @@ export const routes = [
             element: (
               <RequireRole role="ADMIN">
                 <AdminAccountsPage />
+              </RequireRole>
+            ),
+          },
+          {
+            path: paths.adminAccountHistory,
+            element: (
+              <RequireRole role="ADMIN">
+                <AdminAccountHistoryPage />
               </RequireRole>
             ),
           },

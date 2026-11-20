@@ -22,6 +22,17 @@ export const useAdminAccounts = (filter: AccountFilter) =>
     queryFn: () => listAccounts(filter),
   });
 
+/** GET /api/accounts/number/{accountNumber}: any account for an admin (owner or admin on the backend). */
+export const getAccountByNumber = (accountNumber: string) =>
+  apiFetch<Account>(`/api/accounts/number/${encodeURIComponent(accountNumber)}`);
+
+/** Under admin.accounts, so lock / unlock / remittances refresh it with the lists. */
+export const useAccountByNumber = (accountNumber: string) =>
+  useQuery({
+    queryKey: queryKeys.admin.accounts.byNumber(accountNumber),
+    queryFn: () => getAccountByNumber(accountNumber),
+  });
+
 /** POST /api/accounts/create → 201: a new ACTIVE MYR account with the opening balance (RM 20.00). */
 export const openAccount = (request: { userId: string; accountType: AccountType }) =>
   apiFetch<Account>('/api/accounts/create', { method: 'POST', body: request });
