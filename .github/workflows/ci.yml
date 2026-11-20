@@ -93,7 +93,9 @@ jobs:
           # A page that only exists in React Router must still get index.html (single-page app fallback).
           curl --silent --fail http://localhost:3000/admin/users | grep --quiet '<div id="root">'
           echo "SPA fallback works."
-          curl --silent --fail http://localhost:3000/api/actuator/health | grep --quiet '"status":"UP"'
+          # /actuator/health is not under /api, so nginx doesn't forward it: use a public /api endpoint instead
+          # (its JSON comes from Spring Boot, so the request went through nginx to the backend and its database).
+          curl --silent --fail http://localhost:3000/api/auth/bootstrap-status | grep --quiet '"adminExists"'
           echo "API reachable through nginx."
 
       - name: Show the logs if something failed
