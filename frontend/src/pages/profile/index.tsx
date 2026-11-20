@@ -1,4 +1,5 @@
 import { Card, Divider, Grid, Stack, Typography } from '@mui/material';
+import ChangePasswordForm from 'components/sections/profile/ChangePasswordForm';
 import ProfileForm from 'components/sections/profile/ProfileForm';
 import { formatDate } from 'lib/dates';
 import { useAuth } from 'providers/AuthProvider';
@@ -25,6 +26,15 @@ const ProfilePage = () => {
             Personal details
           </Typography>
           <ProfileForm key={user.id} user={user} />
+        </Card>
+        <Card sx={{ p: { xs: 3, md: 4 }, mt: 3 }}>
+          <Typography variant="h5" sx={{ mb: 1 }}>
+            Password
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+            Changing it signs you out on every other device.
+          </Typography>
+          <ChangePasswordForm key={user.id} />
         </Card>
       </Grid>
       <Grid item xs={12} md={5}>

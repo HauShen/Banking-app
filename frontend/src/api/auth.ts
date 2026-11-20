@@ -52,6 +52,22 @@ export interface ProfileUpdate {
 export const updateMyProfile = (update: ProfileUpdate): Promise<UserProfile> =>
   apiFetch<UserProfile>('/api/users/me', { method: 'PUT', body: update });
 
+/**
+ * POST /api/auth/change-password. The backend ends every other session and starts a new one for this
+ * browser: a new access token (kept in memory, the old one no longer works) and a new refresh cookie.
+ * A wrong current password is a 400 on `currentPassword`, not a 401, so it never triggers a refresh.
+ */
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  const res = await apiFetch<AuthenticationResponse>('/api/auth/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  });
+  setAccessToken(res.accessToken);
+};
+
 let restoring: Promise<UserProfile | null> | null = null;
 
 /**
