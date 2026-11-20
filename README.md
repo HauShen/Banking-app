@@ -2,54 +2,74 @@
 
 [![CI](https://github.com/HauShen/Banking-app/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/HauShen/Banking-app/actions/workflows/ci.yml)
 
-A full-stack banking simulator built with **Java Spring Boot** and **React**, featuring JWT
-authentication, role-based access control, fund transfers (also paid in a foreign currency), foreign remittances,
-and an admin management panel.
-
-
+A full-stack banking simulator: a **Java Spring Boot** API (hexagonal modules, PostgreSQL) and a **React +
+TypeScript** web app. JWT authentication with refresh cookies, role-based access control, fund transfers (also paid
+in a foreign currency at a locked rate), foreign remittances, and an admin area.
 
 ---
 
-## 🎬 Demo
+## 📸 Screenshots
 
-### 🔐 First Admin (Bootstrap)
-> The first admin is created automatically at startup from configuration when no admin exists.
-> There is no public sign-up for admins — see [Getting Started](#3-configure-environment).
+> Taken from the React app with demo data.
 
----
+**Dashboard** — the customer's accounts, total balance and recent transactions, including foreign-currency ones.
 
-### 👤 Register as Customer
-> New users can self-register as a customer.
+![Dashboard](screenshots/dashboard.png)
 
-![Register Customer](screenshots/register-customer.gif)
+**Transfer paid in US dollars** — the review step locks the exchange rate for 60 seconds; confirming pays exactly
+that rate.
 
----
+![Transfer with a locked exchange rate](screenshots/transfer-locked-rate.png)
 
-### ⚠️ Username & Email Validation
-> System rejects duplicate usernames and emails with clear error messages.
+**Transaction history** — server-side paging; the details panel shows the original currency, amount and rate.
 
-![Duplicate Validation](screenshots/duplicate-validation.gif)
+![Transaction details](screenshots/transaction-details.png)
 
----
+**Exchange rates** — the bank's sell and buy rates and a quote calculator.
 
-### 🏧 Admin — Create Account for Customer
-> Admin can create bank accounts and assign them to customers.
+![Exchange rates](screenshots/exchange-rates.png)
 
-![Admin Create Account](screenshots/admin-create-account.gif)
+**Admin: users** — paging and sorting on the server; edit details, change the role, delete, or open the user's
+accounts.
 
----
+![Admin users](screenshots/admin-users.png)
 
-### 🛠️ Admin — Manage Customers & Accounts
-> Admin panel for managing all users and accounts, including status updates.
+**Admin: accounts** — every account with its owner and status; lock, unlock, delete, or record a remittance from
+abroad.
 
-![Admin Manage](screenshots/admin-manage.gif)
+![Admin accounts](screenshots/admin-accounts.png)
 
 ---
 
-### 💸 Customer — Top Up, Transfer & Transactions
-> Customers can top up balance, transfer funds, and view transaction history.
+## 🏗️ Architecture
 
-![Customer Transactions](screenshots/customer-transactions.gif)
+```mermaid
+flowchart LR
+    browser["Browser<br/>React app"]
+    subgraph frontend["frontend container (nginx)"]
+        spa["/ → React build<br/>(index.html fallback)"]
+        proxy["/api → proxy"]
+    end
+    subgraph backend["app container (Spring Boot)"]
+        sec["Spring Security<br/>JWT filter"]
+        modules["Modules: user · account ·<br/>transaction · fx<br/>(adapter → application → domain)"]
+    end
+    db[("PostgreSQL<br/>Flyway migrations")]
+
+    browser -- "http://localhost:3000" --> spa
+    browser -- "/api/** (Bearer token,<br/>refresh cookie)" --> proxy
+    proxy --> sec --> modules --> db
+```
+
+- **One origin.** With Docker Compose the browser only talks to nginx on port 3000: it serves the React build and
+  forwards `/api` to the backend, so no CORS is needed. In development the Vite dev server (port 5173) does the
+  same forwarding to `localhost:8080`.
+- **Auth.** The access token (15 minutes) lives only in the React app's memory. The refresh token is an
+  `HttpOnly`, `SameSite=Strict` cookie on `/api/auth`: it restores the session after a reload and is rotated on
+  every use (see [Security](#-security)).
+- **Backend.** Each module (`userProfile`, `account`, `transaction`, `fx`) has its own domain, application
+  (use cases and ports) and adapters; modules call each other only through inbound ports, checked by ArchUnit
+  rules (`ArchitectureTest`).
 
 ---
 
@@ -70,20 +90,21 @@ and an admin management panel.
 ### Frontend
 | Technology | Purpose |
 |---|---|
-| React 18 + Vite | UI framework & build tool |
-| TanStack React Query | Server state management |
-| React Hook Form | Form handling |
-| React Router v6 | Client-side routing |
-| Axios | HTTP client |
-| Bootstrap 5 | Styling |
+| React 18 + TypeScript + Vite | UI framework & build tool |
+| MUI 5 + MUI X Data Grid | Components and the paged, sortable tables |
+| TanStack Query 5 | Server state: caching, loading and error states, refetching after a change |
+| React Router 6 | Client-side routing, with route guards for signed-in users and for admins |
+| `fetch` client (`src/api/client.ts`) | Bearer token, one shared refresh-and-retry on 401 |
+| Vitest + React Testing Library + MSW | Component and API-client tests against a mocked backend |
+| [BankDash](https://github.com/themewagon/bankdash) (ThemeWagon, MIT) | UI template the app is based on |
 
 ### DevOps
 | Technology | Purpose |
 |---|---|
-| Docker | Multi-stage image of the backend: JDK 21 to build, JRE 21 to run, non-root user |
-| Docker Compose | PostgreSQL; with `--profile app` also the backend |
-| GitHub Actions | CI: full build and every test on each push and pull request; CD: publishes the image after each merge to `master` |
-| GitHub Container Registry | Home of the published image: `ghcr.io/haushen/banking-app` (`latest`, one `sha-…` tag per commit, and a version tag per release) |
+| Docker | Multi-stage images: the backend (JDK 21 to build, JRE 21 to run) and the frontend (Node 22 to build, nginx to serve); both run as non-root users |
+| Docker Compose | PostgreSQL; with `--profile app` also the backend and the frontend |
+| GitHub Actions | CI: backend build and tests, a Docker smoke test of the whole stack, and the frontend's lint, tests and build on each push and pull request; CD: publishes the backend image after each merge to `master` |
+| GitHub Container Registry | Home of the published backend image: `ghcr.io/haushen/banking-app` (`latest`, one `sha-…` tag per commit, and a version tag per release) |
 
 ---
 
@@ -115,7 +136,7 @@ and an admin management panel.
 
 ### Prerequisites
 - Java 21+
-- Node.js 18+
+- Node.js 22 (18+ works; CI uses 22)
 - Docker Desktop
 
 ### 1. Clone the repository
@@ -154,18 +175,23 @@ If the frontend runs somewhere other than `http://localhost:5173`, set `CORS_ALL
 ```bash
 docker compose --profile app up --build
 ```
-This builds the image from the `Dockerfile` and starts it next to PostgreSQL with the `dev` profile, on the same
-`http://localhost:8080`. It reads `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
+This builds both images and starts them next to PostgreSQL: the backend with the `dev` profile on the same
+`http://localhost:8080`, and the frontend on **http://localhost:3000** (nginx serves the React app and forwards
+`/api` to the backend). It reads `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
 `bootRun` first, because both use port 8080. A plain `docker compose up -d` still starts PostgreSQL only.
+
+Open `http://localhost:3000`, not `http://127.0.0.1:3000`: the refresh cookie is `Secure`, and browsers accept
+Secure cookies over plain http only on `localhost`.
 
 ### 5. Run the frontend
 ```bash
-cd src/frontend
-cp .env.example .env
+cd frontend
 npm install
 npm run dev
 ```
-Frontend runs on `http://localhost:5173`
+Frontend runs on `http://localhost:5173` and forwards `/api` to the backend on `http://localhost:8080`; sign in
+with `devadmin` / `DevAdmin123!` or register a customer. No configuration is needed. To point the dev server at
+another backend, set `VITE_API_PROXY_TARGET` in `frontend/.env.local` (see `frontend/README.md`).
 
 ---
 
@@ -353,12 +379,12 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - A username lockout can be abused to lock someone out for 15 minutes by failing on purpose — the usual trade-off
   of account lockout; real systems add CAPTCHA or progressive delays.
 - Behind a reverse proxy, enable `server.forward-headers-strategy=native`, otherwise every client shares the
-  proxy's IP for the per-IP limit.
+  proxy's IP for the per-IP limit. Docker Compose sets it (`SERVER_FORWARD_HEADERS_STRATEGY`) for the nginx
+  frontend.
 - Logout is "log out everywhere": there is no per-device logout.
-- The frontend still keeps the access token in `localStorage`, which any XSS could read. With refresh cookies in
-  place it should keep the access token in memory only and call `/api/auth/refresh` on page load (frontend rewrite).
-- Two browser tabs refreshing at the same moment with the same cookie look like token reuse and log the user out —
-  the frontend should run one refresh at a time.
+- Two browser tabs refreshing at the same moment with the same cookie look like token reuse and log the user out.
+  Within one tab the frontend runs one refresh at a time; coordinating tabs (e.g. a `BroadcastChannel`) is not
+  implemented.
 - Used and expired refresh tokens stay in the table; a scheduled cleanup job is not implemented yet.
 - Exchange rates are fixed in configuration (example values, not live rates). A live feed (e.g. a central bank's
   API, with caching and a fallback) would be a new adapter behind `ExchangeRateSourcePort`.
@@ -381,11 +407,19 @@ Requires **Docker** running: the tests start a real PostgreSQL 17 container with
 ./gradlew test
 ```
 
+Frontend (150 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+```bash
+cd frontend
+npm test
+```
+
 GitHub Actions runs the full build (`./gradlew build`, which includes every test below) on each push to
 `master` and on each pull request: see `.github/workflows/ci.yml`. The HTML test report is attached to every run.
-A second job builds the Docker image, starts it with PostgreSQL through Docker Compose, and waits for
-`/actuator/health` to answer UP.
-After a merge to `master`, and only if both jobs passed, a third job publishes the image to GitHub Container Registry.
+A second job builds both Docker images, starts the whole stack through Docker Compose, waits for
+`/actuator/health` to answer UP, and checks that nginx serves the app and forwards `/api`.
+A third job lints, tests and builds the frontend.
+After a merge to `master`, and only if the build and Docker jobs passed, a fourth job publishes the backend image
+to GitHub Container Registry.
 Pushing a version tag such as `v0.1.0` runs the same checks, publishes the image as `0.1.0` and creates a GitHub Release.
 
 The security tests are black-box HTTP tests: a real embedded server on a random port, real JWTs, a real database

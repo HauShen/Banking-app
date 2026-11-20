@@ -57,7 +57,3 @@ Copy `.env.example` to `.env.local` to override:
   reload and is rotated on every refresh.
 - `src/api/client.ts` adds the Bearer token, and on a 401 refreshes once and retries. Parallel requests share one
   refresh, because the backend rotates the refresh token on every use.
-
-## Credits
-
-UI based on [BankDash](https://github.com/themewagon/bankdash) by ThemeWagon (MIT License).
