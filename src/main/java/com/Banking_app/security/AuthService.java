@@ -3,7 +3,10 @@ import com.Banking_app.security.refresh.InvalidRefreshTokenException;
 import com.Banking_app.security.refresh.RefreshTokenService;
 import com.Banking_app.security.token.TokenVersionService;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
+import com.Banking_app.userProfile.application.exception.IncorrectCurrentPasswordException;
+import com.Banking_app.userProfile.application.port.in.command.ChangePasswordCommand;
 import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
+import com.Banking_app.userProfile.application.port.in.usecase.ChangePasswordUseCase;
 import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
@@ -23,9 +26,10 @@ public class AuthService  {
     private final LoginAttemptService loginAttemptService;
     private final TokenVersionService tokenVersionService;
     private final RefreshTokenService refreshTokenService;
+    private final ChangePasswordUseCase changePasswordUseCase;
 
     @Autowired
-    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService, TokenVersionService tokenVersionService, RefreshTokenService refreshTokenService){
+    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService, TokenVersionService tokenVersionService, RefreshTokenService refreshTokenService, ChangePasswordUseCase changePasswordUseCase){
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.registerUserProfileUseCase = registerUserProfileUseCase;
@@ -33,6 +37,7 @@ public class AuthService  {
         this.loginAttemptService = loginAttemptService;
         this.tokenVersionService = tokenVersionService;
         this.refreshTokenService = refreshTokenService;
+        this.changePasswordUseCase = changePasswordUseCase;
     }
     public AuthTokens register(AuthenticationRequest request) {
         UserProfile registered = registerUserProfileUseCase.register(new RegisterUserProfileCommand(
@@ -76,6 +81,34 @@ public class AuthService  {
         UserProfile user = loadUserProfilePort.findById(rotation.userId())
                 .orElseThrow(() -> new InvalidRefreshTokenException("User no longer exists"));
         return new AuthTokens(accessTokenFor(user), rotation.refreshToken());
+    }
+
+    /**
+     * The signed-in user changes their password. Guessing the current password is guarded like guessing at login:
+     * a locked username or IP gets 429 before the password is checked, and a wrong current password counts as a
+     * failed login. Afterwards every other session ends (a thief who had a token or refresh cookie is out) and
+     * this one continues with new tokens.
+     *
+     * @throws TooManyLoginAttemptsException if the username or the IP is locked
+     */
+    public AuthTokens changePassword(String userId, String username, ChangePasswordRequest request,
+                                     String clientIp) {
+        loginAttemptService.blockedFor(username, clientIp).ifPresent(wait -> {
+            throw new TooManyLoginAttemptsException(wait);
+        });
+
+        UserProfile user;
+        try {
+            user = changePasswordUseCase.changePassword(
+                    new ChangePasswordCommand(userId, request.getCurrentPassword(), request.getNewPassword()));
+        } catch (IncorrectCurrentPasswordException e) {
+            loginAttemptService.recordFailure(username, clientIp);
+            throw e;
+        }
+        loginAttemptService.recordSuccess(username);
+
+        endAllSessions(userId);
+        return startSession(user);
     }
 
     /** Logs the user out on every device. */

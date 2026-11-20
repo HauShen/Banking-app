@@ -64,6 +64,23 @@ public class AuthController {
     }
 
     /**
+     * The signed-in user changes their password (needs a valid access token, see SecurityConfig). Every other
+     * session ends; this one gets a new access token and refresh cookie, like a login. Wrong current password or
+     * an unchanged one → 400 on that field; too many wrong guesses → 429, shared with the login limits.
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<AuthenticationResponse> changePassword(
+            @AuthenticationPrincipal SecurityUserDetails principal,
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpRequest) {
+        AuthTokens tokens = authService.changePassword(principal.getUserId(), principal.getUsername(), request,
+                httpRequest.getRemoteAddr());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookies.create(tokens.refreshToken()))
+                .body(tokens.accessToken());
+    }
+
+    /**
      * Logs out on every device: all of this user's tokens stop working immediately (204).
      * Needs a valid token - SecurityConfig makes this the one /api/auth endpoint that isn't public.
      */
