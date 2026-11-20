@@ -62,18 +62,19 @@ const AdminAccountsTable = ({ accounts, loading, owners, onRowClick }: AdminAcco
         ),
       },
       {
+        field: 'createdAt',
+        headerName: 'Opened',
+        minWidth: 130,
+        valueFormatter: (value: string) => formatDate(value),
+      },
+      // Last, so the right-aligned amounts don't run into the next column.
+      {
         field: 'balance',
         headerName: 'Balance',
         type: 'number',
         minWidth: 140,
         flex: 1,
         valueFormatter: (value: number, row) => formatMoney(value, row.accountCurrency),
-      },
-      {
-        field: 'createdAt',
-        headerName: 'Opened',
-        minWidth: 130,
-        valueFormatter: (value: string) => formatDate(value),
       },
     ],
     [owners],

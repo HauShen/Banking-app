@@ -110,6 +110,8 @@ describe('transactions page', () => {
     expect(screen.getByText('Payment T10')).toBeInTheDocument();
     expect(screen.queryByText('Payment T11')).not.toBeInTheDocument();
     expect(screen.getByText(/1–10 of 25/)).toBeInTheDocument();
+    // The right-aligned amounts come last, so they don't run into the next column.
+    expect(screen.getAllByRole('columnheader').slice(-1)[0]).toHaveTextContent('Amount');
 
     await userEvent.click(screen.getByRole('button', { name: /go to next page/i }));
 

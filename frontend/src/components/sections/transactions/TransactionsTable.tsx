@@ -66,6 +66,22 @@ const TransactionsTable = ({
         valueFormatter: (value: Transaction['type']) => TRANSACTION_TYPE_LABEL[value],
       },
       {
+        field: 'status',
+        headerName: 'Status',
+        minWidth: 120,
+        renderCell: ({ row }) => (
+          <Chip
+            size="small"
+            label={TRANSACTION_STATUS_LABEL[row.status]}
+            color={
+              row.status === 'SUCCESS' ? 'success' : row.status === 'PENDING' ? 'warning' : 'error'
+            }
+            variant={row.status === 'SUCCESS' ? 'outlined' : 'filled'}
+          />
+        ),
+      },
+      // Last, so the right-aligned amounts don't run into the next column.
+      {
         field: 'amount',
         headerName: 'Amount',
         minWidth: 160,
@@ -90,21 +106,6 @@ const TransactionsTable = ({
             </Stack>
           );
         },
-      },
-      {
-        field: 'status',
-        headerName: 'Status',
-        minWidth: 120,
-        renderCell: ({ row }) => (
-          <Chip
-            size="small"
-            label={TRANSACTION_STATUS_LABEL[row.status]}
-            color={
-              row.status === 'SUCCESS' ? 'success' : row.status === 'PENDING' ? 'warning' : 'error'
-            }
-            variant={row.status === 'SUCCESS' ? 'outlined' : 'filled'}
-          />
-        ),
       },
     ],
     [accountNumber],

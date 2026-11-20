@@ -120,6 +120,8 @@ describe('admin accounts page', () => {
     expect(plain(row.textContent)).toContain('RM 100.00');
     const lockedRow = screen.getByText('1000 000 002').closest('[role="row"]') as HTMLElement;
     expect(within(lockedRow).getByText('Locked')).toBeInTheDocument();
+    // The right-aligned balances come last, so they don't run into the next column.
+    expect(screen.getAllByRole('columnheader').slice(-1)[0]).toHaveTextContent('Balance');
 
     await userEvent.click(screen.getByRole('button', { name: /^locked$/i }));
 

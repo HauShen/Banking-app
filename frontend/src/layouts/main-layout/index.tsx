@@ -27,7 +27,7 @@ const MainLayout = ({ children }: PropsWithChildren) => {
   };
   return (
     <>
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
         <Sidebar drawerWidth={drawerWidth} />
         <MobileSidebar
           onDrawerClose={handleDrawerClose}
