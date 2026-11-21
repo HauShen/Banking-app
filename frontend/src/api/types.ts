@@ -114,3 +114,30 @@ export interface AppNotification {
   createdAt: string;
   read: boolean;
 }
+
+/** AlertRule.java: which watch rule raised an alert. */
+export type AlertRule = 'LARGE_TRANSFER' | 'RAPID_TRANSFERS';
+
+/** AlertStatus.java */
+export type AlertStatus = 'OPEN' | 'REVIEWED';
+
+/** AlertResponseBody.java (GET /api/admin/alerts). */
+export interface TransactionAlert {
+  id: number;
+  rule: AlertRule;
+  status: AlertStatus;
+  /** The sending account. */
+  accountNumber: string;
+  ownerId: string;
+  /** The transfer's reference number. */
+  reference: string;
+  /** MYR, of the transfer that raised the alert. */
+  amount: number;
+  /** Why, in one sentence, e.g. "6 transfers from this account within 10 minutes (limit 5)". */
+  detail: string;
+  /** When the transfer happened. */
+  createdAt: string;
+  reviewedAt: string | null;
+  /** The reviewing admin's user id. */
+  reviewedBy: string | null;
+}

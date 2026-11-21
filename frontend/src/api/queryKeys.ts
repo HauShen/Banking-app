@@ -11,6 +11,11 @@ export const queryKeys = {
       ['accounts', 'balance-history', accountNumber, days] as const,
   },
   admin: {
+    alerts: {
+      all: ['admin', 'alerts'] as const,
+      list: (params: object) => ['admin', 'alerts', 'list', params] as const,
+      openCount: () => ['admin', 'alerts', 'open-count'] as const,
+    },
     accounts: {
       all: ['admin', 'accounts'] as const,
       byNumber: (accountNumber: string) => ['admin', 'accounts', 'number', accountNumber] as const,

@@ -16,6 +16,7 @@ const paths = {
   profile: `${rootPaths.pagesRoot}profile`,
   adminUsers: `${rootPaths.pagesRoot}admin/users`,
   adminAccounts: `${rootPaths.pagesRoot}admin/accounts`,
+  adminAlerts: `${rootPaths.pagesRoot}admin/alerts`,
   /** Route pattern; build links with adminAccountHistoryPath(accountNumber). */
   adminAccountHistory: `${rootPaths.pagesRoot}admin/accounts/:accountNumber/history`,
   accounts: `${rootPaths.pagesRoot}accounts`,

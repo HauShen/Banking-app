@@ -139,9 +139,10 @@ flowchart LR
 - Record **incoming foreign remittances** (simulates the bank's payment gateway): credited in MYR at the buy rate
 - Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
 - Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
-- **Transaction alerts** (API so far): transfers of RM 10,000 or more, and more than 5 transfers out of one account
-  within 10 minutes, are flagged for review; limits in `app.alerts.*`. A second Kafka consumer group watches the same
-  events as the notifications, independently
+- **Transaction alerts** page: transfers of RM 10,000 or more, and more than 5 transfers out of one account within
+  10 minutes, are flagged for review (limits in `app.alerts.*`); filter Open / Reviewed / All, link to the account's
+  history, "Mark as reviewed". A second Kafka consumer group watches the same events as the notifications,
+  independently
 
 ---
 
@@ -466,7 +467,7 @@ Requires **Docker** running: the tests start a real PostgreSQL 17 container with
 ./gradlew test
 ```
 
-Frontend (171 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (178 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
