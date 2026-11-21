@@ -1,31 +1,20 @@
 import { AppBar, Box, IconButton, Link, Stack, Toolbar, Typography } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
 import Image from 'components/base/Image';
-import NotificationDropdown from 'layouts/main-layout/appbar/NotificationDropdown';
+import NotificationBell from 'layouts/main-layout/appbar/NotificationBell';
 import ProfileDropdown from 'layouts/main-layout/appbar/ProfileDropdown';
 import SearchInput from 'layouts/main-layout/appbar/SearchInput';
 import SettingsDropdown from 'layouts/main-layout/appbar/SettingsDropdown';
-import { MouseEvent, useState } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 interface NavbarProps {
   onDrawerToggle: () => void;
 }
 const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
-  const [open, setOpen] = useState<null | HTMLElement>(null);
-
   const location = useLocation();
 
   // Extract the route name from the pathname
   const pathSegments = location.pathname.split('/').filter((segment) => segment.trim() !== '');
   const routeName = pathSegments.length > 0 ? pathSegments.pop() : 'Overview';
-
-  const handleOpen = (event: MouseEvent<HTMLElement>) => {
-    setOpen(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setOpen(null);
-  };
 
   return (
     <>
@@ -66,15 +55,7 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
 
             <Stack direction="row" sx={{ gap: { xs: 2.5, xl: 3.75 } }}>
               <SettingsDropdown />
-              <IconButton sx={{ bgcolor: 'background.paper' }} onClick={handleOpen}>
-                <IconifyIcon
-                  color="error.main"
-                  icon="lucide:bell-dot"
-                  sx={{ width: { xs: 18, md: 20, xl: 25 }, height: { xs: 18, md: 20, xl: 25 } }}
-                />
-              </IconButton>
-
-              <NotificationDropdown open={open} onClose={handleClose} />
+              <NotificationBell />
             </Stack>
             <ProfileDropdown />
           </Stack>

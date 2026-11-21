@@ -28,6 +28,11 @@ export const queryKeys = {
     quote: (currency: string, amount: string, direction: string) =>
       ['fx', 'quote', currency, amount, direction] as const,
   },
+  notifications: {
+    all: ['notifications'] as const,
+    unreadCount: () => ['notifications', 'unread-count'] as const,
+    recent: (size: number) => ['notifications', 'recent', size] as const,
+  },
   transactions: {
     all: ['transactions'] as const,
     byAccount: (accountNumber: string, page: number, size: number) =>

@@ -127,7 +127,9 @@ flowchart LR
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
 - Daily balance history of own accounts, shown as a chart on the dashboard (7, 30 or 90 days)
-- **Notifications** for money sent, received, deposited or arriving from abroad (API so far; created from Kafka events)
+- **Notifications** for money sent, received, deposited or arriving from abroad: a bell in the app bar with the
+  unread count, the latest notifications in a dropdown, mark one or all as read. Created from Kafka events a second
+  or two after the money moves; when a new one arrives, the balances refresh on their own
 - Update profile
 
 ### 🛡️ Admin
@@ -450,7 +452,7 @@ Requires **Docker** running: the tests start a real PostgreSQL 17 container with
 ./gradlew test
 ```
 
-Frontend (150 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (171 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test

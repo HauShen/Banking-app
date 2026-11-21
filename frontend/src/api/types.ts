@@ -93,3 +93,24 @@ export interface PageResult<T> {
   size: number;
   totalElements: number;
 }
+
+/** NotificationType.java: what a notification is about. */
+export type NotificationType =
+  | 'MONEY_SENT'
+  | 'MONEY_RECEIVED'
+  | 'CASH_DEPOSITED'
+  | 'REMITTANCE_RECEIVED';
+
+/** NotificationResponseBody.java (GET /api/notifications). */
+export interface AppNotification {
+  id: number;
+  type: NotificationType;
+  /** Ready to show, e.g. "You received RM 30.00 from account ****0001." */
+  message: string;
+  reference: string;
+  /** MYR. */
+  amount: number;
+  /** When the money moved. */
+  createdAt: string;
+  read: boolean;
+}
