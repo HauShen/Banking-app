@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.application.service;
 
 import com.Banking_app.transaction.application.port.in.command.RecordCashDepositCommand;
+import com.Banking_app.transaction.application.port.out.event.CashDeposited;
 import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
@@ -17,12 +18,14 @@ class RecordCashDepositServiceTest {
     private static final Instant DEPOSITED_AT = Instant.parse("2026-11-06T08:00:00Z");
 
     private final FakeTransactionStore store = new FakeTransactionStore();
-    private final RecordCashDepositService service = new RecordCashDepositService(store, new SequentialReferences());
+    private final FakeTransactionEvents events = new FakeTransactionEvents();
+    private final RecordCashDepositService service = new RecordCashDepositService(store, new SequentialReferences(),
+            events);
 
     @Test
     @DisplayName("stores a SUCCESS cash deposit with a CDM- reference and one CREDIT entry, all at the deposit time")
     void recordsDeposit() {
-        String reference = service.record(new RecordCashDepositCommand(2L, new BigDecimal("50.00"),
+        String reference = service.record(new RecordCashDepositCommand(2L, "1000000002", "bob", new BigDecimal("50.00"),
                 new BigDecimal("70.00"), DEPOSITED_AT, "Cash Deposit Machine top-up", "CDM-topup-key"));
 
         assertThat(reference).isEqualTo("CDM-000000000001");
@@ -41,6 +44,15 @@ class RecordCashDepositServiceTest {
             assertThat(credit.amount()).isEqualByComparingTo("50.00");
             assertThat(credit.balanceAfter()).isEqualByComparingTo("70.00");
             assertThat(credit.postedAt()).isEqualTo(DEPOSITED_AT);
+        });
+
+        assertThat(events.published).singleElement().isInstanceOfSatisfying(CashDeposited.class, event -> {
+            assertThat(event.occurredAt()).isEqualTo(DEPOSITED_AT);
+            assertThat(event.reference()).isEqualTo("CDM-000000000001");
+            assertThat(event.accountNumber()).isEqualTo("1000000002");
+            assertThat(event.ownerId()).isEqualTo("bob");
+            assertThat(event.amount()).isEqualByComparingTo("50.00");
+            assertThat(event.orderingKey()).isEqualTo("1000000002");
         });
     }
 }

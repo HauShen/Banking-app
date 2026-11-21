@@ -6,11 +6,15 @@ import java.time.Instant;
 /**
  * Record a top-up that the account module has already applied to the balance.
  *
+ * @param accountNumber and {@code ownerId}: passed on in the deposit's event, so a consumer never asks the account
+ *                      module
  * @param balanceAfter the account's balance after the deposit, written into the CREDIT ledger entry
  * @param depositedAt  when the top-up happened (the account module's clock); used for created_at, success_at and
  *                     the ledger entry, exactly as the old LegacyCashDepositAdapter did
  */
 public record RecordCashDepositCommand(Long toAccountId,
+                                       String accountNumber,
+                                       String ownerId,
                                        BigDecimal amount,
                                        BigDecimal balanceAfter,
                                        Instant depositedAt,

@@ -43,7 +43,8 @@ public class TopUpAccountService implements TopUpAccountUseCase {
         account.deposit(command.amount());          // domain rule: amount > 0, account ACTIVE
         Account saved = saveAccountPort.save(account);
 
-        recordCashDepositPort.recordCashDeposit(saved.getId(), command.amount(), saved.getBalance(), clock.instant());
+        recordCashDepositPort.recordCashDeposit(saved.getId(), saved.getAccountNumber(), saved.getOwnerId(),
+                command.amount(), saved.getBalance(), clock.instant());
         return saved;
     }
 }

@@ -10,7 +10,7 @@ import java.util.Map;
 /** Stands in for the account module's receiving side: a few accounts with a balance and a locked flag. */
 class FakeReceivingAccounts implements ReceivingAccountPort {
 
-    private record Acc(Long id, String number, boolean locked) {
+    private record Acc(Long id, String number, String ownerId, boolean locked) {
     }
 
     private final Map<String, Acc> byNumber = new LinkedHashMap<>();
@@ -18,8 +18,8 @@ class FakeReceivingAccounts implements ReceivingAccountPort {
     int lockCalls;
     int receiveCalls;
 
-    void add(Long id, String number, boolean locked, String balance) {
-        byNumber.put(number, new Acc(id, number, locked));
+    void add(Long id, String number, String ownerId, boolean locked, String balance) {
+        byNumber.put(number, new Acc(id, number, ownerId, locked));
         balances.put(id, new BigDecimal(balance));
     }
 
@@ -35,7 +35,7 @@ class FakeReceivingAccounts implements ReceivingAccountPort {
             // the account module's TransferAccountNotFoundException is a 404 with this message
             throw new IllegalStateException("To account not found");
         }
-        return new ReceivingAccount(acc.id(), acc.number(), acc.locked());
+        return new ReceivingAccount(acc.id(), acc.number(), acc.ownerId(), acc.locked());
     }
 
     @Override

@@ -24,7 +24,7 @@ public class AccountModuleReceiveAdapter implements ReceivingAccountPort {
     @Override
     public ReceivingAccount lockForReceiving(String accountNumber) {
         AccountSnapshot account = receiveFundsUseCase.lockForReceiving(accountNumber);
-        return new ReceivingAccount(account.id(), account.accountNumber(), account.isLocked());
+        return new ReceivingAccount(account.id(), account.accountNumber(), account.ownerId(), account.isLocked());
     }
 
     @Override
