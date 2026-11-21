@@ -7,6 +7,7 @@ import com.Banking_app.transaction.application.port.out.event.ForeignAmount;
 import com.Banking_app.transaction.application.port.out.event.TransactionEvent;
 import com.Banking_app.transaction.application.port.out.event.TransferCompleted;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +28,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * The outbox adapter against the real PostgreSQL schema (V12, jsonb payload). Events are built by hand here; the
  * services that create them in real transfers are covered by TransactionEventsOutboxTest.
+ *
+ * <p>The hand-built events name users that don't exist, so they are deleted after each test: otherwise the relay of
+ * a later Kafka test class would send them and the notification consumer would dead-letter them.
  */
 class OutboxPersistenceAdapterTest extends AbstractIntegrationTest {
 
@@ -42,6 +47,11 @@ class OutboxPersistenceAdapterTest extends AbstractIntegrationTest {
     @Autowired
     void transactionTemplate(PlatformTransactionManager transactionManager) {
         tx = new TransactionTemplate(transactionManager);
+    }
+
+    @AfterEach
+    void deleteHandBuiltEvents() {
+        jdbc.update("DELETE FROM outbox_events WHERE occurred_at = ?", AT.atOffset(ZoneOffset.UTC));
     }
 
     private static CashDeposited deposit() {

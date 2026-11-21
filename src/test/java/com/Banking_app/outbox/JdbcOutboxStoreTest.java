@@ -1,6 +1,7 @@
 package com.Banking_app.outbox;
 
 import com.Banking_app.support.AbstractIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * The relay's SQL against the real schema (V12). Rows are inserted by hand here.
  *
  * <p>Other test classes leave unpublished events behind (every transfer writes one), so each test first marks every
- * waiting row as published: the outbox is then "empty" and the test sees only its own rows.
+ * waiting row as published: the outbox is then "empty" and the test sees only its own rows. Its own rows are
+ * deleted afterwards, so a later Kafka test class's relay never sends these incomplete events.
  */
 class JdbcOutboxStoreTest extends AbstractIntegrationTest {
 
@@ -45,18 +48,27 @@ class JdbcOutboxStoreTest extends AbstractIntegrationTest {
         tx = new TransactionTemplate(transactionManager);
     }
 
+    private final List<Long> inserted = new ArrayList<>();
+
     @BeforeEach
     void emptyTheOutbox() {
         jdbc.update("UPDATE outbox_events SET published_at = now() WHERE published_at IS NULL");
     }
 
+    @AfterEach
+    void deleteOwnRows() {
+        inserted.forEach(id -> jdbc.update("DELETE FROM outbox_events WHERE id = ?", id));
+    }
+
     /** Inserts an unpublished event and returns its id. */
     private long insert(String key, Instant occurredAt) {
-        return jdbc.queryForObject("""
+        Long id = jdbc.queryForObject("""
                 INSERT INTO outbox_events (event_id, topic, message_key, event_type, event_version, payload, occurred_at)
                 VALUES (?, 'banking.transactions.v1', ?, 'CASH_DEPOSITED', 1, CAST(? AS jsonb), ?)
                 RETURNING id""", Long.class,
                 UUID.randomUUID(), key, "{\"reference\": \"CDM-1\", \"amount\": 30.00}", occurredAt.atOffset(ZoneOffset.UTC));
+        inserted.add(id);
+        return id;
     }
 
     private List<OutboxMessage> nextBatch(int limit) {
