@@ -17,13 +17,14 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 /**
- * The hexagonal architecture of the account, transaction and fx modules, checked on every build.
+ * The hexagonal architecture of the account, transaction, fx and notification modules, checked on every build.
  * ArchUnit reads the compiled classes (not the tests) and fails with the exact class and line that breaks a rule.
  *
  * <pre>
  *   adapter ──► application ──► domain          (inside one module, arrows = "may depend on")
  *   account.adapter ──► transaction.application.port.in    (and the other way round)
  *   transaction.adapter ──► fx.application.port.in          (fx calls no other module)
+ *   notification ──► no other module: it only reads Kafka messages; Kafka only in adapters
  * </pre>
  *
  * userProfile is not covered yet: its rules need their own decisions (e.g. account's owner lookup adapter reads the
@@ -41,12 +42,17 @@ public class ArchitectureTest {
     private static final String ACCOUNT_APPLICATION = "com.Banking_app.account.application..";
     private static final String TRANSACTION_APPLICATION = "com.Banking_app.transaction.application..";
     private static final String FX_APPLICATION = "com.Banking_app.fx.application..";
+    private static final String NOTIFICATION = "com.Banking_app.notification..";
+    private static final String NOTIFICATION_DOMAIN = "com.Banking_app.notification.domain..";
+    private static final String NOTIFICATION_APPLICATION = "com.Banking_app.notification.application..";
+    private static final String USER_PROFILE = "com.Banking_app.userProfile..";
 
     // ------------------------------------------------------------------ domain: plain Java
 
     @ArchTest
     static final ArchRule domainUsesNoFrameworks = noClasses()
-            .that().resideInAnyPackage(ACCOUNT_DOMAIN, TRANSACTION_DOMAIN, FX_DOMAIN, "com.Banking_app.shared..")
+            .that().resideInAnyPackage(ACCOUNT_DOMAIN, TRANSACTION_DOMAIN, FX_DOMAIN, NOTIFICATION_DOMAIN,
+                    "com.Banking_app.shared..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "org.springframework..", "jakarta..", "javax..", "org.hibernate..", "com.fasterxml..", "lombok..")
             .because("the domain (and the shared kernel) is plain Java: no Spring, JPA, Jackson or Lombok");
@@ -70,17 +76,26 @@ public class ArchitectureTest {
             .because("the fx domain (ExchangeRate and its rules) knows nothing about the application, adapters or "
                     + "other modules");
 
+    @ArchTest
+    static final ArchRule notificationDomainDependsOnlyOnItself = noClasses()
+            .that().resideInAPackage(NOTIFICATION_DOMAIN)
+            .should().dependOnClassesThat(resideInAPackage("com.Banking_app..").and(not(resideInAPackage(NOTIFICATION_DOMAIN))))
+            .because("the notification domain (Notification and its texts) knows nothing about the application, "
+                    + "adapters or other modules");
+
     // ------------------------------------------------------------------ application: ports and use cases
 
     @ArchTest
     static final ArchRule applicationDoesNotUseAdapters = noClasses()
-            .that().resideInAnyPackage(ACCOUNT_APPLICATION, TRANSACTION_APPLICATION, FX_APPLICATION)
+            .that().resideInAnyPackage(ACCOUNT_APPLICATION, TRANSACTION_APPLICATION, FX_APPLICATION,
+                    NOTIFICATION_APPLICATION)
             .should().dependOnClassesThat().resideInAPackage("..adapter..")
             .because("the application talks to the outside only through its ports; adapters implement them");
 
     @ArchTest
     static final ArchRule applicationUsesNoPersistenceOrWeb = noClasses()
-            .that().resideInAnyPackage(ACCOUNT_APPLICATION, TRANSACTION_APPLICATION, FX_APPLICATION)
+            .that().resideInAnyPackage(ACCOUNT_APPLICATION, TRANSACTION_APPLICATION, FX_APPLICATION,
+                    NOTIFICATION_APPLICATION)
             .should().dependOnClassesThat().resideInAnyPackage(
                     "jakarta.persistence..", "org.hibernate..", "org.springframework.data..",
                     "org.springframework.web..", "org.springframework.http..")
@@ -90,7 +105,8 @@ public class ArchitectureTest {
     static final ArchRule useCasesAreInterfaces = classes()
             .that().resideInAnyPackage("com.Banking_app.account.application.port.in.usecase..",
                     "com.Banking_app.transaction.application.port.in.usecase..",
-                    "com.Banking_app.fx.application.port.in.usecase..")
+                    "com.Banking_app.fx.application.port.in.usecase..",
+                    "com.Banking_app.notification.application.port.in.usecase..")
             .should().beInterfaces()
             .because("inbound ports are interfaces; services implement them");
 
@@ -98,7 +114,8 @@ public class ArchitectureTest {
     static final ArchRule outboundPortsAreInterfaces = classes()
             .that().resideInAnyPackage("com.Banking_app.account.application.port.out..",
                     "com.Banking_app.transaction.application.port.out..",
-                    "com.Banking_app.fx.application.port.out..")
+                    "com.Banking_app.fx.application.port.out..",
+                    "com.Banking_app.notification.application.port.out..")
             .and().haveSimpleNameEndingWith("Port")
             .should().beInterfaces()
             .because("outbound ports are interfaces; adapters implement them");
@@ -107,7 +124,8 @@ public class ArchitectureTest {
     static final ArchRule servicesImplementUseCases = classes()
             .that().resideInAnyPackage("com.Banking_app.account.application.service..",
                     "com.Banking_app.transaction.application.service..",
-                    "com.Banking_app.fx.application.service..")
+                    "com.Banking_app.fx.application.service..",
+                    "com.Banking_app.notification.application.service..")
             .and().areAnnotatedWith(Service.class)
             .should().implement(resideInAPackage("..application.port.in.usecase.."))
             .because("callers depend on the use-case interface, never on the service class");
@@ -116,19 +134,19 @@ public class ArchitectureTest {
 
     @ArchTest
     static final ArchRule controllersLiveInWebAdapters = classes()
-            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX)
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, NOTIFICATION)
             .and().areAnnotatedWith(RestController.class)
             .should().resideInAPackage("..adapter.in.web..");
 
     @ArchTest
     static final ArchRule entitiesLiveInPersistenceAdapters = classes()
-            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX)
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, NOTIFICATION)
             .and().areAnnotatedWith(Entity.class)
             .should().resideInAPackage("..adapter.out.persistence..");
 
     @ArchTest
     static final ArchRule repositoriesOnlyUsedByPersistenceAdapters = noClasses()
-            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX)
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, NOTIFICATION)
             .and().resideOutsideOfPackage("..adapter.out.persistence..")
             .should().dependOnClassesThat().areAssignableTo(JpaRepository.class)
             .because("only a module's own persistence adapter touches its tables");
@@ -185,6 +203,27 @@ public class ArchitectureTest {
             .because("other modules use the transaction module's inbound ports, never its services or repositories");
 
     @ArchTest
+    static final ArchRule notificationKnowsNoOtherModule = noClasses()
+            .that().resideInAPackage(NOTIFICATION)
+            .should().dependOnClassesThat().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, USER_PROFILE)
+            .because("the notification module learns about money movements only from Kafka messages: the message "
+                    + "format is the contract, not the transaction module's classes");
+
+    @ArchTest
+    static final ArchRule nobodyCallsTheNotificationModule = noClasses()
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, USER_PROFILE)
+            .should().dependOnClassesThat().resideInAPackage(NOTIFICATION)
+            .because("other modules don't call notifications; they publish events, and the notification module "
+                    + "decides what to do with them");
+
+    @ArchTest
+    static final ArchRule kafkaOnlyInAdapters = noClasses()
+            .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, NOTIFICATION)
+            .and().resideOutsideOfPackage("..adapter..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.apache.kafka..", "org.springframework.kafka..")
+            .because("Kafka is a technical detail: domain and application code stay the same if the broker changes");
+
+    @ArchTest
     static final ArchRule accountLayersAreFreeOfCycles = slices()
             .matching("com.Banking_app.account.(*)..")
             .should().beFreeOfCycles();
@@ -197,5 +236,10 @@ public class ArchitectureTest {
     @ArchTest
     static final ArchRule fxLayersAreFreeOfCycles = slices()
             .matching("com.Banking_app.fx.(*)..")
+            .should().beFreeOfCycles();
+
+    @ArchTest
+    static final ArchRule notificationLayersAreFreeOfCycles = slices()
+            .matching("com.Banking_app.notification.(*)..")
             .should().beFreeOfCycles();
 }

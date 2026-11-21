@@ -88,7 +88,7 @@ flowchart LR
 | Spring Data JPA + Hibernate | ORM & database access |
 | PostgreSQL | Relational database |
 | Flyway | Database schema migrations |
-| Apache Kafka + Spring Kafka | Events after a money movement (in progress: broker and topics so far) |
+| Apache Kafka + Spring Kafka | Events after a money movement: transactional outbox → relay → topic → notification consumer (dead-letter topic for bad messages) |
 | Lombok | Boilerplate reduction |
 | springdoc-openapi (Swagger UI) | Interactive API documentation |
 | JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL (and a real Kafka where needed) |
@@ -127,6 +127,7 @@ flowchart LR
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
 - Daily balance history of own accounts, shown as a chart on the dashboard (7, 30 or 90 days)
+- **Notifications** for money sent, received, deposited or arriving from abroad (API so far; created from Kafka events)
 - Update profile
 
 ### 🛡️ Admin
@@ -275,6 +276,17 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | GET | `/api/fx/rates` | Logged in | The bank's buy and sell rate for every offered currency (MYR per 1 unit) |
 | GET | `/api/fx/quote?currency=USD&amount=100.00&direction=PAY` | Logged in | What an amount is worth in MYR now; `direction` `PAY` (sell rate, default) or `RECEIVE` (buy rate) |
 | POST | `/api/fx/quotes` | Logged in | Lock the sell rate for `currency` + `amount` (201): `quoteId`, rate, MYR amount, `expiresAt` (60 s) |
+
+#### Notifications
+Created from the transaction events on Kafka, usually within a second or two of the money moving. Everyone sees only
+their own (admins too).
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/notifications?unreadOnly=false&page=0&size=20` | Logged in | Own notifications, newest first (paged; `size` 1–100) |
+| GET | `/api/notifications/unread-count` | Logged in | `{"unread": n}` for the header bell |
+| PATCH | `/api/notifications/{id}/read` | Owner | Mark one as read (204); someone else's or unknown → 404 |
+| POST | `/api/notifications/read-all` | Logged in | Mark all own as read; `{"marked": n}` |
 
 ---
 

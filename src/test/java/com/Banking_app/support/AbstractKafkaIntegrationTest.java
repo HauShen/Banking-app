@@ -19,7 +19,7 @@ import java.util.UUID;
  *   <li>One Kafka container for the whole run, like PostgreSQL. The GraalVM "native" image of the same Kafka version
  *       as Docker Compose starts in about a second (fine for tests; Compose uses the normal JVM image).</li>
  *   <li>Turns {@code app.kafka.enabled} on, so these tests get their own Spring context, with the outbox relay
- *       running in the background.</li>
+ *       and the notification consumer running in the background.</li>
  *   <li>{@code @DirtiesContext}: the context (and with it the relay) is closed after each test class. Otherwise the
  *       relay would keep running while the rest of the suite runs, and stamp other tests' outbox rows as published
  *       behind their backs.</li>
@@ -40,6 +40,8 @@ public abstract class AbstractKafkaIntegrationTest extends AbstractIntegrationTe
     static void kafka(DynamicPropertyRegistry registry) {
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("app.kafka.enabled", () -> "true");
+        // this file replaces the main application.properties: restate what the consumers need
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
     }
 
     /** A plain consumer of String keys and values in a new consumer group of its own. Close it after use. */
