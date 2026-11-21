@@ -88,7 +88,7 @@ flowchart LR
 | Spring Data JPA + Hibernate | ORM & database access |
 | PostgreSQL | Relational database |
 | Flyway | Database schema migrations |
-| Apache Kafka + Spring Kafka | Events after a money movement: transactional outbox → relay → topic → notification consumer (dead-letter topic for bad messages) |
+| Apache Kafka + Spring Kafka | Events after a money movement: transactional outbox → relay → topic → two consumer groups (notifications, transaction alerts); dead-letter topic for bad messages |
 | Lombok | Boilerplate reduction |
 | springdoc-openapi (Swagger UI) | Interactive API documentation |
 | JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL (and a real Kafka where needed) |
@@ -139,6 +139,9 @@ flowchart LR
 - Record **incoming foreign remittances** (simulates the bank's payment gateway): credited in MYR at the buy rate
 - Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
 - Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
+- **Transaction alerts** (API so far): transfers of RM 10,000 or more, and more than 5 transfers out of one account
+  within 10 minutes, are flagged for review; limits in `app.alerts.*`. A second Kafka consumer group watches the same
+  events as the notifications, independently
 
 ---
 
@@ -289,6 +292,17 @@ their own (admins too).
 | GET | `/api/notifications/unread-count` | Logged in | `{"unread": n}` for the header bell |
 | PATCH | `/api/notifications/{id}/read` | Owner | Mark one as read (204); someone else's or unknown → 404 |
 | POST | `/api/notifications/read-all` | Logged in | Mark all own as read; `{"marked": n}` |
+
+#### Transaction alerts
+Raised by the alert module from the transaction events on Kafka (consumer group `banking-alerts`). Rules and limits:
+one transfer ≥ `app.alerts.large-amount` (RM 10,000.00) → `LARGE_TRANSFER`; more than `app.alerts.rapid-max-transfers`
+(5) transfers out of one account within `app.alerts.rapid-window` (10 minutes) → one `RAPID_TRANSFERS` alert per burst.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/admin/alerts?status=OPEN&page=0&size=20` | ADMIN | Alerts, newest first; `status` `OPEN` / `REVIEWED` / absent = all (paged; `size` 1–100) |
+| GET | `/api/admin/alerts/open-count` | ADMIN | `{"open": n}` |
+| PATCH | `/api/admin/alerts/{id}/review` | ADMIN | Mark as reviewed by the calling admin (200); already reviewed → unchanged |
 
 ---
 
