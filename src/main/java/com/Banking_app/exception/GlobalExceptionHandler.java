@@ -5,6 +5,7 @@ import com.Banking_app.security.TooManyLoginAttemptsException;
 import com.Banking_app.security.refresh.InvalidRefreshTokenException;
 import com.Banking_app.userProfile.application.exception.DuplicateUserException;
 import com.Banking_app.userProfile.application.exception.LastAdminException;
+import com.Banking_app.userProfile.application.exception.PasswordChangeRejectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -249,6 +250,21 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .build();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /** Wrong current password, or a new one equal to it: 400 with the message on that form field. */
+    @ExceptionHandler(PasswordChangeRejectedException.class)
+    public ResponseEntity<ApiError> handlePasswordChangeRejected(PasswordChangeRejectedException ex,
+                                                                 HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .fieldErrors(Map.of(ex.getField(), ex.getMessage()))
+                .build();
+        return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(DuplicateUserException.class)

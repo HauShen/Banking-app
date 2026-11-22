@@ -143,11 +143,8 @@ flowchart LR
 - See the bank's exchange rates and a quote before paying, or **lock a rate for 60 seconds** and pay at exactly
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
-- Daily balance history of own accounts, shown as a chart on the dashboard (7, 30 or 90 days)
-- **Notifications** for money sent, received, deposited or arriving from abroad: a bell in the app bar with the
-  unread count, the latest notifications in a dropdown, mark one or all as read. Created by notification-service from
-  Kafka events a second or two after the money moves; when a new one arrives, the balances refresh on their own
-- Update profile
+- Update profile; change password (with the current one; signs out every other device)
+master
 
 ### 🛡️ Admin
 - Open bank accounts (Savings / Current) for customers
@@ -257,7 +254,8 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | POST | `/api/auth/login` | Public | Log in: access token in the body, refresh token in a cookie |
 | POST | `/api/auth/refresh` | Refresh cookie | New access token + new refresh cookie (the old one is used up) |
 | POST | `/api/auth/logout` | Logged in | Log out on every device: all access and refresh tokens stop working, cookie cleared (204) |
-| GET | `/api/auth/bootstrap-status` | Public | Whether bootstrap is enabled and an admin exists |
+| POST | `/api/auth/change-password` | Logged in | `currentPassword` + `newPassword` (8–100 characters): every other session ends, this one gets a new access token and cookie. Wrong or unchanged password → 400 on that field |
+| GET | `/api/auth/bootstrap-status` | Public | `bootstrapEnabled`, `adminExists`, `allowed` — nothing more (no user count) |
 
 #### Health
 | Method | Endpoint | Access | Description |
@@ -493,6 +491,9 @@ Trade-offs, kept on purpose for a demo:
    - Only a SHA-256 hash of each refresh token is stored (table `refresh_tokens`), so a database leak leaks no usable tokens.
    - Each refresh token works **once** (rotation). Presenting a used one again means someone has a copy: the whole
      token family is revoked and the user's token version increases, so the thief's access token dies too.
+6. **Changing the password** (`POST /api/auth/change-password`) needs the current password, so a stolen access
+   token alone can't take the account over. A wrong current password counts as a failed login (same lockout and
+   429). On success every token of the user is revoked, as on logout, and this browser gets a new session.
 
 A missing, garbage, tampered, expired, revoked or deleted-user token is ignored by the filter (the request continues
 as anonymous) — it never crashes the request, and a stale token never blocks `/api/auth/login`.
@@ -618,6 +619,7 @@ endpoints is refactored.
 | `LoginThrottlingSecurityTest` | 5 failures lock a username → 429 with `Retry-After`, even with the right password; unknown usernames lock the same way; other users unaffected; a success resets the count; the lock expires |
 | `LoginIpThrottlingSecurityTest` | Failures spread over many usernames from one IP block that IP, then the block expires (own Spring context with a low limit) |
 | `RefreshTokenSecurityTest` | Login/register set a hardened cookie (HttpOnly, Secure, SameSite=Strict, Path); refresh gives a working access token and rotates the cookie; reusing a used token revokes the family and the current access token; missing/garbage cookie → 401; logout and admin revoke-tokens kill refresh tokens; deleted user → 401 |
+| `ChangePasswordSecurityTest` | New password works and the old one doesn't; other devices' access tokens and refresh cookies stop working; wrong current password → 400 (not 401); bad or unchanged new password → 400; audited; wrong guesses lock like failed logins (429) |
 | `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |
 | `HealthEndpointSecurityTest` | `/actuator/health` is public and says only UP, without details; health sub-paths and the rest of Actuator → 401 |
