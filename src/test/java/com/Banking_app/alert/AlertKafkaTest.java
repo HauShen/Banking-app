@@ -15,8 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * End to end with the real broker: a large transfer through the API → outbox → relay → topic → read by BOTH consumer
- * groups: the alert module raises an alert for admins, the notification module tells the recipient.
+ * End to end with the real broker: a large transfer through the API → outbox → relay → topic → the alert module
+ * raises an alert for admins. (The same message also reaches notification-service, a separate app with its own tests.)
  */
 class AlertKafkaTest extends AbstractKafkaIntegrationTest {
 
@@ -29,8 +29,8 @@ class AlertKafkaTest extends AbstractKafkaIntegrationTest {
     }
 
     @Test
-    @DisplayName("a RM 12,000 transfer → a LARGE_TRANSFER alert for admins, and the recipient is still notified")
-    void largeTransferRaisesAlertAndNotifies() {
+    @DisplayName("a RM 12,000 transfer → a LARGE_TRANSFER alert for admins")
+    void largeTransferRaisesAlert() {
         Customer alice = newCustomer("kalert_alice");
         Customer bob = newCustomer("kalert_bob");
         topUp(alice.token(), alice.account(), "15000.00");
@@ -47,8 +47,5 @@ class AlertKafkaTest extends AbstractKafkaIntegrationTest {
                             assertThat(a.get("rule").asText()).isEqualTo("LARGE_TRANSFER");
                             assertThat(a.get("accountNumber").asText()).isEqualTo(alice.account().number());
                         }));
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
-                assertThat(contentOf("/api/notifications?size=100", bob.token()))
-                        .anySatisfy(n -> assertThat(n.get("reference").asText()).isEqualTo(reference)));
     }
 }

@@ -31,7 +31,7 @@ import java.time.Instant;
 @Service
 public class CheckTransferService implements CheckTransferUseCase {
 
-    /** This consumer's name in processed_events; the notification consumer keeps its own marks. */
+    /** This consumer's name in processed_events (the table could hold the marks of several consumers). */
     static final String CONSUMER = "alerts";
 
     private static final Logger log = LoggerFactory.getLogger(CheckTransferService.class);

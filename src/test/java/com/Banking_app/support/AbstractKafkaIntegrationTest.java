@@ -19,7 +19,7 @@ import java.util.UUID;
  *   <li>One Kafka container for the whole run, like PostgreSQL. The GraalVM "native" image of the same Kafka version
  *       as Docker Compose starts in about a second (fine for tests; Compose uses the normal JVM image).</li>
  *   <li>Turns {@code app.kafka.enabled} on, so these tests get their own Spring context, with the outbox relay
- *       and the notification consumer running in the background.</li>
+ *       and the alert consumer running in the background.</li>
  *   <li>{@code @DirtiesContext}: the context (and with it the relay) is closed after each test class. Otherwise the
  *       relay would keep running while the rest of the suite runs, and stamp other tests' outbox rows as published
  *       behind their backs.</li>

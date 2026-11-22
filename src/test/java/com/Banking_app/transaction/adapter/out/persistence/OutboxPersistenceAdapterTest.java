@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * services that create them in real transfers are covered by TransactionEventsOutboxTest.
  *
  * <p>The hand-built events name users that don't exist, so they are deleted after each test: otherwise the relay of
- * a later Kafka test class would send them and the notification consumer would dead-letter them.
+ * a later Kafka test class would send them to the topic as if they were real money movements.
  */
 class OutboxPersistenceAdapterTest extends AbstractIntegrationTest {
 

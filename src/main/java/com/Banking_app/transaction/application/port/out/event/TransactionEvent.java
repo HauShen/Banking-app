@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A money movement that has happened, told to the rest of the system (notifications, alerts) through the outbox.
+ * A money movement that has happened, told to the rest of the system (notification-service, alerts) through the outbox.
  *
  * <p>Events are facts in the past tense: they are created only after the transaction was saved, and only for a new
  * transaction, never for an idempotent replay. They carry ids, account numbers and amounts, but no names, emails or

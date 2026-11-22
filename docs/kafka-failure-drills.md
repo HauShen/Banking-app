@@ -8,7 +8,7 @@ How the pieces fit (details in the README, section "Event-driven parts"):
 
 ```
 transfer (one DB transaction) ──► outbox_events row ──► OutboxRelay ──► Kafka topic banking.transactions.v1
-                                                                        ├──► group banking-notifications ──► notifications
+                                                                        ├──► group notification-service  ──► notifications (notification-service)
                                                                         └──► group banking-alerts        ──► transaction_alerts
                                                        broken messages ──► banking.transactions.v1.DLT
 ```
@@ -27,8 +27,8 @@ Commands used below (run them from the project folder):
 
 | What | Command |
 |---|---|
-| App log | `docker compose logs -f app` (Ctrl+C stops following). Only the lines that matter: add `\| grep -E "Outbox\|Notifications\|Alerts\|Kafka topics"` (Git Bash) or `\| Select-String "Outbox\|Notifications\|Alerts\|Kafka topics"` (PowerShell) |
-| SQL | `docker compose exec postgres psql -U hau -d banking_db -c "<query>"` (use your `POSTGRES_USER` / `POSTGRES_DB` if you changed them in `.env`) |
+| App log | `docker compose logs -f app notification-service` (Ctrl+C stops following; the backend's lines start with `banking_app`, the service's with `banking_notification_service`). Only the lines that matter: add `\| grep -E "Outbox\|Notifications\|Alerts\|Kafka topics"` (Git Bash) or `\| Select-String "Outbox\|Notifications\|Alerts\|Kafka topics"` (PowerShell) |
+| SQL | `docker compose exec postgres psql -U hau -d banking_db -c "<query>"` (use your `POSTGRES_USER` / `POSTGRES_DB` if you changed them in `.env`); notifications are in `-d notifications_db` |
 | Kafka tools | `docker compose exec kafka /opt/kafka/bin/<tool>.sh --bootstrap-server localhost:9092 …` |
 
 Useful queries:
@@ -36,9 +36,11 @@ Useful queries:
 ```sql
 -- what is waiting in the outbox
 SELECT id, event_type, message_key, attempts, published_at FROM outbox_events WHERE published_at IS NULL ORDER BY id;
--- counts before / after a drill
+-- counts before / after a drill, in banking_db
+SELECT (SELECT count(*) FROM transaction_alerts) AS alerts,
+       (SELECT count(*) FROM processed_events WHERE consumer = 'alerts') AS processed;
+-- and in notifications_db
 SELECT (SELECT count(*) FROM notifications) AS notifications,
-       (SELECT count(*) FROM transaction_alerts) AS alerts,
        (SELECT count(*) FROM processed_events) AS processed;
 ```
 
@@ -80,18 +82,18 @@ so it can't be lost; sending to Kafka is retried later (`OutboxRelay`, `OutboxHo
 **Question:** Kafka delivers *at least once*. What happens when consumers see the same events again?
 
 1. Run the counts query and note the numbers.
-2. Look at the consumer group: `… kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group banking-notifications`
+2. Look at the consumer group: `… kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group notification-service`
    → `LAG` is 0 on every partition (it has read everything).
-3. `docker compose stop app` (offsets can only be reset while the group has no running consumers).
+3. `docker compose stop app notification-service` (offsets can only be reset while a group has no running consumers).
 4. Move both groups back to the start of the topic:
    ```bash
    docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
-     --group banking-notifications --topic banking.transactions.v1 --reset-offsets --to-earliest --execute
+     --group notification-service --topic banking.transactions.v1 --reset-offsets --to-earliest --execute
    docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
      --group banking-alerts --topic banking.transactions.v1 --reset-offsets --to-earliest --execute
    ```
 5. `--describe` again → `LAG` now equals the number of messages on each partition.
-6. `docker compose start app` and watch the log.
+6. `docker compose start app notification-service` and watch the log.
 7. Run the counts query and `--describe` again.
 
 **Expected**
@@ -102,9 +104,9 @@ so it can't be lost; sending to Kafka is retried later (`OutboxRelay`, `OutboxHo
   copies).
 
 **What it proves:** idempotent consumers. Each consumer writes `(consumer, event_id)` into `processed_events` in the
-same transaction as its work, so a second delivery changes nothing (`RecordNotificationsService`,
-`CheckTransferService`). The offsets on the broker are each group's reading position, and the two groups are
-independent.
+same transaction as its work, so a second delivery changes nothing (`RecordNotificationsService` in
+notification-service, `CheckTransferService` in the backend). The offsets on the broker are each group's reading
+position, and the two groups are independent, even across two apps.
 
 **What I saw:**
 
@@ -126,7 +128,7 @@ independent.
   `UnprocessableMessageException: Message is not valid JSON`. No retries: retrying can't fix it.
 - The DLT holds **two** copies of the message (one per consumer group), value `this is not json`, with headers such as
   `kafka_dlt-original-topic`, `kafka_dlt-original-offset`, `kafka_dlt-original-consumer-group`
-  (`banking-notifications` / `banking-alerts`), `kafka_dlt-exception-fqcn`, `kafka_dlt-exception-message`.
+  (`notification-service` / `banking-alerts`), `kafka_dlt-exception-fqcn`, `kafka_dlt-exception-message`.
 - The next transfer is processed normally.
 
 **What it proves:** one bad message never blocks a partition, and nothing is dropped silently: it is parked with the
@@ -147,14 +149,15 @@ topics" if the broker isn't there. Before the fix, the topics would never be cre
 `Topic banking.transactions.v1 not present in metadata after 5000 ms` until the app was restarted. Found while
 planning this drill; fixed by `KafkaTopicsInitializer` (tries again every 30 s until the topics exist).
 
-1. `docker compose stop app kafka`
+1. `docker compose stop app notification-service kafka`
 2. Remove the broker and its data (**deletes all Kafka messages and consumer offsets**; the database is untouched):
    ```bash
    docker compose rm -f kafka
    docker volume ls                       # find the one ending in _kafkadata, e.g. banking-app_kafkadata
    docker volume rm banking-app_kafkadata
    ```
-3. Start only the app: `docker compose up -d --no-deps app` (without `--no-deps`, Compose would start Kafka first).
+3. Start only the two apps: `docker compose up -d --no-deps app notification-service` (without `--no-deps`, Compose
+   would start Kafka first).
 4. Log: after about 10 s `Could not configure topics` (from `KafkaAdmin`); the app is up (http://localhost:3000 works).
 5. As alice, send bob RM 5 → 201. The relay starts warning (drill 1).
 6. Every 30 s: `Kafka topics are not in place yet, will try again: …`

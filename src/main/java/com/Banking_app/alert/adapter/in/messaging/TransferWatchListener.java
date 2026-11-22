@@ -14,7 +14,7 @@ import static com.Banking_app.config.kafka.EventEnvelope.decimal;
 import static com.Banking_app.config.kafka.EventEnvelope.text;
 
 /**
- * Inbound messaging adapter: reads the same topic as the notification consumer, but in its own consumer group
+ * Inbound messaging adapter: reads the same topic as notification-service, but in its own consumer group
  * {@value #GROUP_ID}. Each group has its own offsets, so both consumers get every message, independently: one
  * being slow or down doesn't hold up the other.
  *
