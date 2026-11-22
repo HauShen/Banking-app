@@ -58,12 +58,17 @@ flowchart LR
     subgraph backend["app container (Spring Boot)"]
         sec["Spring Security<br/>JWT filter"]
         modules["Modules: user · account ·<br/>transaction · fx<br/>(adapter → application → domain)"]
+        relay["Outbox relay"]
+        consumers["Consumers:<br/>notification · alert"]
     end
-    db[("PostgreSQL<br/>Flyway migrations")]
+    db[("PostgreSQL<br/>Flyway migrations<br/>+ outbox_events")]
+    kafka[["Kafka (KRaft)<br/>banking.transactions.v1<br/>+ .DLT"]]
 
     browser -- "http://localhost:3000" --> spa
     browser -- "/api/** (Bearer token,<br/>refresh cookie)" --> proxy
     proxy --> sec --> modules --> db
+    db -. "unpublished events" .-> relay --> kafka
+    kafka --> consumers --> db
 ```
 
 - **One origin.** With Docker Compose the browser only talks to nginx on port 3000: it serves the React build and
@@ -72,9 +77,10 @@ flowchart LR
 - **Auth.** The access token (15 minutes) lives only in the React app's memory. The refresh token is an
   `HttpOnly`, `SameSite=Strict` cookie on `/api/auth`: it restores the session after a reload and is rotated on
   every use (see [Security](#-security)).
-- **Backend.** Each module (`userProfile`, `account`, `transaction`, `fx`) has its own domain, application
-  (use cases and ports) and adapters; modules call each other only through inbound ports, checked by ArchUnit
-  rules (`ArchitectureTest`).
+- **Backend.** Each module (`userProfile`, `account`, `transaction`, `fx`, `notification`, `alert`) has its own
+  domain, application (use cases and ports) and adapters; modules call each other only through inbound ports, checked
+  by ArchUnit rules (`ArchitectureTest`). `notification` and `alert` call no other module at all: they only read
+  Kafka messages (see [Event-driven parts](#-event-driven-parts-kafka)).
 
 ---
 
@@ -365,6 +371,48 @@ comes in or goes out. The transaction remembers the original currency, amount an
 
 ---
 
+## 📨 Event-driven parts (Kafka)
+
+Moving money stays one synchronous database transaction. What happens **after** money moved — notifications and the
+transaction watch — runs on Kafka, so it can't slow down or break a transfer.
+
+```mermaid
+flowchart LR
+    tx["Transfer / top-up / remittance<br/>(one DB transaction)"] --> outbox[("outbox_events<br/>same transaction")]
+    outbox --> relay["Outbox relay<br/>every 1 s, oldest first"]
+    relay --> topic[["banking.transactions.v1<br/>key = account number"]]
+    topic --> n["banking-notifications<br/>→ notifications → 🔔"]
+    topic --> a["banking-alerts<br/>→ transaction_alerts → admin page"]
+    n -. "unreadable or still failing" .-> dlt[["banking.transactions.v1.DLT"]]
+    a -.-> dlt
+```
+
+- **Transactional outbox.** A service never sends to Kafka itself: it writes the event into `outbox_events` in the
+  same transaction as the money. If the transfer rolls back, so does the event; if Kafka is down, the event waits. A
+  relay (`com.Banking_app.outbox`) sends waiting rows in id order and stops at the first failure, so no event
+  overtakes an earlier one; a PostgreSQL advisory lock lets only one app instance relay at a time.
+- **Ordering.** The message key is the account number: all events of one account go to the same partition and are
+  read in order. The rapid-transfers rule relies on it.
+- **At least once, idempotent consumers.** An event can arrive twice (e.g. the app stopped after sending but before
+  marking the row). Each consumer records `(consumer, event_id)` in `processed_events` in the same transaction as its
+  work, so a repeat changes nothing.
+- **Two consumer groups, one topic.** `banking-notifications` and `banking-alerts` each keep their own offsets: both
+  see every event, and one being slow doesn't hold up the other.
+- **Bad messages.** A message that can't be read goes straight to `banking.transactions.v1.DLT`; other failures are
+  tried 3 times, 1 s apart, first. The consumer then moves on.
+- **Contract.** The envelope `{eventId, eventType, version, occurredAt, payload}` is the only thing producer and
+  consumers share (`EventEnvelope`); consumers skip event types they don't know and refuse versions they don't.
+- **Order of startup doesn't matter.** Topics are created by the app; if the broker isn't up yet, it tries again every
+  30 s (`KafkaTopicsInitializer`).
+
+Settings: `app.kafka.enabled` (`KAFKA_ENABLED`; off → no topics, nothing sent, transfers still work), `app.outbox.*`,
+`app.alerts.*`. Kafka UI: `docker compose --profile tools up -d` → http://localhost:8081.
+
+**Failure drills:** [docs/kafka-failure-drills.md](docs/kafka-failure-drills.md) — stop the broker, redeliver every
+event, send a broken message, start a new broker after the app; what to do and what you should see.
+
+---
+
 ## 🔒 Security
 
 ### Authentication: stateless JWT
@@ -454,6 +502,17 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   amount, and there is no FX revenue account.
 - Remittances are simulated: an admin call stands in for the payment gateway, and the sender is just a name.
 - Only currencies with at most 2 decimal places can be offered (e.g. not KWD, which has 3).
+- Kafka runs as a single broker: no replication, so losing its volume loses the messages not yet consumed (the
+  database keeps every event in `outbox_events` for 7 days after sending, but there is no replay tool yet).
+- Messages are JSON with a version number, without a schema registry; a breaking change needs a new version or topic.
+- The outbox relay polls every second and sends one message at a time: fine for a demo, not for high volume
+  (batching sends, or CDC with Debezium, would be next). Only one app instance relays at a time.
+- Dead-lettered messages are only parked (`.DLT`), with no tool to replay them; a consumer that keeps failing because
+  the database is down dead-letters after 3 tries, and that notification or alert is not created.
+- The notification bell polls every 20 s and the alerts page every 30 s (no push). Old notifications and
+  `processed_events` rows are never cleaned up.
+- The alert rules are simple demo rules (large amount, many transfers in a short time), not real transaction
+  monitoring.
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
   exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
   real banks do. The defence against probing account numbers is rate limiting, not hiding the status code.
