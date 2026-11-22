@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AccountModuleDirectoryAdapterTest {
 
+    private static final Instant OPENED_AT = Instant.parse("2026-11-01T02:00:00Z");
+
     private static AccountSnapshot snapshot(Long id, String number, String owner) {
-        return new AccountSnapshot(id, number, owner, AccountStatus.ACTIVE, AccountCurrency.MYR, BigDecimal.TEN);
+        return new AccountSnapshot(id, number, owner, AccountStatus.ACTIVE, AccountCurrency.MYR, BigDecimal.TEN,
+                OPENED_AT);
     }
 
     private final LookupAccountsUseCase fakeAccountModule = new LookupAccountsUseCase() {
@@ -46,6 +50,8 @@ class AccountModuleDirectoryAdapterTest {
         assertThat(ref.accountNumber()).isEqualTo("1000000001");
         assertThat(ref.ownerId()).isEqualTo("alice");
         assertThat(ref.currency()).isEqualTo("MYR");
+        assertThat(ref.balance()).isEqualByComparingTo("10");
+        assertThat(ref.openedAt()).isEqualTo(OPENED_AT);
         assertThat(adapter.findByAccountNumber("1000000009")).isEmpty();
     }
 

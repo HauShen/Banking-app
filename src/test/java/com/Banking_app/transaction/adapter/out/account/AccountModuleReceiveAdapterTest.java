@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,7 +22,7 @@ class AccountModuleReceiveAdapterTest {
         @Override
         public AccountSnapshot lockForReceiving(String accountNumber) {
             return new AccountSnapshot(2L, accountNumber, "bob", AccountStatus.LOCKED, AccountCurrency.MYR,
-                    new BigDecimal("20.00"));
+                    new BigDecimal("20.00"), Instant.EPOCH);
         }
 
         @Override
@@ -34,12 +35,13 @@ class AccountModuleReceiveAdapterTest {
     private final AccountModuleReceiveAdapter adapter = new AccountModuleReceiveAdapter(fakeAccountModule);
 
     @Test
-    @DisplayName("lockForReceiving: id and number are copied; LOCKED becomes locked = true")
+    @DisplayName("lockForReceiving: id, number and owner are copied; LOCKED becomes locked = true")
     void lock() {
         ReceivingAccount account = adapter.lockForReceiving("1000000002");
 
         assertThat(account.accountId()).isEqualTo(2L);
         assertThat(account.accountNumber()).isEqualTo("1000000002");
+        assertThat(account.ownerId()).isEqualTo("bob");
         assertThat(account.locked()).isTrue();
     }
 

@@ -8,5 +8,6 @@ import java.time.Instant;
  * Implemented by adapter/out/ledger/TransactionModuleCashDepositAdapter (calls the transaction module).
  */
 public interface RecordCashDepositPort {
-    void recordCashDeposit(Long accountId, BigDecimal amount, BigDecimal balanceAfter, Instant depositedAt);
+    void recordCashDeposit(Long accountId, String accountNumber, String ownerId, BigDecimal amount,
+                           BigDecimal balanceAfter, Instant depositedAt);
 }

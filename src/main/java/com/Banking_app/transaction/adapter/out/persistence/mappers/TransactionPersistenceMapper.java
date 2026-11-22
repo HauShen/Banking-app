@@ -70,7 +70,8 @@ public class TransactionPersistenceMapper {
                 entity.getExchangeRate(), entity.getAmount());
     }
 
-    private static LedgerEntry toDomain(LedgerEntryJpaEntity entity) {
+    /** Also used by LedgerPersistenceAdapter for the balance history. */
+    public static LedgerEntry toDomain(LedgerEntryJpaEntity entity) {
         return new LedgerEntry(entity.getId(), entity.getAccountId(), entity.getLedgerType(), entity.getAmount(),
                 entity.getBalanceAfter(), entity.getPostedAt());
     }

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,9 +26,9 @@ class AccountModuleTransferAdapterTest {
         public TransferAccounts lockPairForTransfer(String fromAccountNumber, String toAccountNumber) {
             return new TransferAccounts(
                     new AccountSnapshot(1L, fromAccountNumber, "alice", AccountStatus.ACTIVE, AccountCurrency.MYR,
-                            new BigDecimal("120.00")),
+                            new BigDecimal("120.00"), Instant.EPOCH),
                     new AccountSnapshot(2L, toAccountNumber, "bob", AccountStatus.LOCKED, AccountCurrency.MYR,
-                            new BigDecimal("20.00")));
+                            new BigDecimal("20.00"), Instant.EPOCH));
         }
 
         @Override

@@ -5,6 +5,7 @@ import com.Banking_app.account.domain.enums.AccountStatus;
 import com.Banking_app.account.domain.models.account.Account;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 /**
  * Read-only copy of an account, for other modules (the transaction module) that call the internal use cases.
@@ -15,11 +16,12 @@ public record AccountSnapshot(Long id,
                               String ownerId,
                               AccountStatus status,
                               AccountCurrency currency,
-                              BigDecimal balance) {
+                              BigDecimal balance,
+                              Instant openedAt) {
 
     public static AccountSnapshot of(Account account) {
         return new AccountSnapshot(account.getId(), account.getAccountNumber(), account.getOwnerId(),
-                account.getStatus(), account.getCurrency(), account.getBalance());
+                account.getStatus(), account.getCurrency(), account.getBalance(), account.getCreatedAt());
     }
 
     public boolean isLocked() {

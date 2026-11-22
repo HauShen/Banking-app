@@ -8,11 +8,13 @@ import com.Banking_app.transaction.application.port.in.usecase.RecordForeignRemi
 import com.Banking_app.transaction.application.port.out.CurrencyConversionPort;
 import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyException;
 import com.Banking_app.transaction.application.port.out.LoadTransactionPort;
+import com.Banking_app.transaction.application.port.out.PublishTransactionEventPort;
 import com.Banking_app.transaction.application.port.out.ReceivingAccount;
 import com.Banking_app.transaction.application.port.out.ReceivingAccountPort;
 import com.Banking_app.transaction.application.port.out.SaveTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionReferencePort;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
+import com.Banking_app.transaction.application.port.out.event.ForeignRemittanceReceived;
 import com.Banking_app.transaction.domain.enums.TransactionType;
 import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
@@ -32,6 +34,7 @@ import java.util.Optional;
  *   <li>locked account → 400 "Selected account has been locked" (as for a transfer's recipient)</li>
  *   <li>convert at the bank's BUY rate (fx module: MYR, currency not offered, too many decimals → 400)</li>
  *   <li>credit the MYR amount, record a FOREIGN_REMITTANCE with one CREDIT ledger entry</li>
+ *   <li>put a ForeignRemittanceReceived event in the outbox (only for a new remittance, never for a replay)</li>
  * </ol>
  * One database transaction: if anything fails, nothing is stored and the balance stays as it was.
  * Two identical requests run one after the other (both lock the account), so the second finds the first.
@@ -46,6 +49,7 @@ public class RecordForeignRemittanceService implements RecordForeignRemittanceUs
     private final SaveTransactionPort saveTransactionPort;
     private final TransactionReferencePort transactionReferencePort;
     private final CurrencyConversionPort currencyConversionPort;
+    private final PublishTransactionEventPort publishTransactionEventPort;
     private final Clock clock;
 
     public RecordForeignRemittanceService(ReceivingAccountPort receivingAccountPort,
@@ -53,12 +57,14 @@ public class RecordForeignRemittanceService implements RecordForeignRemittanceUs
                                           SaveTransactionPort saveTransactionPort,
                                           TransactionReferencePort transactionReferencePort,
                                           CurrencyConversionPort currencyConversionPort,
+                                          PublishTransactionEventPort publishTransactionEventPort,
                                           Clock clock) {
         this.receivingAccountPort = receivingAccountPort;
         this.loadTransactionPort = loadTransactionPort;
         this.saveTransactionPort = saveTransactionPort;
         this.transactionReferencePort = transactionReferencePort;
         this.currencyConversionPort = currencyConversionPort;
+        this.publishTransactionEventPort = publishTransactionEventPort;
         this.clock = clock;
     }
 
@@ -99,6 +105,8 @@ public class RecordForeignRemittanceService implements RecordForeignRemittanceUs
             // same account wait for our lock). Throwing rolls back the credit; same answer as a later request.
             throw IdempotencyKeyMismatchException.forRemittance();
         }
+
+        publishTransactionEventPort.publish(ForeignRemittanceReceived.of(saved, account));
 
         return new RemittanceResult(saved.getReferenceNumber(), saved.getStatus(), saved.getCreatedAt(),
                 account.accountNumber(), saved.getAmount(),

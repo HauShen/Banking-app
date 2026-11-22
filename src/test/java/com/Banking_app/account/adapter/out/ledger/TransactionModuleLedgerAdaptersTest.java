@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TransactionModuleLedgerAdaptersTest {
 
     @Test
-    @DisplayName("top-up: passes account, amounts and time on, with the old description and a CDM- key")
+    @DisplayName("top-up: passes account, owner, amounts and time on, with the old description and a CDM- key")
     void cashDeposit() {
         List<RecordCashDepositCommand> received = new ArrayList<>();
         TransactionModuleCashDepositAdapter adapter = new TransactionModuleCashDepositAdapter(command -> {
@@ -24,11 +24,13 @@ class TransactionModuleLedgerAdaptersTest {
         });
         Instant at = Instant.parse("2026-11-06T08:00:00Z");
 
-        adapter.recordCashDeposit(7L, new BigDecimal("50.00"), new BigDecimal("70.00"), at);
-        adapter.recordCashDeposit(7L, new BigDecimal("50.00"), new BigDecimal("120.00"), at);
+        adapter.recordCashDeposit(7L, "1000000007", "alice", new BigDecimal("50.00"), new BigDecimal("70.00"), at);
+        adapter.recordCashDeposit(7L, "1000000007", "alice", new BigDecimal("50.00"), new BigDecimal("120.00"), at);
 
         RecordCashDepositCommand command = received.get(0);
         assertThat(command.toAccountId()).isEqualTo(7L);
+        assertThat(command.accountNumber()).isEqualTo("1000000007");
+        assertThat(command.ownerId()).isEqualTo("alice");
         assertThat(command.amount()).isEqualByComparingTo("50.00");
         assertThat(command.balanceAfter()).isEqualByComparingTo("70.00");
         assertThat(command.depositedAt()).isEqualTo(at);

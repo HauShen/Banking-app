@@ -29,6 +29,15 @@ class LedgerEntryTest {
     }
 
     @Test
+    @DisplayName("balanceBefore: a credit started lower, a debit started higher")
+    void balanceBefore() {
+        assertThat(LedgerEntry.credit(1L, new BigDecimal("30.00"), new BigDecimal("50.00"), NOW).balanceBefore())
+                .isEqualByComparingTo("20.00");
+        assertThat(LedgerEntry.debit(1L, new BigDecimal("30.00"), new BigDecimal("90.00"), NOW).balanceBefore())
+                .isEqualByComparingTo("120.00");
+    }
+
+    @Test
     @DisplayName("rejects zero, negative and missing amounts (the database has CHECK amount <> 0)")
     void rejectsNonPositiveAmount() {
         for (BigDecimal amount : new BigDecimal[]{BigDecimal.ZERO, new BigDecimal("-5"), null}) {

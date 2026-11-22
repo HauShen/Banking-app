@@ -1,6 +1,7 @@
 package com.Banking_app.transaction.adapter.in.web.mapper;
 
 import com.Banking_app.shared.PageResult;
+import com.Banking_app.transaction.adapter.in.web.dto.BalanceHistoryResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.RemittanceRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.RemittanceResponseBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransactionResponseBody;
@@ -8,6 +9,7 @@ import com.Banking_app.transaction.adapter.in.web.dto.TransferRequestBody;
 import com.Banking_app.transaction.adapter.in.web.dto.TransferResponseBody;
 import com.Banking_app.transaction.application.port.in.command.RecordForeignRemittanceCommand;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
+import com.Banking_app.transaction.application.port.in.result.BalanceHistoryView;
 import com.Banking_app.transaction.application.port.in.result.ForeignAmountView;
 import com.Banking_app.transaction.application.port.in.result.RemittanceResult;
 import com.Banking_app.transaction.application.port.in.result.TransactionView;
@@ -95,5 +97,12 @@ public class TransactionWebMapper {
         PageRequest pageRequest = PageRequest.of(result.page(), result.size(), Sort.by(Sort.Direction.DESC, "createdAt"));
         return new PageImpl<>(result.content().stream().map(this::toResponse).toList(), pageRequest,
                 result.totalElements());
+    }
+
+    public BalanceHistoryResponseBody toResponse(BalanceHistoryView view) {
+        return new BalanceHistoryResponseBody(view.accountNumber(), view.currency(), view.timeZone(),
+                view.days().stream()
+                        .map(day -> new BalanceHistoryResponseBody.Day(day.date(), day.closingBalance()))
+                        .toList());
     }
 }

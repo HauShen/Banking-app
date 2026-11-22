@@ -51,42 +51,113 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-report
-          path: build/reports/tests/test/
+          path: |
+            build/reports/tests/test/
+            services/notification-service/build/reports/tests/test/
           if-no-files-found: ignore
           retention-days: 14
 
-  # Builds the Docker image and proves that it really starts: the backend and PostgreSQL come up with
-  # Docker Compose, and the backend must answer UP on /actuator/health. This job pushes nothing.
+  # Builds the Docker images and proves that they really start: PostgreSQL, the backend and the frontend
+  # come up with Docker Compose, the backend must answer UP on /actuator/health, and the frontend's nginx
+  # must serve the app and forward /api. This job pushes nothing.
   docker:
     name: docker
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
 
       # JWT_SECRET here is a throwaway value made for this run only. The real one never leaves your .env.
-      - name: Build the image and start the backend
+      - name: Build the images and start the backend and frontend
         run: |
           export JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
           docker compose --profile app up --build --detach
 
-      - name: Wait until the health endpoint answers UP
+      - name: Wait until both health endpoints answer UP
         run: |
-          for attempt in $(seq 1 40); do
-            if curl --silent --fail http://localhost:8080/actuator/health | grep --quiet '"status":"UP"'; then
-              echo "Backend is UP (attempt $attempt)."
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Backend did not become healthy within 2 minutes."
-          exit 1
+          wait_for_up() {
+            for attempt in $(seq 1 40); do
+              if curl --silent --fail "http://localhost:$2/actuator/health" | grep --quiet '"status":"UP"'; then
+                echo "$1 is UP (attempt $attempt)."
+                return 0
+              fi
+              sleep 3
+            done
+            echo "$1 did not become healthy within 2 minutes."
+            return 1
+          }
+          wait_for_up backend 8080
+          wait_for_up notification-service 8082
 
-      - name: Show the backend log if something failed
+      # The frontend container serves the React app and forwards /api to the backend through nginx.
+      - name: Check the frontend and the API through nginx
+        run: |
+          curl --silent --fail http://localhost:3000/ | grep --quiet '<div id="root">'
+          echo "index.html served."
+          # A page that only exists in React Router must still get index.html (single-page app fallback).
+          curl --silent --fail http://localhost:3000/admin/users | grep --quiet '<div id="root">'
+          echo "SPA fallback works."
+          # /actuator/health is not under /api, so nginx doesn't forward it: use a public /api endpoint instead
+          # (its JSON comes from Spring Boot, so the request went through nginx to the backend and its database).
+          curl --silent --fail http://localhost:3000/api/auth/bootstrap-status | grep --quiet '"adminExists"'
+          echo "API reachable through nginx."
+
+      - name: Show the logs if something failed
         if: ${{ failure() }}
-        run: docker compose --profile app logs app
+        run: docker compose --profile app logs app frontend
+
+      # /api/notifications goes to notification-service, and a token the backend issued must work there
+      # (same JWT_SECRET). Only the service answers this path now, so a 200 proves the whole route.
+      - name: Check notification-service through nginx
+        run: |
+          TOKEN=$(curl --silent --fail -X POST http://localhost:3000/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"ci_smoke","fullName":"CI Smoke","email":"ci_smoke@example.com","password":"Passw0rd123"}' \
+            | jq --raw-output .accessToken)
+          curl --silent --fail -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/notifications/unread-count \
+            | grep --quiet '"unread":0'
+          echo "notification-service accepted the backend's token through nginx."
+
+      - name: Show the logs if something failed
+        if: ${{ failure() }}
+        run: docker compose --profile app logs app notification-service frontend
+
+  # Lints, tests and builds the React frontend in frontend/. Runs in parallel with the backend jobs.
+  # The frontend is not part of the published image yet (it gets its own image later), so publish doesn't wait for it.
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+
+      # Caches the npm download cache between runs, keyed by the lockfile.
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm ci installs exactly what package-lock.json says, and fails if it doesn't match package.json.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
 
   # Runs only on master (that is: after a pull request is merged), and only when both jobs above passed.
   # Publishes the image to GitHub Container Registry as ghcr.io/haushen/banking-app

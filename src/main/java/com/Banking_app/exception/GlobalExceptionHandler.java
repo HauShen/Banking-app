@@ -14,6 +14,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import jakarta.persistence.EntityNotFoundException;
@@ -62,6 +64,24 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
                 .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.badRequest().body(error);
+    }
+    /**
+     * A query parameter that is missing or can't be converted (e.g. {@code ?page=abc}, {@code ?days=x}): the
+     * client's mistake, so 400 with the parameter's name, not the 500 of the generic handler.
+     */
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<ApiError> handleBadParameter(Exception ex, HttpServletRequest request){
+        String message = ex instanceof MethodArgumentTypeMismatchException mismatch
+                ? "Invalid value for parameter '" + mismatch.getName() + "'"
+                : "Missing parameter '" + ((MissingServletRequestParameterException) ex).getParameterName() + "'";
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(message)
                 .path(request.getRequestURI())
                 .build();
         return ResponseEntity.badRequest().body(error);

@@ -11,6 +11,7 @@ import com.Banking_app.transaction.application.port.in.usecase.TransferMoneyUseC
 import com.Banking_app.transaction.application.port.out.CurrencyConversionPort;
 import com.Banking_app.transaction.application.port.out.DuplicateIdempotencyKeyException;
 import com.Banking_app.transaction.application.port.out.LoadTransactionPort;
+import com.Banking_app.transaction.application.port.out.PublishTransactionEventPort;
 import com.Banking_app.transaction.application.port.out.SaveTransactionPort;
 import com.Banking_app.transaction.application.port.out.TransactionReferencePort;
 import com.Banking_app.transaction.application.port.out.TransactionSummary;
@@ -18,6 +19,7 @@ import com.Banking_app.transaction.application.port.out.TransferAccountsPort;
 import com.Banking_app.transaction.application.port.out.TransferBalances;
 import com.Banking_app.transaction.application.port.out.TransferParties;
 import com.Banking_app.transaction.application.port.out.TransferParty;
+import com.Banking_app.transaction.application.port.out.event.TransferCompleted;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
 import com.Banking_app.transaction.domain.models.transaction.CurrencyConversion;
 import com.Banking_app.transaction.domain.models.transaction.Transaction;
@@ -39,8 +41,10 @@ import java.util.Optional;
  *   <li>amount in a foreign currency → converted at the bank's sell rate, or at the rate of the requester's locked
  *       quote (fx module; bad currency, amount or quote → 400; a quote with MYR → 400)</li>
  *   <li>move the MYR amount (minimum balance → 400), record the transaction with its ledger entries</li>
+ *   <li>put a TransferCompleted event in the outbox (only for a new transfer, never for a replay)</li>
  * </ol>
- * One database transaction for everything: if anything fails, nothing is stored and the balances stay as they were.
+ * One database transaction for everything: if anything fails, nothing is stored (no event either) and the balances
+ * stay as they were.
  * Two identical requests from one account run one after the other (both lock the from-account), so the second one
  * finds the first. Two accounts using the same key don't share a lock; if both get past the lookup, the unique
  * constraint stops the second insert and it gets the same 400 as if it had arrived a moment later.
@@ -53,6 +57,7 @@ public class TransferMoneyService implements TransferMoneyUseCase {
     private final SaveTransactionPort saveTransactionPort;
     private final TransactionReferencePort transactionReferencePort;
     private final CurrencyConversionPort currencyConversionPort;
+    private final PublishTransactionEventPort publishTransactionEventPort;
     private final Clock clock;
 
     public TransferMoneyService(TransferAccountsPort transferAccountsPort,
@@ -60,12 +65,14 @@ public class TransferMoneyService implements TransferMoneyUseCase {
                                 SaveTransactionPort saveTransactionPort,
                                 TransactionReferencePort transactionReferencePort,
                                 CurrencyConversionPort currencyConversionPort,
+                                PublishTransactionEventPort publishTransactionEventPort,
                                 Clock clock) {
         this.transferAccountsPort = transferAccountsPort;
         this.loadTransactionPort = loadTransactionPort;
         this.saveTransactionPort = saveTransactionPort;
         this.transactionReferencePort = transactionReferencePort;
         this.currencyConversionPort = currencyConversionPort;
+        this.publishTransactionEventPort = publishTransactionEventPort;
         this.clock = clock;
     }
 
@@ -132,6 +139,9 @@ public class TransferMoneyService implements TransferMoneyUseCase {
             // we just moved; the answer is the same 400 as when the other transfer is found by the lookup.
             throw new IdempotencyKeyConflictException();
         }
+
+        // Same database transaction as the money: the event is committed with it or rolled back with it.
+        publishTransactionEventPort.publish(TransferCompleted.of(saved, from, to));
 
         return new TransferResult(saved.getReferenceNumber(), saved.getStatus(), saved.getCreatedAt(),
                 saved.getAmount(), TransactionViews.foreignAmountOf(saved.getConversion().orElse(null)), false);
