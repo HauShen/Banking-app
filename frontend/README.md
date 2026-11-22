@@ -6,7 +6,8 @@ React frontend for the [Banking App](../README.md) Spring Boot API.
 
 ## Run locally
 
-Requires Node.js 18+ and the backend running on `http://localhost:8080` (see the root README).
+Requires Node.js 18+ and the backend running on `http://localhost:8080`, plus notification-service on
+`http://localhost:8082` for the notification bell (see the root README).
 
 ```bash
 npm install
@@ -29,7 +30,9 @@ The CI job `frontend` (`.github/workflows/ci.yml`) runs lint, tests and build on
 ## Docker
 
 `Dockerfile` builds the app (`npm ci`, `npm run build`) and serves `dist/` with nginx (non-root, port 8080).
-nginx forwards `/api` to the backend (`API_UPSTREAM`, default `http://app:8080`), so the browser sees one origin.
+nginx forwards `/api` to the backend (`API_UPSTREAM`, default `http://app:8080`) and `/api/notifications` to
+notification-service (`NOTIFICATIONS_UPSTREAM`, default `http://notification-service:8082`), so the browser sees one
+origin.
 Unknown paths get `index.html` (React Router), hashed assets are cached for a year, `index.html` never.
 
 From the repository root, together with PostgreSQL and the backend:
@@ -49,6 +52,12 @@ Copy `.env.example` to `.env.local` to override:
 |---|---|---|
 | `VITE_API_BASE_URL` | *(empty)* | API origin. Empty = same origin (`/api`), via the Vite dev proxy or a reverse proxy in production. |
 | `VITE_API_PROXY_TARGET` | `http://localhost:8080` | Where the Vite dev server forwards `/api`. |
+| `VITE_NOTIFICATIONS_PROXY_TARGET` | `http://localhost:8082` | Where it forwards `/api/notifications` (notification-service). |
+
+The app calls every endpoint under one `/api` prefix; the proxy decides which backend answers. `/api/notifications`
+is served by notification-service, the rest by the main app. The frontend's nginx (`docker/nginx.conf.template`)
+splits the paths the same way, and a reverse proxy in production must too. With `VITE_API_BASE_URL` set, every call
+goes to that one origin, so the split has to happen there.
 
 ## Authentication
 

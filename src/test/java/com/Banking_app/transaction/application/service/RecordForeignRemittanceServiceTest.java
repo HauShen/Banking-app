@@ -5,6 +5,7 @@ import com.Banking_app.transaction.application.exception.IdempotencyKeyMismatchE
 import com.Banking_app.transaction.application.exception.TransferAccountLockedException;
 import com.Banking_app.transaction.application.port.in.command.RecordForeignRemittanceCommand;
 import com.Banking_app.transaction.application.port.in.result.RemittanceResult;
+import com.Banking_app.transaction.application.port.out.event.ForeignRemittanceReceived;
 import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.enums.TransactionType;
@@ -31,12 +32,13 @@ class RecordForeignRemittanceServiceTest {
     private final FakeReceivingAccounts accounts = new FakeReceivingAccounts();
     private final FakeTransactionStore store = new FakeTransactionStore();
     private final FakeCurrencyConversions conversions = new FakeCurrencyConversions();
+    private final FakeTransactionEvents events = new FakeTransactionEvents();
     private final RecordForeignRemittanceService service = new RecordForeignRemittanceService(accounts, store, store,
-            new SequentialReferences(), conversions, Clock.fixed(NOW, ZoneOffset.UTC));
+            new SequentialReferences(), conversions, events, Clock.fixed(NOW, ZoneOffset.UTC));
 
     RecordForeignRemittanceServiceTest() {
-        accounts.add(ALICE_ACC, "1000000001", false, "120.00");
-        accounts.add(BOB_ACC, "1000000002", false, "20.00");
+        accounts.add(ALICE_ACC, "1000000001", "alice", false, "120.00");
+        accounts.add(BOB_ACC, "1000000002", "bob", false, "20.00");
     }
 
     private static RecordForeignRemittanceCommand toBob(String amount, String currency, String key) {
@@ -47,6 +49,7 @@ class RecordForeignRemittanceServiceTest {
         assertThat(accounts.receiveCalls).isZero();
         assertThat(store.saved).isEmpty();
         assertThat(accounts.balanceOf(BOB_ACC)).isEqualByComparingTo("20.00");
+        assertThat(events.published).isEmpty();
     }
 
     @Test
@@ -75,6 +78,18 @@ class RecordForeignRemittanceServiceTest {
         assertThat(tx.getLedgerEntries().get(0).type()).isEqualTo(LedgerType.CREDIT);
         assertThat(tx.getLedgerEntries().get(0).amount()).isEqualByComparingTo("460.00");
         assertThat(tx.getLedgerEntries().get(0).balanceAfter()).isEqualByComparingTo("480.00");
+
+        assertThat(events.published).singleElement().isInstanceOfSatisfying(ForeignRemittanceReceived.class, event -> {
+            assertThat(event.occurredAt()).isEqualTo(NOW);
+            assertThat(event.reference()).isEqualTo("RMT-000000000001");
+            assertThat(event.accountNumber()).isEqualTo("1000000002");
+            assertThat(event.ownerId()).isEqualTo("bob");
+            assertThat(event.amount()).isEqualByComparingTo("460.00");
+            assertThat(event.original().currency()).isEqualTo("USD");
+            assertThat(event.original().amount()).isEqualByComparingTo("100.00");
+            assertThat(event.original().exchangeRate()).isEqualByComparingTo("4.60");
+            assertThat(event.orderingKey()).isEqualTo("1000000002");
+        });
     }
 
     @Test
@@ -90,7 +105,7 @@ class RecordForeignRemittanceServiceTest {
         @Test
         @DisplayName("locked account → 400 'Selected account has been locked', nothing converted or credited")
         void locked() {
-            accounts.add(3L, "1000000003", true, "20.00");
+            accounts.add(3L, "1000000003", "carol", true, "20.00");
 
             assertThatThrownBy(() -> service.receive(new RecordForeignRemittanceCommand("1000000003", "USD",
                     BigDecimal.TEN, "John Smith", "gw-locked")))
@@ -126,6 +141,7 @@ class RecordForeignRemittanceServiceTest {
             assertThatThrownBy(() -> service.receive(toBob("100.00", "USD", "gw-race")))
                     .isInstanceOf(IdempotencyKeyMismatchException.class);
             assertThat(store.saved).isEmpty();   // (the real transaction also rolls back the credit)
+            assertThat(events.published).isEmpty();
         }
     }
 
@@ -148,12 +164,13 @@ class RecordForeignRemittanceServiceTest {
             assertThat(conversions.calls).isEqualTo(1);
             assertThat(accounts.receiveCalls).isEqualTo(1);
             assertThat(accounts.balanceOf(BOB_ACC)).isEqualByComparingTo("480.00");
+            assertThat(events.published).hasSize(1);   // the retry adds no second event
         }
 
         @Test
         @DisplayName("a retry finds the original even if the account was locked since")
         void duplicateBeforeLockedCheck() {
-            accounts.add(3L, "1000000003", true, "20.00");
+            accounts.add(3L, "1000000003", "carol", true, "20.00");
             store.save(Transaction.startForeignRemittance("RMT-ORIGINAL0001", 3L,
                             conversions.convertIncoming("USD", new BigDecimal("10.00")), "earlier", "gw-old", NOW)
                     .completeForeignRemittance(new BigDecimal("66.00"), NOW));

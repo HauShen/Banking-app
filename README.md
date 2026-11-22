@@ -16,6 +16,11 @@ in a foreign currency at a locked rate), foreign remittances, and an admin area.
 
 ![Dashboard](screenshots/dashboard.png)
 
+**Balance history** — the selected account's closing balance per day over the last 7, 30 or 90 days, from
+`GET /api/transfers/account/{accountNumber}/balance-history` (see [Balance history](#-balance-history)).
+
+![Balance history](screenshots/balance-history.png)
+
 **Transfer paid in US dollars** — the review step locks the exchange rate for 60 seconds; confirming pays exactly
 that rate.
 
@@ -49,27 +54,44 @@ flowchart LR
     subgraph frontend["frontend container (nginx)"]
         spa["/ → React build<br/>(index.html fallback)"]
         proxy["/api → proxy"]
+        nproxy["/api/notifications → proxy"]
     end
     subgraph backend["app container (Spring Boot)"]
         sec["Spring Security<br/>JWT filter"]
-        modules["Modules: user · account ·<br/>transaction · fx<br/>(adapter → application → domain)"]
+        modules["Modules: user · account ·<br/>transaction · fx · alert<br/>(adapter → application → domain)"]
+        relay["Outbox relay"]
     end
-    db[("PostgreSQL<br/>Flyway migrations")]
+    subgraph nsvc["notification-service container (Spring Boot)"]
+        nsec["JWT check<br/>(same secret)"]
+        notif["Kafka consumer +<br/>notifications API"]
+    end
+    db[("PostgreSQL: banking_db<br/>+ outbox_events")]
+    ndb[("PostgreSQL: notifications_db")]
+    kafka[["Kafka (KRaft)<br/>banking.transactions.v1<br/>+ .DLT"]]
 
     browser -- "http://localhost:3000" --> spa
     browser -- "/api/** (Bearer token,<br/>refresh cookie)" --> proxy
+    browser -- "/api/notifications/**" --> nproxy
     proxy --> sec --> modules --> db
+    db -. "unpublished events" .-> relay --> kafka
+    kafka -- "banking-alerts" --> modules
+    kafka -- "notification-service" --> notif
+    nproxy --> nsec --> notif --> ndb
 ```
 
 - **One origin.** With Docker Compose the browser only talks to nginx on port 3000: it serves the React build and
-  forwards `/api` to the backend, so no CORS is needed. In development the Vite dev server (port 5173) does the
-  same forwarding to `localhost:8080`.
+  forwards `/api` to the backend, except `/api/notifications`, which goes to notification-service. No CORS is needed.
+  In development the Vite dev server (port 5173) does the same forwarding to `localhost:8080` and `localhost:8082`.
 - **Auth.** The access token (15 minutes) lives only in the React app's memory. The refresh token is an
   `HttpOnly`, `SameSite=Strict` cookie on `/api/auth`: it restores the session after a reload and is rotated on
   every use (see [Security](#-security)).
-- **Backend.** Each module (`userProfile`, `account`, `transaction`, `fx`) has its own domain, application
-  (use cases and ports) and adapters; modules call each other only through inbound ports, checked by ArchUnit
-  rules (`ArchitectureTest`).
+- **Backend.** Each module (`userProfile`, `account`, `transaction`, `fx`, `alert`) has its own domain, application
+  (use cases and ports) and adapters; modules call each other only through inbound ports, checked by ArchUnit rules
+  (`ArchitectureTest`). `alert` calls no other module at all: it only reads Kafka messages (see
+  [Event-driven parts](#-event-driven-parts-kafka)).
+- **notification-service.** The notifications were a module of the backend and are now a Spring Boot app of their
+  own, with their own database. It gets everything it needs from the Kafka events and the access token, and never
+  calls the backend (see [notification-service](#-notification-service)).
 
 ---
 
@@ -83,9 +105,10 @@ flowchart LR
 | Spring Data JPA + Hibernate | ORM & database access |
 | PostgreSQL | Relational database |
 | Flyway | Database schema migrations |
+| Apache Kafka + Spring Kafka | Events after a money movement: transactional outbox → relay → topic → two consumer groups (notification-service, transaction alerts); dead-letter topic for bad messages |
 | Lombok | Boilerplate reduction |
 | springdoc-openapi (Swagger UI) | Interactive API documentation |
-| JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL |
+| JUnit 5 + Spring Boot Test + Testcontainers | HTTP-level integration tests against a real PostgreSQL (and a real Kafka where needed) |
 
 ### Frontend
 | Technology | Purpose |
@@ -101,8 +124,8 @@ flowchart LR
 ### DevOps
 | Technology | Purpose |
 |---|---|
-| Docker | Multi-stage images: the backend (JDK 21 to build, JRE 21 to run) and the frontend (Node 22 to build, nginx to serve); both run as non-root users |
-| Docker Compose | PostgreSQL; with `--profile app` also the backend and the frontend |
+| Docker | Multi-stage images: the backend and notification-service (JDK 21 to build, JRE 21 to run) and the frontend (Node 22 to build, nginx to serve); all run as non-root users |
+| Docker Compose | PostgreSQL and Kafka; with `--profile app` also the backend, notification-service and the frontend; `--profile tools` adds a Kafka web UI |
 | GitHub Actions | CI: backend build and tests, a Docker smoke test of the whole stack, and the frontend's lint, tests and build on each push and pull request; CD: publishes the backend image after each merge to `master` |
 | GitHub Container Registry | Home of the published backend image: `ghcr.io/haushen/banking-app` (`latest`, one `sha-…` tag per commit, and a version tag per release) |
 
@@ -120,8 +143,8 @@ flowchart LR
 - See the bank's exchange rates and a quote before paying, or **lock a rate for 60 seconds** and pay at exactly
   that rate
 - View transaction history of own accounts, including the original currency, amount and rate
-- Daily balance history of own accounts (closing balance per day, for a chart)
 - Update profile; change password (with the current one; signs out every other device)
+master
 
 ### 🛡️ Admin
 - Open bank accounts (Savings / Current) for customers
@@ -130,6 +153,10 @@ flowchart LR
 - Record **incoming foreign remittances** (simulates the bank's payment gateway): credited in MYR at the buy rate
 - Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
 - Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
+- **Transaction alerts** page: transfers of RM 10,000 or more, and more than 5 transfers out of one account within
+  10 minutes, are flagged for review (limits in `app.alerts.*`); filter Open / Reviewed / All, link to the account's
+  history, "Mark as reviewed". A second Kafka consumer group watches the same events as the notifications,
+  independently
 
 ---
 
@@ -146,10 +173,15 @@ git clone https://github.com/HauShen/Banking-app.git
 cd Banking-app
 ```
 
-### 2. Start PostgreSQL with Docker
+### 2. Start PostgreSQL and Kafka with Docker
 ```bash
 docker compose up -d
 ```
+Kafka listens on `localhost:9092`. To look at topics and messages, also start the web UI
+(`docker compose --profile tools up -d`, then `http://localhost:8081`). To run the backend without Kafka,
+set `KAFKA_ENABLED=false`: no topics are created and nothing is sent. The same command also creates
+notification-service's database, `notifications_db`, on the same PostgreSQL server (a short-lived
+`notification-db-init` container; it does nothing once the database exists).
 
 ### 3. Configure environment
 Secrets are never committed. Create a `.env` file in the project root (it is git-ignored and loaded at startup):
@@ -166,20 +198,27 @@ The `dev` profile creates a demo admin on first start, when no admin exists yet:
 
 ### 4. Run the backend
 ```bash
-./gradlew bootRun --args='--spring.profiles.active=dev'
+./gradlew :bootRun --args='--spring.profiles.active=dev'
 ```
 Backend runs on `http://localhost:8080`. Swagger UI (dev profile only): `http://localhost:8080/swagger-ui/index.html`
 (log in with `POST /api/auth/login`, then paste the `accessToken` into **Authorize**).
 If the frontend runs somewhere other than `http://localhost:5173`, set `CORS_ALLOWED_ORIGINS` (comma-separated).
 
+Then start notification-service in a second terminal (it reads the same `.env`):
+```bash
+./gradlew :notification-service:bootRun
+```
+It runs on `http://localhost:8082`. Without it the app works, but the notification bell stays empty.
+
 **Or run the backend in Docker too** (no local JDK needed):
 ```bash
 docker compose --profile app up --build
 ```
-This builds both images and starts them next to PostgreSQL: the backend with the `dev` profile on the same
-`http://localhost:8080`, and the frontend on **http://localhost:3000** (nginx serves the React app and forwards
-`/api` to the backend). It reads `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
-`bootRun` first, because both use port 8080. A plain `docker compose up -d` still starts PostgreSQL only.
+This builds the three images and starts them next to PostgreSQL and Kafka: the backend with the `dev` profile on
+the same `http://localhost:8080`, notification-service on `http://localhost:8082`, and the frontend on
+**http://localhost:3000** (nginx serves the React app and forwards `/api` to the backend and `/api/notifications` to
+notification-service). Both backends read `POSTGRES_PASSWORD` and `JWT_SECRET` from the same `.env`. Stop a running
+`bootRun` first, because they use the same ports. A plain `docker compose up -d` still starts PostgreSQL and Kafka only.
 
 Open `http://localhost:3000`, not `http://127.0.0.1:3000`: the refresh cookie is `Secure`, and browsers accept
 Secure cookies over plain http only on `localhost`.
@@ -190,9 +229,10 @@ cd frontend
 npm install
 npm run dev
 ```
-Frontend runs on `http://localhost:5173` and forwards `/api` to the backend on `http://localhost:8080`; sign in
-with `devadmin` / `DevAdmin123!` or register a customer. No configuration is needed. To point the dev server at
-another backend, set `VITE_API_PROXY_TARGET` in `frontend/.env.local` (see `frontend/README.md`).
+Frontend runs on `http://localhost:5173` and forwards `/api` to the backend on `http://localhost:8080` and
+`/api/notifications` to notification-service on `http://localhost:8082`; sign in with `devadmin` / `DevAdmin123!` or
+register a customer. No configuration is needed. To point the dev server elsewhere, set `VITE_API_PROXY_TARGET` and
+`VITE_NOTIFICATIONS_PROXY_TARGET` in `frontend/.env.local` (see `frontend/README.md`).
 
 ---
 
@@ -268,6 +308,29 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | GET | `/api/fx/quote?currency=USD&amount=100.00&direction=PAY` | Logged in | What an amount is worth in MYR now; `direction` `PAY` (sell rate, default) or `RECEIVE` (buy rate) |
 | POST | `/api/fx/quotes` | Logged in | Lock the sell rate for `currency` + `amount` (201): `quoteId`, rate, MYR amount, `expiresAt` (60 s) |
 
+#### Notifications
+Served by **notification-service** (port 8082; through nginx or the Vite dev server they are under the same `/api`
+as everything else). Created from the transaction events on Kafka, usually within a second or two of the money
+moving. Everyone sees only their own (admins too).
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/notifications?unreadOnly=false&page=0&size=20` | Logged in | Own notifications, newest first (paged; `size` 1–100) |
+| GET | `/api/notifications/unread-count` | Logged in | `{"unread": n}` for the header bell |
+| PATCH | `/api/notifications/{id}/read` | Owner | Mark one as read (204); someone else's or unknown → 404 |
+| POST | `/api/notifications/read-all` | Logged in | Mark all own as read; `{"marked": n}` |
+
+#### Transaction alerts
+Raised by the alert module from the transaction events on Kafka (consumer group `banking-alerts`). Rules and limits:
+one transfer ≥ `app.alerts.large-amount` (RM 10,000.00) → `LARGE_TRANSFER`; more than `app.alerts.rapid-max-transfers`
+(5) transfers out of one account within `app.alerts.rapid-window` (10 minutes) → one `RAPID_TRANSFERS` alert per burst.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/admin/alerts?status=OPEN&page=0&size=20` | ADMIN | Alerts, newest first; `status` `OPEN` / `REVIEWED` / absent = all (paged; `size` 1–100) |
+| GET | `/api/admin/alerts/open-count` | ADMIN | `{"open": n}` |
+| PATCH | `/api/admin/alerts/{id}/review` | ADMIN | Mark as reviewed by the calling admin (200); already reviewed → unchanged |
+
 ---
 
 ## 💱 Foreign currency
@@ -325,6 +388,86 @@ comes in or goes out. The transaction remembers the original currency, amount an
   UTC: a transfer at 00:30 in Kuala Lumpur counts for that day, although it is still the day before in UTC.
 - The list ends today and starts `days − 1` days earlier, or on the day the account was opened if that is later.
 - Same access rule as the transaction history: the owner or an admin.
+
+---
+
+## 📨 Event-driven parts (Kafka)
+
+Moving money stays one synchronous database transaction. What happens **after** money moved — notifications and the
+transaction watch — runs on Kafka, so it can't slow down or break a transfer.
+
+```mermaid
+flowchart LR
+    tx["Transfer / top-up / remittance<br/>(one DB transaction)"] --> outbox[("outbox_events<br/>same transaction")]
+    outbox --> relay["Outbox relay<br/>every 1 s, oldest first"]
+    relay --> topic[["banking.transactions.v1<br/>key = account number"]]
+    topic --> n["notification-service<br/>→ notifications_db → 🔔"]
+    topic --> a["banking-alerts<br/>→ transaction_alerts → admin page"]
+    n -. "unreadable or still failing" .-> dlt[["banking.transactions.v1.DLT"]]
+    a -.-> dlt
+```
+
+- **Transactional outbox.** A service never sends to Kafka itself: it writes the event into `outbox_events` in the
+  same transaction as the money. If the transfer rolls back, so does the event; if Kafka is down, the event waits. A
+  relay (`com.Banking_app.outbox`) sends waiting rows in id order and stops at the first failure, so no event
+  overtakes an earlier one; a PostgreSQL advisory lock lets only one app instance relay at a time.
+- **Ordering.** The message key is the account number: all events of one account go to the same partition and are
+  read in order. The rapid-transfers rule relies on it.
+- **At least once, idempotent consumers.** An event can arrive twice (e.g. the app stopped after sending but before
+  marking the row). Each consumer records `(consumer, event_id)` in `processed_events` in the same transaction as its
+  work, so a repeat changes nothing.
+- **Two consumer groups, one topic.** `notification-service` (a separate app) and `banking-alerts` (the alert module)
+  each keep their own offsets: both see every event, and one being slow or stopped doesn't hold up the other.
+- **Bad messages.** A message that can't be read goes straight to `banking.transactions.v1.DLT`; other failures are
+  tried 3 times, 1 s apart, first. The consumer then moves on.
+- **Contract.** The envelope `{eventId, eventType, version, occurredAt, payload}` is the only thing producer and
+  consumers share; each side reads it with its own `EventEnvelope` class (no shared library). Consumers skip event
+  types they don't know and refuse versions they don't.
+- **Order of startup doesn't matter.** Topics are created by the app; if the broker isn't up yet, it tries again every
+  30 s (`KafkaTopicsInitializer`).
+
+Settings: `app.kafka.enabled` (`KAFKA_ENABLED`; off → no topics, nothing sent, transfers still work), `app.outbox.*`,
+`app.alerts.*`. Kafka UI: `docker compose --profile tools up -d` → http://localhost:8081.
+
+**Failure drills:** [docs/kafka-failure-drills.md](docs/kafka-failure-drills.md) — stop the broker, redeliver every
+event, send a broken message, start a new broker after the app; what to do and what you should see.
+
+---
+
+## 🧩 notification-service
+
+The notifications started as a module of the backend (`com.Banking_app.notification`), already built so that it only
+read Kafka messages and called no other module. That made it the easiest part to move out into a service of its own:
+`services/notification-service`, a Gradle subproject in the same repository with its own Spring Boot app, database,
+Flyway migrations, Docker image and tests.
+
+| | Backend (`app`) | notification-service |
+|---|---|---|
+| Port | 8080 | 8082 |
+| Database | `banking_db` | `notifications_db` (same PostgreSQL server, own Flyway history) |
+| Kafka | produces `banking.transactions.v1` (outbox relay), consumer group `banking-alerts` | consumer group `notification-service` |
+| Auth | issues the tokens; checks each one against the database (token version) | checks the signature, expiry, `uid` and `role` only |
+
+- **Auth without calling the backend.** Access tokens carry the user id (`uid`) and the role next to the username.
+  notification-service checks them with the same `JWT_SECRET` (`AccessTokenVerifier`) and takes the user id from the
+  token, so it needs neither the users table nor a call to the backend.
+- **Its own data.** `notifications.user_id` has no foreign key any more: users live in the other database.
+- **Rebuilt from Kafka.** The service reads the topic in a new consumer group. A group without committed offsets
+  starts at the oldest message still kept (Kafka's default retention, 7 days), so on its first start the service
+  rebuilt the recent notifications on its own. The old table in `banking_db` was not copied: older notifications
+  didn't move over (acceptable for a demo; a real migration would copy the table first).
+- **Routing.** The frontend still calls `/api/notifications`; nginx (and the Vite dev server) send that path to the
+  service and the rest of `/api` to the backend.
+- **Build.** `./gradlew build` builds and tests both apps; `./gradlew :notification-service:bootRun` starts only the
+  service. Its image is built from the repository root: `services/notification-service/Dockerfile`.
+
+Trade-offs, kept on purpose for a demo:
+- A token keeps working on notification-service until it expires (15 minutes at most) after a logout or an admin
+  revocation, because only the backend knows the token version. The backend refuses it at once.
+- Deleting a user in the backend leaves their notifications in `notifications_db` (no token can read them again).
+  A `USER_DELETED` event would let the service clean up.
+- The old `notifications` table (and the `notifications` rows in `processed_events`) are still in `banking_db`;
+  a later migration drops them.
 
 ---
 
@@ -420,6 +563,19 @@ Ownership rules live in the application layer: the web adapter turns the logged-
   amount, and there is no FX revenue account.
 - Remittances are simulated: an admin call stands in for the payment gateway, and the sender is just a name.
 - Only currencies with at most 2 decimal places can be offered (e.g. not KWD, which has 3).
+- Kafka runs as a single broker: no replication, so losing its volume loses the messages not yet consumed (the
+  database keeps every event in `outbox_events` for 7 days after sending, but there is no replay tool yet).
+- Messages are JSON with a version number, without a schema registry; a breaking change needs a new version or topic.
+- The outbox relay polls every second and sends one message at a time: fine for a demo, not for high volume
+  (batching sends, or CDC with Debezium, would be next). Only one app instance relays at a time.
+- Dead-lettered messages are only parked (`.DLT`), with no tool to replay them; a consumer that keeps failing because
+  the database is down dead-letters after 3 tries, and that notification or alert is not created.
+- The notification bell polls every 20 s and the alerts page every 30 s (no push). Old notifications and
+  `processed_events` rows are never cleaned up.
+- notification-service accepts a token until it expires, even after a logout (it can't see the token version);
+  see [notification-service](#-notification-service).
+- The alert rules are simple demo rules (large amount, many transfers in a short time), not real transaction
+  monitoring.
 - **By design:** on account-number lookups, 404 (unknown) vs 403 (not yours) shows whether an account number
   exists. Hiding it would not help: a transfer has to confirm that the recipient's account exists anyway, as
   real banks do. The defence against probing account numbers is rate limiting, not hiding the status code.
@@ -428,12 +584,15 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 
 ## 🧪 Running Tests
 
-Requires **Docker** running: the tests start a real PostgreSQL 17 container with Testcontainers.
+Requires **Docker** running: the tests start a real PostgreSQL 17 container with Testcontainers (and a Kafka container
+for the `*KafkaTest` classes).
 ```bash
-./gradlew test
+./gradlew test                                  # both apps
+./gradlew :test                                 # the backend only
+./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (150 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (178 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
@@ -441,8 +600,9 @@ npm test
 
 GitHub Actions runs the full build (`./gradlew build`, which includes every test below) on each push to
 `master` and on each pull request: see `.github/workflows/ci.yml`. The HTML test report is attached to every run.
-A second job builds both Docker images, starts the whole stack through Docker Compose, waits for
-`/actuator/health` to answer UP, and checks that nginx serves the app and forwards `/api`.
+A second job builds the three Docker images, starts the whole stack through Docker Compose, waits for both
+backends' `/actuator/health` to answer UP, and checks that nginx serves the app, forwards `/api` to the backend, and
+forwards `/api/notifications` to notification-service, which accepts a token the backend issued.
 A third job lints, tests and builds the frontend.
 After a merge to `master`, and only if the build and Docker jobs passed, a fourth job publishes the backend image
 to GitHub Container Registry.
@@ -474,4 +634,14 @@ Feature tests in the same style cover the rest, for example:
 | `RemittanceEndpointTest` | Admin-only remittances credited at the buy rate; "Foreign Remittance" in the history; locked / unknown account; idempotency; delete after a remittance → 409 |
 | `FxEndpointTest` | Rates list and quotes (PAY / RECEIVE), unsupported currency, bad parameters → 400 (never 500), login required; locking a quote (201, stored for the user, valid 60 s) |
 | `LockedQuoteTransferTest` | Paying at a locked rate even when today's differs; the quote works once; a failed transfer leaves it usable; expired, someone else's, unknown, other amount / currency, or with MYR → 400; a retry returns the original |
-| `ArchitectureTest` | 22 ArchUnit rules: each module's domain is plain Java, adapters → application → domain, and modules reach each other only through inbound ports (account ↔ transaction, transaction → fx) |
+| `ArchitectureTest` | 27 ArchUnit rules: each module's domain is plain Java, adapters → application → domain, and modules reach each other only through inbound ports (account ↔ transaction, transaction → fx) |
+| `AccessTokenClaimsSecurityTest` | Access tokens carry the username, the user id (`uid`) and the role: the claims notification-service relies on |
+
+notification-service has its own tests in `services/notification-service/src/test`:
+
+| Test Class | What It Covers |
+|---|---|
+| `AccessTokenTest` | Valid customer and admin tokens work; no token, garbage, expired, signed with another secret, or without `uid` / `role` → 401; health is public, every other path refused |
+| `NotificationEndpointTest` | The four endpoints against a real database: own notifications only, newest first; mark one / all as read; someone else's → 404; paging limits → 400; a redelivered event → one notification |
+| `NotificationKafkaTest` | With a real broker: a transfer event notifies both sides; a duplicate message → one notification; a broken message → the dead-letter topic, and the next message is still processed |
+| `ArchitectureTest` | The module's hexagonal rules, now for the service (11 rules) |

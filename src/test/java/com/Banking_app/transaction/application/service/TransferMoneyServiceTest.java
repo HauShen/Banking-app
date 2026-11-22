@@ -7,6 +7,7 @@ import com.Banking_app.transaction.application.exception.TransactionAccessDenied
 import com.Banking_app.transaction.application.exception.TransferAccountLockedException;
 import com.Banking_app.transaction.application.port.in.command.TransferMoneyCommand;
 import com.Banking_app.transaction.application.port.in.result.TransferResult;
+import com.Banking_app.transaction.application.port.out.event.TransferCompleted;
 import com.Banking_app.transaction.domain.enums.LedgerType;
 import com.Banking_app.transaction.domain.enums.TransactionStatus;
 import com.Banking_app.transaction.domain.exception.SameAccountTransferException;
@@ -37,8 +38,9 @@ class TransferMoneyServiceTest {
     private final FakeAccounts accounts = new FakeAccounts();
     private final FakeTransactionStore store = new FakeTransactionStore();
     private final FakeCurrencyConversions conversions = new FakeCurrencyConversions();
+    private final FakeTransactionEvents events = new FakeTransactionEvents();
     private final TransferMoneyService service = new TransferMoneyService(accounts, store, store,
-            new SequentialReferences(), conversions, Clock.fixed(NOW, ZoneOffset.UTC));
+            new SequentialReferences(), conversions, events, Clock.fixed(NOW, ZoneOffset.UTC));
 
     TransferMoneyServiceTest() {
         accounts.add(ALICE_ACC, "1000000001", "alice", false, "120.00");
@@ -67,6 +69,7 @@ class TransferMoneyServiceTest {
         assertThat(store.saved).isEmpty();
         assertThat(accounts.balanceOf(ALICE_ACC)).isEqualByComparingTo("120.00");
         assertThat(accounts.balanceOf(BOB_ACC)).isEqualByComparingTo("20.00");
+        assertThat(events.published).isEmpty();   // also for a replay: the original already had its event
     }
 
     @Test
@@ -98,6 +101,36 @@ class TransferMoneyServiceTest {
         assertThat(result.amount()).isEqualByComparingTo("30.00");
         assertThat(result.original()).isNull();
         assertThat(tx.getLedgerEntries().get(1).balanceAfter()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    @DisplayName("a new transfer puts one TransferCompleted in the outbox: both accounts and owners, MYR amount, filed under the sender")
+    void publishesEvent() {
+        service.transfer(command("alice", "1000000001", "1000000002", "30.00", "k1"));
+
+        assertThat(events.published).singleElement().isInstanceOfSatisfying(TransferCompleted.class, event -> {
+            assertThat(event.eventId()).isNotNull();
+            assertThat(event.occurredAt()).isEqualTo(NOW);
+            assertThat(event.reference()).isEqualTo("TXN-000000000001");
+            assertThat(event.fromAccountNumber()).isEqualTo("1000000001");
+            assertThat(event.fromOwnerId()).isEqualTo("alice");
+            assertThat(event.toAccountNumber()).isEqualTo("1000000002");
+            assertThat(event.toOwnerId()).isEqualTo("bob");
+            assertThat(event.amount()).isEqualByComparingTo("30.00");
+            assertThat(event.original()).isNull();
+            assertThat(event.eventType()).isEqualTo("TRANSFER_COMPLETED");
+            assertThat(event.orderingKey()).isEqualTo("1000000001");
+        });
+    }
+
+    @Test
+    @DisplayName("every new transfer gets its own event id")
+    void eventIdsAreUnique() {
+        service.transfer(command("alice", "1000000001", "1000000002", "10.00", "k1"));
+        service.transfer(command("alice", "1000000001", "1000000002", "10.00", "k2"));
+
+        assertThat(events.published).hasSize(2);
+        assertThat(events.published.get(0).eventId()).isNotEqualTo(events.published.get(1).eventId());
     }
 
     @Test
@@ -215,6 +248,7 @@ class TransferMoneyServiceTest {
                     .isInstanceOf(IdempotencyKeyConflictException.class)
                     .hasMessage("idempotencyKey has already been used for a different transfer");
             assertThat(store.saved).isEmpty();   // (the real transaction also rolls back the moved money)
+            assertThat(events.published).isEmpty();
         }
 
         @Test
@@ -286,6 +320,12 @@ class TransferMoneyServiceTest {
             assertThat(tx.getAmount()).isEqualByComparingTo("95.00");
             assertThat(tx.getLedgerEntries().get(0).amount()).isEqualByComparingTo("95.00");   // ledger is MYR
             assertThat(tx.getConversion().orElseThrow().originalAmount()).isEqualByComparingTo("20.00");
+
+            TransferCompleted event = (TransferCompleted) events.published.get(0);
+            assertThat(event.amount()).isEqualByComparingTo("95.00");   // MYR, what moved
+            assertThat(event.original().currency()).isEqualTo("USD");
+            assertThat(event.original().amount()).isEqualByComparingTo("20.00");
+            assertThat(event.original().exchangeRate()).isEqualByComparingTo("4.75");
         }
 
         @Test
@@ -454,5 +494,6 @@ class TransferMoneyServiceTest {
                 .hasMessage("Insufficient balance. Minimum balance of $20.00 must be maintained.");
         assertThat(store.saved).isEmpty();
         assertThat(accounts.balanceOf(ALICE_ACC)).isEqualByComparingTo("120.00");
+        assertThat(events.published).isEmpty();
     }
 }

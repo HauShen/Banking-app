@@ -4,10 +4,10 @@ import { linkEnum, visibleMenuLinks } from './MenuLinks';
 const titles = (role: Parameters<typeof visibleMenuLinks>[0]) =>
   visibleMenuLinks(role).map((link) => link.title);
 
-const ADMIN_ONLY: string[] = [linkEnum.Users, linkEnum.Accounts];
+const ADMIN_ONLY: string[] = [linkEnum.Users, linkEnum.Accounts, linkEnum.Alerts];
 
 describe('visibleMenuLinks', () => {
-  it('shows the admin pages (users, accounts) to admins', () => {
+  it('shows the admin pages (users, accounts, alerts) to admins', () => {
     expect(titles('ADMIN')).toEqual(expect.arrayContaining(ADMIN_ONLY));
   });
 

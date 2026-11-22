@@ -6,10 +6,19 @@ export const queryKeys = {
   accounts: {
     all: ['accounts'] as const,
     summary: () => ['accounts', 'summary'] as const,
+    /** Under 'accounts', so everything that refreshes the balances (transfer, top-up) refreshes it too. */
+    balanceHistory: (accountNumber: string, days: number) =>
+      ['accounts', 'balance-history', accountNumber, days] as const,
   },
   admin: {
+    alerts: {
+      all: ['admin', 'alerts'] as const,
+      list: (params: object) => ['admin', 'alerts', 'list', params] as const,
+      openCount: () => ['admin', 'alerts', 'open-count'] as const,
+    },
     accounts: {
       all: ['admin', 'accounts'] as const,
+      byNumber: (accountNumber: string) => ['admin', 'accounts', 'number', accountNumber] as const,
       list: (filter: { status?: string; userId?: string }) =>
         ['admin', 'accounts', 'list', filter] as const,
     },
@@ -23,6 +32,11 @@ export const queryKeys = {
     rates: () => ['fx', 'rates'] as const,
     quote: (currency: string, amount: string, direction: string) =>
       ['fx', 'quote', currency, amount, direction] as const,
+  },
+  notifications: {
+    all: ['notifications'] as const,
+    unreadCount: () => ['notifications', 'unread-count'] as const,
+    recent: (size: number) => ['notifications', 'recent', size] as const,
   },
   transactions: {
     all: ['transactions'] as const,

@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Account, Transaction } from 'api/types';
 import { clearAccessToken } from 'api/tokenStore';
 import { http, HttpResponse } from 'msw';
+import { historyOf, mockBalanceHistory } from 'test/balanceHistory';
 import { mockRates } from 'test/fx';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
@@ -82,6 +83,7 @@ const mockBank = (accounts: Account[], history: Record<string, Transaction[]> = 
       return HttpResponse.json(page(history[accountNumber] ?? []));
     }),
   );
+  mockBalanceHistory();
   return requested;
 };
 
@@ -202,5 +204,75 @@ describe('dashboard', () => {
     expect(await screen.findByText('Send money')).toBeInTheDocument();
     expect(screen.getByDisplayValue('3333333333')).toBeInTheDocument();
     expect(screen.getByDisplayValue('42')).toBeInTheDocument();
+  });
+});
+
+describe('balance history', () => {
+  it("shows the selected account's last 30 days: today, highest and lowest, and a labelled chart", async () => {
+    mockSession(customer);
+    mockBank([savings, current]);
+    const requests = mockBalanceHistory((accountNumber) =>
+      HttpResponse.json(historyOf(accountNumber, [1200, 1650.25, 980, 1500.5])),
+    );
+    renderApp('/', {}, <Dashboard />);
+
+    expect(text(await screen.findByText(/^Today/))).toBe('Today RM 1,500.50');
+    expect(text(screen.getByText(/^Highest/))).toBe('Highest RM 1,650.25 on 18 Nov 2026');
+    expect(text(screen.getByText(/^Lowest/))).toBe('Lowest RM 980.00 on 19 Nov 2026');
+    expect(
+      screen.getByRole('img', {
+        name: 'Closing balance of 1111 111 111 per day, 17 Nov 2026 to 20 Nov 2026',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '30 days' })).toHaveAttribute('aria-pressed', 'true');
+    expect(requests).toEqual(['1111111111?days=30']);
+  });
+
+  it('asks again for another period, and for the card the user picks', async () => {
+    mockSession(customer);
+    mockBank([savings, current]);
+    const requests = mockBalanceHistory();
+    renderApp('/', {}, <Dashboard />);
+    const user = userEvent.setup();
+    await screen.findByText(/^Highest/);
+
+    await user.click(screen.getByRole('button', { name: '7 days' }));
+    await waitFor(() => expect(requests).toContain('1111111111?days=7'));
+    await user.click(screen.getByRole('button', { name: /current account 2222222222/i }));
+
+    await screen.findByRole('img', { name: /closing balance of 2222 222 222/i });
+    expect(requests).toEqual(['1111111111?days=30', '1111111111?days=7', '2222222222?days=7']);
+  });
+
+  it('says when the account was opened today', async () => {
+    mockSession(customer);
+    mockBank([savings]);
+    mockBalanceHistory((accountNumber) => HttpResponse.json(historyOf(accountNumber, [20])));
+    renderApp('/', {}, <Dashboard />);
+
+    expect(
+      await screen.findByText('The account was opened today, so the line starts tomorrow.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error with a retry', async () => {
+    mockSession(customer);
+    mockBank([savings]);
+    let fail = true;
+    mockBalanceHistory((accountNumber) =>
+      fail
+        ? HttpResponse.json({ status: 500, message: 'boom' }, { status: 500 })
+        : HttpResponse.json(historyOf(accountNumber, [20, 30])),
+    );
+    renderApp('/', {}, <Dashboard />);
+
+    const retry = await screen.findByRole('button', { name: /retry/i });
+    expect(
+      screen.getByText('Something went wrong on the server. Please try again later.'),
+    ).toBeInTheDocument();
+    fail = false;
+    await userEvent.setup().click(retry);
+
+    expect(text(await screen.findByText(/^Today/))).toBe('Today RM 30.00');
   });
 });

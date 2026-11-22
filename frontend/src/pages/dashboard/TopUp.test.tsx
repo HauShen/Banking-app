@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Account } from 'api/types';
 import { clearAccessToken } from 'api/tokenStore';
 import { http, HttpResponse } from 'msw';
+import { mockBalanceHistory } from 'test/balanceHistory';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -49,6 +50,7 @@ const mockBank = (account: Account, reply?: () => Response) => {
       return HttpResponse.json({ ...account, balance });
     }),
   );
+  mockBalanceHistory();
   return topUps;
 };
 
@@ -71,7 +73,10 @@ beforeEach(() => {
 describe('cash deposit', () => {
   it('deposits into the selected account and shows the new balance', async () => {
     const topUps = mockBank(savings);
+    const histories = mockBalanceHistory(); // replaces mockBank's, to count the requests
     renderApp('/', {}, <Dashboard />);
+    await screen.findByText(/^Highest/);
+    expect(histories).toEqual(['1111111111?days=30']);
 
     await openDepositAndType('100');
 
@@ -80,6 +85,8 @@ describe('cash deposit', () => {
       'RM 100.00 deposited into 1111 111 111. New balance: RM 1,600.50.',
     );
     expect(topUps).toEqual(['7?amount=100.00']);
+    // The balance history is fetched again, so today's closing balance includes the deposit.
+    await waitFor(() => expect(histories).toHaveLength(2));
     // The card shows the re-fetched balance.
     const card = await screen.findByRole('button', { name: /savings account 1111111111/i });
     await screen.findByText(

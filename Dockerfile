@@ -9,13 +9,16 @@ WORKDIR /workspace
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle gradle
 COPY src src
+# settings.gradle.kts includes notification-service, so Gradle wants its build file (not its code: ":bootJar" below
+# builds the main app only). The service has its own image: services/notification-service/Dockerfile.
+COPY services/notification-service/build.gradle.kts services/notification-service/
 
 # sed/chmod: on Windows the wrapper script can arrive with CRLF line endings or without the executable bit.
 # The cache mount keeps the downloaded Gradle and dependencies between builds on the same machine,
 # so only the first build downloads everything.
 RUN --mount=type=cache,target=/root/.gradle \
     sed -i 's/\r$//' gradlew && chmod +x gradlew && \
-    ./gradlew --no-daemon bootJar
+    ./gradlew --no-daemon :bootJar
 
 # ---------- Stage 2: the image that runs ----------
 # JRE only: no compiler, no Gradle, no source code.

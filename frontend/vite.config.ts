@@ -30,7 +30,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       // Forward /api to Spring Boot, so the browser sees one origin (no CORS in dev)
       // and the refresh cookie (Path=/api/auth) is stored for localhost:5173.
+      // /api/notifications goes to notification-service; it must come first (the first matching entry wins).
       proxy: {
+        '/api/notifications': {
+          target: env.VITE_NOTIFICATIONS_PROXY_TARGET || 'http://localhost:8082',
+        },
         '/api': {
           target: env.VITE_API_PROXY_TARGET || 'http://localhost:8080',
         },

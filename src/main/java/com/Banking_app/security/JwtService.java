@@ -4,6 +4,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,13 @@ public class JwtService {
     /** Claim holding the user's token version at issue time (see TokenVersionService). */
     static final String TOKEN_VERSION_CLAIM = "ver";
 
+    /**
+     * Claim holding the user's id. The main app doesn't need it (it loads the user by username on every
+     * request), but services that check the token on their own, like notification-service, can't look
+     * the user up and get the id from here.
+     */
+    static final String USER_ID_CLAIM = "uid";
+
     @Value("${security.jwt.secret}")
     private String jwtSecret;
 
@@ -30,8 +38,9 @@ public class JwtService {
     }
 
     /** @param tokenVersion the user's current token version; the token is valid only while it stays the same */
-    public String generateToken(UserDetails userDetails, int tokenVersion) {
+    public String generateToken(SecurityUserDetails userDetails, int tokenVersion) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put(USER_ID_CLAIM, userDetails.getUserId());
         claims.put("role", userDetails.getAuthorities().stream().findFirst().map(Object::toString).orElse("CUSTOMER"));
         claims.put(TOKEN_VERSION_CLAIM, tokenVersion);
         return generateToken(claims, userDetails);

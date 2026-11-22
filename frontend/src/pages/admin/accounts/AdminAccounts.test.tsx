@@ -5,6 +5,7 @@ import type { Account, UserProfile } from 'api/types';
 import { http, HttpResponse } from 'msw';
 import paths from 'routes/path';
 import RequireRole from 'routes/RequireRole';
+import { mockRates } from 'test/fx';
 import { mockSession, renderApp } from 'test/renderApp';
 import { API, server } from 'test/server';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -83,6 +84,7 @@ const mockBank = (accounts: Account[], options: { del?: () => Response } = {}) =
       return new HttpResponse(null, { status: 204 });
     }),
   );
+  mockRates(); // the account panel's remittance dialog loads the rates
   return { requests, bodies };
 };
 
@@ -108,6 +110,18 @@ beforeEach(() => {
 });
 
 describe('admin accounts page', () => {
+  it("links from an account's panel to its transaction history", async () => {
+    mockBank([account(1, 'c1')]);
+    renderAccounts();
+
+    const details = await openAccountRow('1000 000 001');
+
+    expect(within(details).getByRole('link', { name: /view transactions/i })).toHaveAttribute(
+      'href',
+      '/admin/accounts/1000000001/history',
+    );
+  });
+
   it('lists every account with its owner, and filters by status on the server', async () => {
     const bank = mockBank([
       account(1, 'c1'),

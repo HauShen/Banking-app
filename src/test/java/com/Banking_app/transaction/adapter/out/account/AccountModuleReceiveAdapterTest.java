@@ -35,12 +35,13 @@ class AccountModuleReceiveAdapterTest {
     private final AccountModuleReceiveAdapter adapter = new AccountModuleReceiveAdapter(fakeAccountModule);
 
     @Test
-    @DisplayName("lockForReceiving: id and number are copied; LOCKED becomes locked = true")
+    @DisplayName("lockForReceiving: id, number and owner are copied; LOCKED becomes locked = true")
     void lock() {
         ReceivingAccount account = adapter.lockForReceiving("1000000002");
 
         assertThat(account.accountId()).isEqualTo(2L);
         assertThat(account.accountNumber()).isEqualTo("1000000002");
+        assertThat(account.ownerId()).isEqualTo("bob");
         assertThat(account.locked()).isTrue();
     }
 

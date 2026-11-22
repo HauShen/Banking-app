@@ -27,8 +27,10 @@ public class TransactionModuleCashDepositAdapter implements RecordCashDepositPor
     }
 
     @Override
-    public void recordCashDeposit(Long accountId, BigDecimal amount, BigDecimal balanceAfter, Instant depositedAt) {
-        recordCashDepositUseCase.record(new RecordCashDepositCommand(accountId, amount, balanceAfter, depositedAt,
+    public void recordCashDeposit(Long accountId, String accountNumber, String ownerId, BigDecimal amount,
+                                  BigDecimal balanceAfter, Instant depositedAt) {
+        recordCashDepositUseCase.record(new RecordCashDepositCommand(accountId, accountNumber, ownerId, amount,
+                balanceAfter, depositedAt,
                 DESCRIPTION, "CDM-" + UUID.randomUUID()));   // a top-up has no client key: unique per top-up
     }
 }

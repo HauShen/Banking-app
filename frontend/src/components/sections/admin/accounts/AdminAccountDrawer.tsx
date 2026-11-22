@@ -8,6 +8,8 @@ import { errorMessage } from 'lib/errors';
 import { formatMoney } from 'lib/money';
 import { formatAccountNumber } from 'lib/transactions';
 import { ReactNode, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { adminAccountHistoryPath } from 'routes/path';
 import { ACCOUNT_TYPE_LABEL } from './AdminAccountsTable';
 import RemittanceDialog from './RemittanceDialog';
 import type { RemittanceResult } from 'api/remittances';
@@ -107,14 +109,18 @@ const AdminAccountDrawer = ({
           <Row label="Opened">{formatDateTime(account.createdAt)}</Row>
           <Row label="Account ID">{account.accountId}</Row>
           <Divider sx={{ mb: 3 }} />
-          <Button
-            variant="contained"
-            onClick={() => setReceiving(true)}
-            disabled={locked}
-            sx={{ mb: 2 }}
-          >
-            Receive remittance
-          </Button>
+          <Stack direction="row" gap={2} flexWrap="wrap" sx={{ mb: 2 }}>
+            <Button
+              variant="contained"
+              component={RouterLink}
+              to={adminAccountHistoryPath(account.accountNumber)}
+            >
+              View transactions
+            </Button>
+            <Button variant="contained" onClick={() => setReceiving(true)} disabled={locked}>
+              Receive remittance
+            </Button>
+          </Stack>
           <Stack direction="row" gap={2} flexWrap="wrap">
             <Button variant="outlined" onClick={() => setPending('status')}>
               {locked ? 'Unlock account' : 'Lock account'}

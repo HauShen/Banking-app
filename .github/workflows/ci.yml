@@ -51,7 +51,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-report
-          path: build/reports/tests/test/
+          path: |
+            build/reports/tests/test/
+            services/notification-service/build/reports/tests/test/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -61,7 +63,7 @@ jobs:
   docker:
     name: docker
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out the code
@@ -73,17 +75,21 @@ jobs:
           export JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
           docker compose --profile app up --build --detach
 
-      - name: Wait until the health endpoint answers UP
+      - name: Wait until both health endpoints answer UP
         run: |
-          for attempt in $(seq 1 40); do
-            if curl --silent --fail http://localhost:8080/actuator/health | grep --quiet '"status":"UP"'; then
-              echo "Backend is UP (attempt $attempt)."
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Backend did not become healthy within 2 minutes."
-          exit 1
+          wait_for_up() {
+            for attempt in $(seq 1 40); do
+              if curl --silent --fail "http://localhost:$2/actuator/health" | grep --quiet '"status":"UP"'; then
+                echo "$1 is UP (attempt $attempt)."
+                return 0
+              fi
+              sleep 3
+            done
+            echo "$1 did not become healthy within 2 minutes."
+            return 1
+          }
+          wait_for_up backend 8080
+          wait_for_up notification-service 8082
 
       # The frontend container serves the React app and forwards /api to the backend through nginx.
       - name: Check the frontend and the API through nginx
@@ -101,6 +107,22 @@ jobs:
       - name: Show the logs if something failed
         if: ${{ failure() }}
         run: docker compose --profile app logs app frontend
+
+      # /api/notifications goes to notification-service, and a token the backend issued must work there
+      # (same JWT_SECRET). Only the service answers this path now, so a 200 proves the whole route.
+      - name: Check notification-service through nginx
+        run: |
+          TOKEN=$(curl --silent --fail -X POST http://localhost:3000/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"ci_smoke","fullName":"CI Smoke","email":"ci_smoke@example.com","password":"Passw0rd123"}' \
+            | jq --raw-output .accessToken)
+          curl --silent --fail -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/notifications/unread-count \
+            | grep --quiet '"unread":0'
+          echo "notification-service accepted the backend's token through nginx."
+
+      - name: Show the logs if something failed
+        if: ${{ failure() }}
+        run: docker compose --profile app logs app notification-service frontend
 
   # Lints, tests and builds the React frontend in frontend/. Runs in parallel with the backend jobs.
   # The frontend is not part of the published image yet (it gets its own image later), so publish doesn't wait for it.
