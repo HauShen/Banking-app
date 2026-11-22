@@ -1,5 +1,6 @@
 # Serves the React build and forwards /api to the backend, so the browser sees ONE origin:
 # no CORS, and the refresh cookie (SameSite=Strict, Path=/api/auth) works as in development.
+# /api/notifications goes to notification-service, everything else under /api to the main app.
 
 server {
     listen 8080;
@@ -20,6 +21,18 @@ server {
         # Host with the port the browser used (e.g. localhost:3000), and the client's address and scheme.
         # The backend trusts these from internal addresses (server.forward-headers-strategy=native), so login
         # throttling counts per real client IP instead of per nginx container.
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # Notifications: served by notification-service (a longer prefix than /api/, so nginx picks this one).
+    # No trailing slash, so /api/notifications itself (the list) matches too.
+    location /api/notifications {
+        proxy_pass ${NOTIFICATIONS_UPSTREAM};
+        proxy_http_version 1.1;
         proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -111,7 +111,54 @@ services:
     networks:
       - app-network
 
-  # The React frontend: nginx serves the build and forwards /api to the app service (one origin, no CORS).
+  # Creates notification-service's database, notifications_db, on the PostgreSQL server above (once; afterwards it
+  # sees the database and does nothing). Needed because PostgreSQL's own init scripts run only on an empty data volume,
+  # and pgdata already holds banking_db. Runs with every "docker compose up", then exits.
+  notification-db-init:
+    image: postgres:17
+    container_name: notification_db_init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-hau}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-abc123}
+      PGDATABASE: ${POSTGRES_DB:-banking_db}
+    command: ["sh", "-c", "psql -tAc \"SELECT 1 FROM pg_database WHERE datname = 'notifications_db'\" | grep -q 1 || psql -c 'CREATE DATABASE notifications_db'"]
+    restart: "no"
+    networks:
+      - app-network
+
+  # notification-service: the in-app notifications, as a service of its own (services/notification-service).
+  # Reads the transaction events from Kafka, keeps the notifications in notifications_db and serves /api/notifications.
+  # Checks the app's access tokens itself, with the same JWT_SECRET. Started with the app profile, like the app.
+  notification-service:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    image: notification-service:local
+    container_name: banking_notification_service
+    depends_on:
+      notification-db-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/notifications_db
+      POSTGRES_USER: ${POSTGRES_USER:-hau}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abc123}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      # Passed through from .env, like the app's: both must use the same secret.
+      JWT_SECRET:
+    networks:
+      - app-network
+
+  # The React frontend: nginx serves the build and forwards /api to the app service (one origin, no CORS),
+  # except /api/notifications, which goes to notification-service.
   # Started together with the backend:  docker compose --profile app up --build  ->  http://localhost:3000
   # Use "localhost" (not 127.0.0.1 or a LAN address): the refresh cookie is Secure, and browsers accept
   # Secure cookies over plain http only on localhost.
@@ -122,10 +169,13 @@ services:
     container_name: banking_frontend
     depends_on:
       - app
+      - notification-service
     ports:
       - "127.0.0.1:3000:8080"
     environment:
       API_UPSTREAM: http://app:8080
+      # /api/notifications goes to notification-service instead.
+      NOTIFICATIONS_UPSTREAM: http://notification-service:8082
     networks:
       - app-network
 
