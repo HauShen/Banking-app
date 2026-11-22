@@ -14,8 +14,11 @@ COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle gradle
 COPY services/notification-service services/notification-service
 
+# The cache mount keeps Gradle and the dependencies between builds. It has its own id: Docker Compose builds this
+# image at the same time as the main app's, and two Gradle builds in separate containers can't share one Gradle home
+# (each waits for the other's lock until it times out).
 # sed/chmod: on Windows the wrapper script can arrive with CRLF line endings or without the executable bit.
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,id=gradle-notification-service,target=/root/.gradle \
     sed -i 's/\r$//' gradlew && chmod +x gradlew && \
     ./gradlew --no-daemon :notification-service:bootJar
 
