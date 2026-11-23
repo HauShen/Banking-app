@@ -23,6 +23,10 @@ const ButtonComponent: Components<Omit<Theme, 'components'>>['MuiButton'] = {
     }),
     text: ({ theme }) => ({
       backgroundColor: 'transparent',
+      // Override root's grey disabled background: on a text button it hid the (also grey) label.
+      '&.Mui-disabled': {
+        backgroundColor: 'transparent',
+      },
       '&:hover': {
         backgroundColor: 'transparent',
         boxShadow: theme.shadows[0],

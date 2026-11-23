@@ -46,8 +46,8 @@ import java.util.List;
  * importing the userProfile security class. This also fixes the old bug where the parameter
  * was typed UserProfileJpaEntity, resolved to null, and /summary and /topup returned 500.
  *
- * Visibility: /get_all is admin only (@PreAuthorize). /get_all/{user_id}, /{id} and /number/{n}
- * are owner-or-admin; that rule lives in the use cases, which receive a Requester built by
+ * Visibility: /get_all is admin only and /{id}/topup is customer only (@PreAuthorize).
+ * /get_all/{user_id}, /{id} and /number/{n} are owner-or-admin; that rule lives in the use cases, which receive a Requester built by
  * @CurrentRequester (security.CurrentRequesterArgumentResolver).
  */
 @RestController
@@ -94,6 +94,8 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(account));
     }
 
+    /** Cash deposit into the caller's own account. Customers only: an admin gets 403, even on an account they own. */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PatchMapping("/{id}/topup")
     public ResponseEntity<AccountResponseBody> topUp(
             @PathVariable Long id,

@@ -90,10 +90,12 @@ const TransactionRow = ({
 
 interface RecentTransactionsProps {
   accountNumber: string;
+  /** Link to the full Transactions page (customers only). Default true. */
+  showSeeAll?: boolean;
 }
 
 /** The latest transactions of one account (the selected card). */
-const RecentTransactions = ({ accountNumber }: RecentTransactionsProps) => {
+const RecentTransactions = ({ accountNumber, showSeeAll = true }: RecentTransactionsProps) => {
   const { data, isLoading, error } = useAccountTransactions(accountNumber, 0, RECENT_COUNT);
 
   let body;
@@ -131,13 +133,15 @@ const RecentTransactions = ({ accountNumber }: RecentTransactionsProps) => {
     <CardContainer
       title="Recent Transactions"
       action={
-        <Link
-          component={RouterLink}
-          to={`${paths.transactions}?account=${accountNumber}`}
-          sx={{ fontWeight: 600, fontSize: { xs: 'caption.fontSize', md: 'body1.fontSize' } }}
-        >
-          See all
-        </Link>
+        showSeeAll && (
+          <Link
+            component={RouterLink}
+            to={`${paths.transactions}?account=${accountNumber}`}
+            sx={{ fontWeight: 600, fontSize: { xs: 'caption.fontSize', md: 'body1.fontSize' } }}
+          >
+            See all
+          </Link>
+        )
       }
     >
       <Box sx={{ p: { xs: 0.5, xl: 1 }, pb: { xs: 2, xl: 3 } }}>{body}</Box>

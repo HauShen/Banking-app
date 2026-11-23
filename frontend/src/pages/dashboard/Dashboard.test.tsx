@@ -190,6 +190,27 @@ describe('dashboard', () => {
     ).toBeInTheDocument();
   });
 
+  it('gives an admin with an account no way to move money: no quick transfer, cash deposit or "see all"', async () => {
+    mockSession({ ...customer, role: 'ADMIN' });
+    mockBank([savings]);
+    renderApp('/', {}, <Dashboard />);
+
+    expect(await screen.findByText('Recent Transactions')).toBeInTheDocument();
+    expect(screen.queryByText('Quick Transfer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cash deposit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /see all/i })).not.toBeInTheDocument();
+  });
+
+  it('gives a customer the quick transfer, cash deposit and "see all"', async () => {
+    mockSession(customer);
+    mockBank([savings]);
+    renderApp('/', {}, <Dashboard />);
+
+    expect(await screen.findByText('Quick Transfer')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cash deposit/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /see all/i })).toBeInTheDocument();
+  });
+
   it('starts a transfer from the quick-transfer card with the details filled in', async () => {
     mockSession(customer);
     mockBank([savings]);

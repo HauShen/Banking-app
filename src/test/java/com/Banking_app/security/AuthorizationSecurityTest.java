@@ -85,4 +85,19 @@ class AuthorizationSecurityTest extends AbstractIntegrationTest {
         assertStatus(response, 403);
         assertThat(balanceOf(alice.account())).isEqualByComparingTo(before);
     }
+
+    @Test
+    @DisplayName("An admin cannot top up, not even an account the admin owns -> 403, balance unchanged")
+    void topUp_customersOnly_notAdmins() {
+        String admin = adminToken();
+        Account adminsOwnAccount = openAccount(admin);
+        BigDecimal before = balanceOf(adminsOwnAccount);
+
+        ResponseEntity<String> response =
+                patch("/api/accounts/" + adminsOwnAccount.id() + "/topup?amount=50", admin);
+
+        assertStatus(response, 403);
+        assertThat(text(response, "message")).isEqualTo("You do not have permission to perform this action");
+        assertThat(balanceOf(adminsOwnAccount)).isEqualByComparingTo(before);
+    }
 }
