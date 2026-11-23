@@ -56,11 +56,19 @@ export const routes = [
           },
           {
             path: paths.transactions,
-            element: <TransactionsPage />,
+            element: (
+              <RequireRole role="CUSTOMER">
+                <TransactionsPage />
+              </RequireRole>
+            ),
           },
           {
             path: paths.transfer,
-            element: <TransferPage />,
+            element: (
+              <RequireRole role="CUSTOMER">
+                <TransferPage />
+              </RequireRole>
+            ),
           },
           {
             path: paths.rates,

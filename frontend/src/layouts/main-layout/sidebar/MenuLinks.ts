@@ -43,6 +43,8 @@ export const menuLinks: MenuLinkType[] = [
     link: '/transfer',
     icon: SendIcon,
     available: true,
+
+    roles: ['CUSTOMER'],
   },
   {
     id: 2,
@@ -50,6 +52,8 @@ export const menuLinks: MenuLinkType[] = [
     link: '/transactions',
     icon: TransferIcon,
     available: true,
+
+    roles: ['CUSTOMER'],
   },
   {
     id: 7,

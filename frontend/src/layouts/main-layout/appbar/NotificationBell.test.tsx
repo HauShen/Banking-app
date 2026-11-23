@@ -164,6 +164,20 @@ describe('notification bell', () => {
     expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled();
   });
 
+  it('keeps the disabled "Mark all as read" label readable (no grey box hiding the text)', async () => {
+    mockNotifications([]);
+    renderApp('/', {}, <NotificationBell />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Notifications' }));
+    await screen.findByText('No notifications yet');
+
+    const markAll = screen.getByRole('button', { name: 'Mark all as read' });
+    expect(markAll).toBeDisabled();
+    const { color, backgroundColor } = getComputedStyle(markAll);
+    expect(backgroundColor).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+    expect(color).not.toBe(backgroundColor);
+  });
+
   it('when the list fails to load: a message and "Try again", which loads it', async () => {
     mockNotifications([received]);
     let fail = true;

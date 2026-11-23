@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
  * Inbound web adapter: HTTP in, use case call, DTO out. No business rules here.
  * Same URLs, parameters, status codes and JSON as the old controllers.TransferController.
  *
- * Who may do what is decided in the use cases: the from-account's owner sends money; the sender, the recipient
+ * Only customers send money (@PreAuthorize on POST, 403 for an admin, even from an account the admin owns).
+ * The rest is decided in the use cases: the from-account's owner sends money; the sender, the recipient
  * and admins see a transaction; the owner and admins see an account's history and balance history.
  */
 @RestController
@@ -55,7 +57,11 @@ public class TransferController {
         this.mapper = mapper;
     }
 
-    /** 201 for a new transfer and for a repeated idempotency key (then with the original transfer), as before. */
+    /**
+     * 201 for a new transfer and for a repeated idempotency key (then with the original transfer), as before.
+     * Customers only: staff don't move money through the customer API.
+     */
+    @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping
     public ResponseEntity<TransferResponseBody> transfer(
             @Valid @RequestBody TransferRequestBody body,

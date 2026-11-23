@@ -13,8 +13,8 @@ interface MyAccountsProps {
   onRetry: () => void;
   selectedAccountNumber: string | undefined;
   onSelect: (accountNumber: string) => void;
-  /** Opens the cash-deposit dialog for the selected account. */
-  onTopUp: () => void;
+  /** Opens the cash-deposit dialog for the selected account. Omit to hide the button (admins). */
+  onTopUp?: () => void;
 }
 
 const Heading = ({ summary }: { summary?: AccountSummary }) => (
@@ -113,7 +113,7 @@ const MyAccounts = ({
       </SimpleBar>
     );
     const selected = summary.accounts.find((a) => a.accountNumber === selectedAccountNumber);
-    if (selected) {
+    if (selected && onTopUp) {
       body = (
         <>
           {body}

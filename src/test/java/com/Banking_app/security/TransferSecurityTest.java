@@ -65,6 +65,20 @@ class TransferSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("An admin cannot transfer at all, not even from an account the admin owns -> 403, no money moves")
+    void admin_cannotTransferFromOwnAccount() {
+        String admin = adminToken();
+        Account adminsOwnAccount = openAccount(admin);
+
+        ResponseEntity<String> response = transfer(admin, adminsOwnAccount, bob.account(), "5", newKey());
+
+        assertStatus(response, 403);
+        assertThat(text(response, "message")).isEqualTo("You do not have permission to perform this action");
+        assertThat(balanceOf(adminsOwnAccount)).isEqualByComparingTo("20");
+        assertThat(balanceOf(bob.account())).isEqualByComparingTo("20");
+    }
+
+    @Test
     @DisplayName("No token -> 401")
     void noToken_cannotTransfer() {
         assertStatus(transfer(null, alice.account(), bob.account(), "30", newKey()), 401);

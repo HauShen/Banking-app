@@ -1,9 +1,8 @@
-import { AppBar, Box, IconButton, Link, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, IconButton, Link, Stack, Toolbar, Typography } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
 import Image from 'components/base/Image';
 import NotificationBell from 'layouts/main-layout/appbar/NotificationBell';
 import ProfileDropdown from 'layouts/main-layout/appbar/ProfileDropdown';
-import SearchInput from 'layouts/main-layout/appbar/SearchInput';
 import SettingsDropdown from 'layouts/main-layout/appbar/SettingsDropdown';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 interface NavbarProps {
@@ -49,10 +48,6 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
           </Stack>
 
           <Stack direction="row" sx={{ alignItems: 'center', gap: { xs: 2.5, xl: 3.75 } }}>
-            <Box sx={{ display: { xs: 'none', md: 'block', maxWidth: 260 } }}>
-              <SearchInput fullWidth={false} size={'medium'} />
-            </Box>
-
             <Stack direction="row" sx={{ gap: { xs: 2.5, xl: 3.75 } }}>
               <SettingsDropdown />
               <NotificationBell />
@@ -60,9 +55,6 @@ const MainNavbar = ({ onDrawerToggle }: NavbarProps) => {
             <ProfileDropdown />
           </Stack>
         </Toolbar>
-        <Box sx={{ display: { xs: 'block', md: 'none' }, px: 3.15, mt: 2.5 }}>
-          <SearchInput fullWidth={true} size={'small'} />
-        </Box>
       </AppBar>
     </>
   );

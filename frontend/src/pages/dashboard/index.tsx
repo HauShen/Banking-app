@@ -7,6 +7,7 @@ import RecentTransactions from 'components/sections/dashboard/transactions/Recen
 import QuickTransfer from 'components/sections/dashboard/transfer/QuickTransfer';
 import { formatMoney } from 'lib/money';
 import { formatAccountNumber } from 'lib/transactions';
+import { useAuth } from 'providers/AuthProvider';
 import { useState } from 'react';
 
 const Dashboard = () => {
@@ -14,6 +15,9 @@ const Dashboard = () => {
   const [chosenAccountNumber, setChosenAccountNumber] = useState<string>();
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [deposited, setDeposited] = useState<string>();
+  // Only customers move money (transfers, cash deposits); the backend answers 403 to anyone else.
+  const { user } = useAuth();
+  const isCustomer = user?.role === 'CUSTOMER';
 
   // The chosen card, or the first account until the user picks one (or if the chosen one disappeared).
   const accounts = summary?.accounts ?? [];
@@ -30,12 +34,12 @@ const Dashboard = () => {
           onRetry={() => void refetch()}
           selectedAccountNumber={selected?.accountNumber}
           onSelect={setChosenAccountNumber}
-          onTopUp={() => setTopUpOpen(true)}
+          onTopUp={isCustomer ? () => setTopUpOpen(true) : undefined}
         />
       </Grid>
       {selected && (
         <Grid item xs={12} xl={4} zIndex={1}>
-          <RecentTransactions accountNumber={selected.accountNumber} />
+          <RecentTransactions accountNumber={selected.accountNumber} showSeeAll={isCustomer} />
         </Grid>
       )}
       {selected && (
@@ -43,12 +47,12 @@ const Dashboard = () => {
           <BalanceHistory accountNumber={selected.accountNumber} />
         </Grid>
       )}
-      {selected && (
+      {selected && isCustomer && (
         <Grid item xs={12} xl={8} zIndex={1}>
           <QuickTransfer key={selected.accountNumber} account={selected} />
         </Grid>
       )}
-      {selected && (
+      {selected && isCustomer && (
         <TopUpDialog
           key={selected.accountNumber}
           account={selected}
