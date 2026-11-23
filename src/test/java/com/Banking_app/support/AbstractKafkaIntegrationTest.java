@@ -30,7 +30,7 @@ import java.util.UUID;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class AbstractKafkaIntegrationTest extends AbstractIntegrationTest {
 
-    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka-native:4.3.1");
+    static final KafkaContainer KAFKA = new ReliableKafkaContainer("apache/kafka-native:4.3.1");   // see that class: fixes a start-up race
 
     static {
         KAFKA.start();   // stopped automatically by Testcontainers when the JVM exits
