@@ -52,7 +52,7 @@ const Heading = ({ summary }: { summary?: AccountSummary }) => (
 const NoAccounts = ({ isAdmin }: { isAdmin: boolean }) => (
   <Card sx={{ p: { xs: 3, md: 5 }, textAlign: 'center' }}>
     <Typography variant="h5" sx={{ mb: 1 }}>
-      No account yet
+      Welcome, Admin.
     </Typography>
     <Typography sx={{ color: 'text.secondary' }}>
       {isAdmin
