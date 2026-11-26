@@ -1,5 +1,7 @@
 package com.Banking_app.demo;
 
+import com.Banking_app.transaction.application.port.in.usecase.RecordForeignRemittanceUseCase;
+import com.Banking_app.transaction.application.port.in.usecase.TransferMoneyUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -24,6 +26,8 @@ class DemoSeedConfigTest {
             .withBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class))
             .withBean(PasswordEncoder.class, () -> mock(PasswordEncoder.class))
             .withBean(Clock.class, Clock::systemUTC)
+            .withBean(TransferMoneyUseCase.class, () -> mock(TransferMoneyUseCase.class))
+            .withBean(RecordForeignRemittanceUseCase.class, () -> mock(RecordForeignRemittanceUseCase.class))
             .withPropertyValues("app.demo.customer-password=Demo1234!", "app.demo.admin-password=DemoAdmin1!",
                     "fx.rates.USD.buy=4.1650", "fx.rates.SGD.buy=3.2100");
 
@@ -33,6 +37,7 @@ class DemoSeedConfigTest {
             assertThat(context).hasNotFailed();
             assertThat(context).doesNotHaveBean(DemoStoryGenerator.class);
             assertThat(context).doesNotHaveBean(DemoDataWriter.class);
+            assertThat(context).doesNotHaveBean(DemoWarmUp.class);
             assertThat(context).doesNotHaveBean(DemoDataSeeder.class);
         });
     }
@@ -43,6 +48,7 @@ class DemoSeedConfigTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(DemoStoryGenerator.class);
             assertThat(context).hasSingleBean(DemoDataWriter.class);
+            assertThat(context).hasSingleBean(DemoWarmUp.class);
             assertThat(context).hasSingleBean(DemoDataSeeder.class);
             assertThat(context.getBeansOfType(ApplicationRunner.class).values())
                     .containsExactly(context.getBean(DemoDataSeeder.class));
@@ -57,6 +63,8 @@ class DemoSeedConfigTest {
                 .withBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class))
                 .withBean(PasswordEncoder.class, () -> mock(PasswordEncoder.class))
                 .withBean(Clock.class, Clock::systemUTC)
+                .withBean(TransferMoneyUseCase.class, () -> mock(TransferMoneyUseCase.class))
+                .withBean(RecordForeignRemittanceUseCase.class, () -> mock(RecordForeignRemittanceUseCase.class))
                 .withPropertyValues("spring.profiles.active=demo",
                         "app.demo.customer-password=Demo1234!", "app.demo.admin-password=DemoAdmin1!",
                         "fx.rates.USD.buy=4.1650")   // no SGD rate

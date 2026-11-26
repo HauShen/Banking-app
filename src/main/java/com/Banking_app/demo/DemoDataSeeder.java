@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
@@ -24,6 +25,10 @@ import java.util.Random;
  *
  * <p>If writing fails, the exception stops the app from starting. That's on purpose: the writer only fails on a
  * bug, and a demo that starts with broken or half-written data is worse than one that doesn't start.
+ *
+ * <p>After the history has committed, the {@link DemoWarmUp} makes four real transactions (step 5b). If one of them
+ * fails, the error is logged and the app still starts: the history is complete, only the bell and the Alerts page
+ * start empty. Not worth a demo that's down.
  */
 public class DemoDataSeeder implements ApplicationRunner {
 
@@ -32,14 +37,16 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final JdbcTemplate jdbc;
     private final DemoStoryGenerator generator;
     private final DemoDataWriter writer;
+    private final DemoWarmUp warmUp;
     private final DemoProperties properties;
     private final Clock clock;
 
     public DemoDataSeeder(JdbcTemplate jdbc, DemoStoryGenerator generator, DemoDataWriter writer,
-                          DemoProperties properties, Clock clock) {
+                          DemoWarmUp warmUp, DemoProperties properties, Clock clock) {
         this.jdbc = Objects.requireNonNull(jdbc, "jdbc");
         this.generator = Objects.requireNonNull(generator, "generator");
         this.writer = Objects.requireNonNull(writer, "writer");
+        this.warmUp = Objects.requireNonNull(warmUp, "warmUp");
         this.properties = Objects.requireNonNull(properties, "properties");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -70,13 +77,24 @@ public class DemoDataSeeder implements ApplicationRunner {
         Instant started = Instant.now();
         Instant now = clock.instant();
         DemoStory story = generator.generate(cast, now, new Random(properties.randomSeed()));
-        DemoWriteResult result = writer.write(cast, story, now);
+        DemoWriteResult result = writer.write(cast, story, now);   // committed when this returns
+        List<String> warmUpReferences = runWarmUp(cast);
 
         log.info("Demo data seeded in {} ms: {} users, {} accounts, {} transactions, {} ledger rows "
-                        + "({} days of history, seed {})",
+                        + "({} days of history, seed {}), warm-up {}",
                 Duration.between(started, Instant.now()).toMillis(), result.users(), result.accounts(),
-                result.transactions(), result.ledgerRows(), properties.historyDays(), properties.randomSeed());
+                result.transactions(), result.ledgerRows(), properties.historyDays(), properties.randomSeed(),
+                warmUpReferences);
         return Optional.of(result);
+    }
+
+    private List<String> runWarmUp(DemoCast cast) {
+        try {
+            return warmUp.run(cast);
+        } catch (RuntimeException e) {
+            log.error("Demo warm-up failed: the history is seeded, but the bell and the Alerts page start empty", e);
+            return List.of();
+        }
     }
 
     /** How many of the cast's usernames and account numbers are already in the database. */

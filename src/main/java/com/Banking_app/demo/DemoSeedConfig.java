@@ -1,5 +1,7 @@
 package com.Banking_app.demo;
 
+import com.Banking_app.transaction.application.port.in.usecase.RecordForeignRemittanceUseCase;
+import com.Banking_app.transaction.application.port.in.usecase.TransferMoneyUseCase;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The seeding beans of the live demo (plan step 5), only with the {@code demo} profile.
+ * The seeding beans of the live demo (plan steps 5 and 5b), only with the {@code demo} profile.
  *
  * <p>Kept apart from {@link DemoConfig} because these beans need the database (JdbcTemplate, the transaction
  * manager) and the security setup (PasswordEncoder), while DemoConfig only binds the settings and can be tested
@@ -51,8 +53,13 @@ public class DemoSeedConfig {
     }
 
     @Bean
+    public DemoWarmUp demoWarmUp(TransferMoneyUseCase transfers, RecordForeignRemittanceUseCase remittances) {
+        return new DemoWarmUp(transfers, remittances);
+    }
+
+    @Bean
     public DemoDataSeeder demoDataSeeder(JdbcTemplate jdbc, DemoStoryGenerator generator, DemoDataWriter writer,
-                                         DemoProperties properties, Clock clock) {
-        return new DemoDataSeeder(jdbc, generator, writer, properties, clock);
+                                         DemoWarmUp warmUp, DemoProperties properties, Clock clock) {
+        return new DemoDataSeeder(jdbc, generator, writer, warmUp, properties, clock);
     }
 }
