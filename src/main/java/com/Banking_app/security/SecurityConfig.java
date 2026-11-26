@@ -64,6 +64,8 @@ public class SecurityConfig{
                         // Health check for Docker and deploy scripts: answers UP or DOWN only, no details
                         // (management.endpoint.health.show-details=never). Nothing else under /actuator is public.
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        // The live demo's logins for the login page; 404 without the demo profile (DemoLoginsController).
+                        .requestMatchers(HttpMethod.GET, "/api/demo/logins").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")   // URL-level, defence in depth
                         .anyRequest().authenticated())
                 // Not logged in (no token, or a token the filter rejected) -> 401.

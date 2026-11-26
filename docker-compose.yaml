@@ -148,6 +148,9 @@ services:
     ports:
       - "127.0.0.1:8082:8082"
     environment:
+      # Empty = no profile. SPRING_PROFILES_ACTIVE=demo (see "Live demo" in the README) switches on this service's
+      # part of the nightly demo reset; the app's default "dev" doesn't apply here.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       DB_URL: jdbc:postgresql://postgres:5432/notifications_db
       POSTGRES_USER: ${POSTGRES_USER:-hau}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abc123}

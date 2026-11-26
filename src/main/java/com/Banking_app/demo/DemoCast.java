@@ -15,6 +15,9 @@ import java.util.Set;
  */
 public record DemoCast(List<DemoUser> users, List<DemoAccount> accounts) {
 
+    /** The customer the demo tour and the login page start with. */
+    public static final String TOUR_CUSTOMER = "weiming";
+
     public static final String MAIN_SAVINGS = "1234567890";      // weiming, the account the tour starts from
     public static final String MAIN_CURRENT = "9876543210";      // weiming
     public static final String MEI_LING_SAVINGS = "7781204459";

@@ -173,6 +173,27 @@ class DemoProfileStartupTest {
     }
 
     @Test
+    void theLoginPage_getsTheDemoLogins_withoutLoggingIn() {
+        ResponseEntity<String> response = http.get().uri("/api/demo/logins").retrieve().toEntity(String.class);
+
+        assertThat(response.getStatusCode().value()).as(response.getBody()).isEqualTo(200);
+        JsonNode body = json(response);
+        assertThat(body.at("/customer/username").asText()).isEqualTo("weiming");
+        assertThat(body.at("/customer/password").asText()).isEqualTo(CUSTOMER_PASSWORD);
+        assertThat(body.at("/admin/username").asText()).isEqualTo("demoadmin");
+        assertThat(body.at("/admin/password").asText()).isEqualTo(ADMIN_PASSWORD);
+        List<String> others = new ArrayList<>();
+        body.get("otherCustomers").forEach(name -> others.add(name.asText()));
+        assertThat(others).containsExactly("mei.ling", "ahmad.f", "priya.n", "jason.k");
+        assertThat(body.get("resetTime").asText()).isEqualTo("04:00");
+        assertThat(body.get("timeZone").asText()).isEqualTo("Asia/Kuala_Lumpur");
+
+        // and the logins it shows really work
+        login(body.at("/customer/username").asText(), body.at("/customer/password").asText());
+        login(body.at("/admin/username").asText(), body.at("/admin/password").asText());
+    }
+
+    @Test
     void theNightlyReset_isScheduled() {
         // The reset is the app's only cron job (the outbox jobs run at fixed intervals).
         assertThat(scheduledTasks.getScheduledTasks()).anySatisfy(task -> {

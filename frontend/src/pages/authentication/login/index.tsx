@@ -1,4 +1,5 @@
 import { Box, Card, Container, Link, Stack, Typography } from '@mui/material';
+import DemoLogins from 'components/sections/authentication/DemoLogins';
 import LoginForm from 'components/sections/authentication/LoginForm';
 import { Link as RouterLink } from 'react-router-dom';
 import paths from 'routes/path';
@@ -42,6 +43,7 @@ const LoginPage = () => {
             </Typography>
 
             <LoginForm />
+            <DemoLogins />
           </Card>
         </Container>
       </Stack>

@@ -8,6 +8,44 @@ in a foreign currency at a locked rate), foreign remittances, and an admin area.
 
 ---
 
+## 🎮 Live demo
+
+**Link:** coming soon. The hosted demo isn't online yet; until then, run the same demo locally (below).
+
+The demo starts with six people, seven accounts and 90 days of history, so the lists and the balance chart look
+lived-in. Log in with one click on the login page, or type:
+
+| Who | Username | Password |
+|---|---|---|
+| Customer (start here) | `weiming` | `Demo1234!` |
+| Other customers | `mei.ling`, `ahmad.f`, `priya.n`, `jason.k` | `Demo1234!` |
+| Admin | `demoadmin` | `DemoAdmin1!` |
+
+These passwords are public on purpose: they only exist when the backend runs with the `demo` profile. It's a demo
+bank, no real money moves, and **everything resets every night at 04:00 Malaysia time** (whatever visitors did that
+day is gone).
+
+**A two-minute tour of the event-driven parts, live:**
+1. Log in as `weiming` in one window and as `priya.n` in a private window. Send RM 50 from weiming's savings to
+   `5550123456`. A few seconds later priya.n's notification bell shows it (transfer → outbox → Kafka →
+   notification-service).
+2. As weiming, send RM 10,000 or more. Log in as `demoadmin`: the Alerts page shows a **LARGE_TRANSFER** alert.
+3. As weiming, send 6 small transfers within 10 minutes: a **RAPID_TRANSFERS** alert follows.
+
+How the data is made: at startup a seeder writes the history straight into the tables (same seed → same data; the
+dates follow today), and tests check every balance against the ledger. Then 4 real transactions go through the normal
+transfer code and Kafka, so the bell and the Alerts page aren't empty. Code: `src/main/java/com/Banking_app/demo`.
+
+**Run the demo locally.** It needs an empty database, so it runs as a separate Docker Compose project with its own
+volumes (Git Bash; in PowerShell, set `$env:SPRING_PROFILES_ACTIVE="demo"` first instead):
+```bash
+docker compose --profile app down    # stop the normal stack first (same ports); its data stays in its volume
+SPRING_PROFILES_ACTIVE=demo docker compose -p banking-demo --profile app up --build
+```
+Open **http://localhost:3000**. To throw the demo away afterwards: `docker compose -p banking-demo --profile app down -v`.
+
+---
+
 ## 📸 Screenshots
 
 > Taken from the React app with demo data.
