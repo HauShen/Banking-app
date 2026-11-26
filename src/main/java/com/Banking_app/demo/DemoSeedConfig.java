@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The seeding beans of the live demo (plan steps 5 and 5b), only with the {@code demo} profile.
+ * The seeding and reset beans of the live demo (plan steps 5, 5b and 7), only with the {@code demo} profile.
  *
  * <p>Kept apart from {@link DemoConfig} because these beans need the database (JdbcTemplate, the transaction
  * manager) and the security setup (PasswordEncoder), while DemoConfig only binds the settings and can be tested
@@ -55,6 +55,12 @@ public class DemoSeedConfig {
     @Bean
     public DemoWarmUp demoWarmUp(TransferMoneyUseCase transfers, RecordForeignRemittanceUseCase remittances) {
         return new DemoWarmUp(transfers, remittances);
+    }
+
+    @Bean
+    public DemoResetJob demoResetJob(JdbcTemplate jdbc, PlatformTransactionManager transactionManager,
+                                     DemoDataSeeder seeder) {
+        return new DemoResetJob(jdbc, transactionManager, seeder);
     }
 
     @Bean

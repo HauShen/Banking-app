@@ -39,6 +39,7 @@ class DemoSeedConfigTest {
             assertThat(context).doesNotHaveBean(DemoDataWriter.class);
             assertThat(context).doesNotHaveBean(DemoWarmUp.class);
             assertThat(context).doesNotHaveBean(DemoDataSeeder.class);
+            assertThat(context).doesNotHaveBean(DemoResetJob.class);
         });
     }
 
@@ -50,6 +51,7 @@ class DemoSeedConfigTest {
             assertThat(context).hasSingleBean(DemoDataWriter.class);
             assertThat(context).hasSingleBean(DemoWarmUp.class);
             assertThat(context).hasSingleBean(DemoDataSeeder.class);
+            assertThat(context).hasSingleBean(DemoResetJob.class);
             assertThat(context.getBeansOfType(ApplicationRunner.class).values())
                     .containsExactly(context.getBean(DemoDataSeeder.class));
         });

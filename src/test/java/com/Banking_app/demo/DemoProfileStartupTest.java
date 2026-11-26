@@ -13,6 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.config.CronTask;
+import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -77,6 +79,7 @@ class DemoProfileStartupTest {
     @LocalServerPort private int port;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private DemoDataSeeder seeder;
+    @Autowired private ScheduledTaskHolder scheduledTasks;
 
     private RestClient http;
 
@@ -167,6 +170,15 @@ class DemoProfileStartupTest {
 
         assertThat(seeder.seedIfEmpty()).isEmpty();
         assertThat(count("SELECT COUNT(*) FROM transactions")).isEqualTo(transactions);
+    }
+
+    @Test
+    void theNightlyReset_isScheduled() {
+        // The reset is the app's only cron job (the outbox jobs run at fixed intervals).
+        assertThat(scheduledTasks.getScheduledTasks()).anySatisfy(task -> {
+            assertThat(task.getTask()).isInstanceOf(CronTask.class);
+            assertThat(((CronTask) task.getTask()).getExpression()).isEqualTo("0 0 4 * * *");
+        });
     }
 
     private String login(String username, String password) {

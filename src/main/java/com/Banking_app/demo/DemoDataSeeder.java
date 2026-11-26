@@ -37,7 +37,7 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final JdbcTemplate jdbc;
     private final DemoStoryGenerator generator;
     private final DemoDataWriter writer;
-    private final DemoWarmUp warmUp;
+    private final DemoWarmUp liveWarmUp;
     private final DemoProperties properties;
     private final Clock clock;
 
@@ -46,7 +46,7 @@ public class DemoDataSeeder implements ApplicationRunner {
         this.jdbc = Objects.requireNonNull(jdbc, "jdbc");
         this.generator = Objects.requireNonNull(generator, "generator");
         this.writer = Objects.requireNonNull(writer, "writer");
-        this.warmUp = Objects.requireNonNull(warmUp, "warmUp");
+        this.liveWarmUp = Objects.requireNonNull(warmUp, "warmUp");
         this.properties = Objects.requireNonNull(properties, "properties");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -57,9 +57,25 @@ public class DemoDataSeeder implements ApplicationRunner {
     }
 
     /**
+     * Writes the history if no demo data is there yet, then warms up.
+     *
      * @return what was written, or empty if demo data was already there (fully or partly) and nothing was written
      */
     public Optional<DemoWriteResult> seedIfEmpty() {
+        Optional<DemoWriteResult> result = seedHistoryIfEmpty();
+        if (result.isPresent()) {
+            warmUp();
+        }
+        return result;
+    }
+
+    /**
+     * Only the history, no warm-up: the nightly reset (step 7) runs this inside its own transaction, together with
+     * emptying the tables, and warms up after that transaction has committed.
+     *
+     * @return what was written, or empty if demo data was already there (fully or partly)
+     */
+    public Optional<DemoWriteResult> seedHistoryIfEmpty() {
         DemoCast cast = DemoCast.standard(properties.historyDays());
 
         int present = countPresent(cast);
@@ -77,20 +93,26 @@ public class DemoDataSeeder implements ApplicationRunner {
         Instant started = Instant.now();
         Instant now = clock.instant();
         DemoStory story = generator.generate(cast, now, new Random(properties.randomSeed()));
-        DemoWriteResult result = writer.write(cast, story, now);   // committed when this returns
-        List<String> warmUpReferences = runWarmUp(cast);
+        DemoWriteResult result = writer.write(cast, story, now);
 
         log.info("Demo data seeded in {} ms: {} users, {} accounts, {} transactions, {} ledger rows "
-                        + "({} days of history, seed {}), warm-up {}",
+                        + "({} days of history, seed {})",
                 Duration.between(started, Instant.now()).toMillis(), result.users(), result.accounts(),
-                result.transactions(), result.ledgerRows(), properties.historyDays(), properties.randomSeed(),
-                warmUpReferences);
+                result.transactions(), result.ledgerRows(), properties.historyDays(), properties.randomSeed());
         return Optional.of(result);
     }
 
-    private List<String> runWarmUp(DemoCast cast) {
+    /**
+     * The four live transactions (step 5b). Call it after the history has committed. Never throws: a failure is
+     * logged and the demo runs without them.
+     *
+     * @return their references, oldest first; empty if the warm-up failed
+     */
+    public List<String> warmUp() {
         try {
-            return warmUp.run(cast);
+            List<String> references = liveWarmUp.run(DemoCast.standard(properties.historyDays()));
+            log.info("Demo warm-up done: {}", references);
+            return references;
         } catch (RuntimeException e) {
             log.error("Demo warm-up failed: the history is seeded, but the bell and the Alerts page start empty", e);
             return List.of();
