@@ -17,6 +17,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static com.Banking_app.demo.DemoCast.AHMAD_CURRENT;
 import static com.Banking_app.demo.DemoCast.AHMAD_SAVINGS_LOCKED;
@@ -116,6 +118,13 @@ public class DemoStoryGenerator {
             }
         }
         this.buyRates = Map.copyOf(buyRates);
+    }
+
+    /** The currencies the remittances use: the constructor needs a buy rate for each. */
+    public static Set<String> requiredCurrencies() {
+        Set<String> currencies = new TreeSet<>();
+        REMITTANCE_SENDERS.forEach(sender -> currencies.add(sender.currency()));
+        return Set.copyOf(currencies);
     }
 
     public DemoStory generate(DemoCast cast, Instant now, Random random) {
