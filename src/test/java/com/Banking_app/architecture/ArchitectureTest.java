@@ -214,6 +214,15 @@ public class ArchitectureTest {
             .because("other modules don't call the alert module; it watches the events on its own");
 
     @ArchTest
+    static final ArchRule demoUsesOnlyInboundPorts = noClasses()
+            .that().resideInAPackage("com.Banking_app.demo..")
+            .should().dependOnClassesThat(resideInAPackage("com.Banking_app..").and(not(resideInAnyPackage(
+                    "com.Banking_app.demo..",
+                    "com.Banking_app..application.port.in.."))))
+            .because("the demo seeder writes the tables directly and calls modules only through their inbound "
+                    + "ports (the warm-up), never their services, domain or adapters");
+
+    @ArchTest
     static final ArchRule kafkaOnlyInAdapters = noClasses()
             .that().resideInAnyPackage(ACCOUNT, TRANSACTION, FX, ALERT)
             .and().resideOutsideOfPackage("..adapter..")

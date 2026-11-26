@@ -28,6 +28,9 @@ export const queryKeys = {
       list: (params: object) => ['admin', 'users', 'list', params] as const,
     },
   },
+  demo: {
+    logins: () => ['demo', 'logins'] as const,
+  },
   fx: {
     rates: () => ['fx', 'rates'] as const,
     quote: (currency: string, amount: string, direction: string) =>
