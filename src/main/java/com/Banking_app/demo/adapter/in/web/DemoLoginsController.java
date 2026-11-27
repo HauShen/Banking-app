@@ -22,9 +22,9 @@ import java.util.List;
  * The demo logins for the login page (plan step 8). Public (SecurityConfig), because the visitor isn't logged in yet.
  *
  * <p>Not limited to the demo profile on purpose, unlike the rest of the demo package: the login page asks on every
- * visit, and outside the demo an unknown URL would end in the catch-all exception handler as a 500 with an error
- * log. So the endpoint always exists and answers <b>404 without a body</b> when the demo profile is off (no
- * {@link DemoProperties} bean). The page then simply shows no demo box.
+ * visit, so the endpoint always exists and answers a plain <b>404 without a body</b> when the demo profile is off
+ * (no {@link DemoProperties} bean). The page then simply shows no demo box. (It was written when an unknown URL
+ * still ended in the catch-all exception handler as a 500; that's fixed, but the quiet 404 stays.)
  */
 @RestController
 @RequestMapping("/api/demo")
