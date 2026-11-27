@@ -11,6 +11,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -225,6 +230,50 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
                 .body(error);
+    }
+
+    /**
+     * Spring MVC's own client errors: no endpoint for the URL (404), an endpoint that doesn't take this HTTP method
+     * (405, with the {@code Allow} header), or a Content-Type it doesn't take (415). Spring already knows the right
+     * status; before this handler they reached handleGeneric and came back as 500 with an error log.
+     */
+    @ExceptionHandler({NoResourceFoundException.class, HttpRequestMethodNotSupportedException.class,
+            HttpMediaTypeNotSupportedException.class})
+    public ResponseEntity<ApiError> handleSpringClientError(Exception ex, HttpServletRequest request) {
+        ErrorResponse springError = (ErrorResponse) ex;   // all three implement it
+        HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());
+        String message = switch (ex) {
+            case NoResourceFoundException e -> "No endpoint " + request.getMethod() + " " + request.getRequestURI();
+            case HttpRequestMethodNotSupportedException e ->
+                    "Method " + e.getMethod() + " is not supported for this URL";
+            case HttpMediaTypeNotSupportedException e -> "Content type '" + e.getContentType() + "' is not supported";
+            default -> status.getReasonPhrase();
+        };
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(status).headers(springError.getHeaders()).body(error);
+    }
+
+    /**
+     * A request body that isn't valid JSON or doesn't fit the expected shape (e.g. text where a number belongs): the
+     * client's mistake, so 400, not the 500 of the generic handler. The parser's details stay out of the response.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex,
+                                                         HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .timestamp(Instant.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message("Malformed request body")
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(Exception.class)

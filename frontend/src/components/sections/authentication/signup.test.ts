@@ -25,7 +25,7 @@ describe('validateSignup', () => {
         confirmPassword: 'different',
       }),
     ).toEqual({
-      fullName: 'Enter your full name.',
+      fullName: 'Enter the full name.',
       username: 'Username must be 3–30 characters.',
       email: 'Enter a valid email address.',
       password: 'Password must be at least 8 characters.',

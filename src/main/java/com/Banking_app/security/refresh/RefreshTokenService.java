@@ -20,7 +20,7 @@ import java.util.UUID;
  * Rotating refresh tokens with reuse detection.
  *
  * <ul>
- *   <li>Login / register: {@link #issueNewFamily} - a new random 256-bit token, a new family.</li>
+ *   <li>Login: {@link #issueNewFamily} - a new random 256-bit token, a new family.</li>
  *   <li>Refresh: {@link #rotate} - the presented token is marked used and replaced by a new one (same family).</li>
  *   <li>Reuse: presenting an already-used token means two parties hold it (e.g. stolen). The whole family is
  *       revoked and the user's token version is increased, so the attacker's current access token dies too.</li>

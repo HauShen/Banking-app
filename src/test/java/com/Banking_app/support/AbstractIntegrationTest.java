@@ -142,15 +142,18 @@ public abstract class AbstractIntegrationTest {
 
     // ------------------------------------------------------------------ scenario helpers
 
-    /** Registers a new customer through the public endpoint and returns their access token. */
+    /**
+     * Creates a new customer and returns their access token, the way customers are meant to be created: the test admin
+     * creates them (POST /api/admin/users/customers), then the customer logs in with {@link #PASSWORD}.
+     */
     protected String register(String username) {
-        ResponseEntity<String> response = post("/api/auth/register", null, Map.of(
+        ResponseEntity<String> response = post("/api/admin/users/customers", adminToken(), Map.of(
                 "username", username,
                 "fullName", "Test " + username,
                 "email", username + "@example.com",
                 "password", PASSWORD));
         assertStatus(response, 201);
-        return text(response, "accessToken");
+        return login(username, PASSWORD);
     }
 
     protected String login(String username, String password) {
@@ -201,7 +204,7 @@ public abstract class AbstractIntegrationTest {
                 "idempotencyKey", idempotencyKey));
     }
 
-    /** A registered customer with one account. */
+    /** A new customer (created by the admin) with one account. */
     protected Customer newCustomer(String prefix) {
         String username = uniqueName(prefix);
         String token = register(username);

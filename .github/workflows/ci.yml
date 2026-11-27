@@ -110,11 +110,13 @@ jobs:
 
       # /api/notifications goes to notification-service, and a token the backend issued must work there
       # (same JWT_SECRET). Only the service answers this path now, so a 200 proves the whole route.
+      # There is no public sign-up, so the token is the dev profile's bootstrap admin's (Compose defaults to
+      # the dev profile; devadmin / DevAdmin123! from application-dev.properties, a local-only login).
       - name: Check notification-service through nginx
         run: |
-          TOKEN=$(curl --silent --fail -X POST http://localhost:3000/api/auth/register \
+          TOKEN=$(curl --silent --fail -X POST http://localhost:3000/api/auth/login \
             -H 'Content-Type: application/json' \
-            -d '{"username":"ci_smoke","fullName":"CI Smoke","email":"ci_smoke@example.com","password":"Passw0rd123"}' \
+            -d '{"username":"devadmin","password":"DevAdmin123!"}' \
             | jq --raw-output .accessToken)
           curl --silent --fail -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/notifications/unread-count \
             | grep --quiet '"unread":0'

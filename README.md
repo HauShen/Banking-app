@@ -172,7 +172,8 @@ flowchart LR
 ## ✨ Features
 
 ### 👤 Customer
-- Register & login with JWT authentication
+- Log in with JWT authentication. There is no sign-up: like a bank opening an account at the branch, an admin
+  creates the customer and hands over the first password, which the customer then changes
 - View dashboard with account summary
 - Top up own accounts (cash deposit)
 - Transfer funds **from own accounts only**, with **idempotency protection** (no double transfers)
@@ -185,12 +186,13 @@ flowchart LR
 master
 
 ### 🛡️ Admin
-- Open bank accounts (Savings / Current) for customers
+- Create customers (the only way customers are created) and open bank accounts (Savings / Current) for them
 - Manage all users — view, update profile, change role, delete
 - Manage all accounts — view, lock / unlock, delete (blocked when the account has transaction history)
 - Record **incoming foreign remittances** (simulates the bank's payment gateway): credited in MYR at the buy rate
 - Safety rails: an admin cannot change their own role or delete themselves, and the last admin cannot be removed
-- Privileged actions (role changes, deletions, edits to other users, bootstrap) are written to an audit log
+- Privileged actions (creating customers and admins, role changes, deletions, edits to other users, bootstrap) are
+  written to an audit log
 - **Transaction alerts** page: transfers of RM 10,000 or more, and more than 5 transfers out of one account within
   10 minutes, are flagged for review (limits in `app.alerts.*`); filter Open / Reviewed / All, link to the account's
   history, "Mark as reviewed". A second Kafka consumer group watches the same events as the notifications,
@@ -268,8 +270,8 @@ npm install
 npm run dev
 ```
 Frontend runs on `http://localhost:5173` and forwards `/api` to the backend on `http://localhost:8080` and
-`/api/notifications` to notification-service on `http://localhost:8082`; sign in with `devadmin` / `DevAdmin123!` or
-register a customer. No configuration is needed. To point the dev server elsewhere, set `VITE_API_PROXY_TARGET` and
+`/api/notifications` to notification-service on `http://localhost:8082`; sign in with `devadmin` / `DevAdmin123!` and
+create customers as that admin (Users page → New customer). No configuration is needed. To point the dev server elsewhere, set `VITE_API_PROXY_TARGET` and
 `VITE_NOTIFICATIONS_PROXY_TARGET` in `frontend/.env.local` (see `frontend/README.md`).
 
 ---
@@ -288,7 +290,6 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 #### Authentication
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | Public | Register as a customer: access token in the body, refresh token in a cookie |
 | POST | `/api/auth/login` | Public | Log in: access token in the body, refresh token in a cookie |
 | POST | `/api/auth/refresh` | Refresh cookie | New access token + new refresh cookie (the old one is used up) |
 | POST | `/api/auth/logout` | Logged in | Log out on every device: all access and refresh tokens stop working, cookie cleared (204) |
@@ -305,11 +306,11 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 |---|---|---|---|
 | GET | `/api/users/me` | Logged in | Own profile |
 | PUT | `/api/users/me` | Logged in | Update own name / email |
-| POST | `/api/users/create` | Logged in | Create a customer profile (no token returned) |
 | GET | `/api/admin/users` | ADMIN | List users (paged, sortable) |
 | GET | `/api/admin/users/{id}` | ADMIN | User by id |
 | GET | `/api/admin/users/by-username/{username}` | ADMIN | User by username |
 | POST | `/api/admin/users` | ADMIN | Create another admin |
+| POST | `/api/admin/users/customers` | ADMIN | Create a customer (audited; no token returned: the admin hands over the initial password) |
 | PUT | `/api/admin/users/{id}` | ADMIN | Update a user's profile (audited) |
 | PATCH | `/api/admin/users/{id}/role` | ADMIN | Change role (audited; not own role, not the last admin) |
 | POST | `/api/admin/users/{id}/revoke-tokens` | ADMIN | Log a user out of every device, e.g. a compromised account (204) |
@@ -559,7 +560,8 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 - **Login brute-force protection:** 5 failed logins for one username within 15 minutes lock that username for
   15 minutes (unknown usernames too, so a lockout reveals nothing); 20 failures from one IP block that IP.
   While locked, even the correct password gets 429. Limits are configurable (`security.login.*`).
-- Registration has no `role` field: nobody can sign themselves up as admin.
+- **No public sign-up:** only an admin creates customers (`POST /api/admin/users/customers`, audited). That endpoint
+  has no `role` field, so it can only make customers; admins are created with `POST /api/admin/users` or bootstrapped.
 - Every error, including 401/403 from the security layer, uses the same JSON body
   (`timestamp`, `status`, `error`, `message`, `path`); unexpected errors are logged, never shown to the client.
 - A missing query parameter or one of the wrong type (`?page=abc`) is answered with 400 and the parameter's name,
@@ -630,7 +632,7 @@ for the `*KafkaTest` classes).
 ./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (178 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (192 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
@@ -653,10 +655,11 @@ endpoints is refactored.
 | Test Class | What It Covers |
 |---|---|
 | `AuthenticationSecurityTest` | Missing, garbage, tampered, forged, expired and deleted-user tokens → 401; a stale token doesn't block login; failed logins look identical; the bootstrap admin exists |
-| `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; `role` in registration is ignored; viewing or topping up someone else's account → 403 |
+| `AuthorizationSecurityTest` | Customer on admin URLs and admin-only methods → 403; no public sign-up (404); customers can't create customers; a `role` field in a create-customer request is ignored; viewing or topping up someone else's account → 403 |
+| `CreateCustomerSecurityTest` | Admin creates a customer → 201 without tokens, the customer can log in, audited with the admin as actor; customer → 403, not logged in → 401; duplicate username or email → 409; invalid body → 400 |
 | `LoginThrottlingSecurityTest` | 5 failures lock a username → 429 with `Retry-After`, even with the right password; unknown usernames lock the same way; other users unaffected; a success resets the count; the lock expires |
 | `LoginIpThrottlingSecurityTest` | Failures spread over many usernames from one IP block that IP, then the block expires (own Spring context with a low limit) |
-| `RefreshTokenSecurityTest` | Login/register set a hardened cookie (HttpOnly, Secure, SameSite=Strict, Path); refresh gives a working access token and rotates the cookie; reusing a used token revokes the family and the current access token; missing/garbage cookie → 401; logout and admin revoke-tokens kill refresh tokens; deleted user → 401 |
+| `RefreshTokenSecurityTest` | Login sets a hardened cookie (HttpOnly, Secure, SameSite=Strict, Path); refresh gives a working access token and rotates the cookie; reusing a used token revokes the family and the current access token; missing/garbage cookie → 401; logout and admin revoke-tokens kill refresh tokens; deleted user → 401 |
 | `ChangePasswordSecurityTest` | New password works and the old one doesn't; other devices' access tokens and refresh cookies stop working; wrong current password → 400 (not 401); bad or unchanged new password → 400; audited; wrong guesses lock like failed logins (429) |
 | `TokenRevocationSecurityTest` | Logout → the same token gets 401, on every device, while other users and a fresh login still work; admin revoke-tokens; customers can't revoke others (403); unknown user (404) |
 | `CorsSecurityTest` | Preflight from the configured frontend → allowed; from another site, or asking for an unlisted header → 403 |

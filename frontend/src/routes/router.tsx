@@ -22,7 +22,6 @@ const Spinner = lazy(() => import('components/loading/Splash'));
 const LoadingProgress = lazy(() => import('components/loading/LoadingProgress'));
 
 const LoginPage = lazy(() => import('pages/authentication/login'));
-const SignUpPage = lazy(() => import('pages/authentication/signup'));
 
 const NotFoundPage = lazy(() => import('pages/not-found'));
 /* -------------------------------------------------------------------------- */
@@ -123,10 +122,6 @@ export const routes = [
           {
             path: paths.login,
             element: <LoginPage />,
-          },
-          {
-            path: paths.signup,
-            element: <SignUpPage />,
           },
         ],
       },

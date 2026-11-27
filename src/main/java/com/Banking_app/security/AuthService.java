@@ -5,9 +5,7 @@ import com.Banking_app.security.token.TokenVersionService;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.application.exception.IncorrectCurrentPasswordException;
 import com.Banking_app.userProfile.application.port.in.command.ChangePasswordCommand;
-import com.Banking_app.userProfile.application.port.in.command.RegisterUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.usecase.ChangePasswordUseCase;
-import com.Banking_app.userProfile.application.port.in.usecase.RegisterUserProfileUseCase;
 import com.Banking_app.userProfile.application.port.out.LoadUserProfilePort;
 import com.Banking_app.userProfile.domain.models.userprofile.UserProfile;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +19,6 @@ public class AuthService  {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-    private final RegisterUserProfileUseCase registerUserProfileUseCase;
     private final LoadUserProfilePort loadUserProfilePort;
     private final LoginAttemptService loginAttemptService;
     private final TokenVersionService tokenVersionService;
@@ -29,23 +26,15 @@ public class AuthService  {
     private final ChangePasswordUseCase changePasswordUseCase;
 
     @Autowired
-    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, RegisterUserProfileUseCase registerUserProfileUseCase, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService, TokenVersionService tokenVersionService, RefreshTokenService refreshTokenService, ChangePasswordUseCase changePasswordUseCase){
+    public AuthService(@Lazy AuthenticationManager authenticationManager, JwtService jwtService, LoadUserProfilePort loadUserProfilePort, LoginAttemptService loginAttemptService, TokenVersionService tokenVersionService, RefreshTokenService refreshTokenService, ChangePasswordUseCase changePasswordUseCase){
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
-        this.registerUserProfileUseCase = registerUserProfileUseCase;
         this.loadUserProfilePort = loadUserProfilePort;
         this.loginAttemptService = loginAttemptService;
         this.tokenVersionService = tokenVersionService;
         this.refreshTokenService = refreshTokenService;
         this.changePasswordUseCase = changePasswordUseCase;
     }
-    public AuthTokens register(AuthenticationRequest request) {
-        UserProfile registered = registerUserProfileUseCase.register(new RegisterUserProfileCommand(
-                request.getUsername(), request.getFullName(), request.getEmail(), request.getPassword()));
-
-        return startSession(registered);
-    }
-
     /**
      * @param clientIp the caller's IP (request.getRemoteAddr()), used for the per-IP failure limit
      * @throws TooManyLoginAttemptsException if the username or the IP is locked (checked before the password,

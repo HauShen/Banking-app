@@ -1,8 +1,6 @@
-import { Box, Card, Container, Link, Stack, Typography } from '@mui/material';
+import { Box, Card, Container, Stack, Typography } from '@mui/material';
 import DemoLogins from 'components/sections/authentication/DemoLogins';
 import LoginForm from 'components/sections/authentication/LoginForm';
-import { Link as RouterLink } from 'react-router-dom';
-import paths from 'routes/path';
 
 const LoginPage = () => {
   return (
@@ -31,15 +29,9 @@ const LoginPage = () => {
                 fontSize: { xs: 'subtitle1.fontSize', sm: 'body2.fontSize' },
               }}
             >
-              Don’t have an account?
-              <Link
-                component={RouterLink}
-                to={paths.signup}
-                variant="subtitle2"
-                sx={{ ml: 0.75, '&:hover': { color: 'primary.light' } }}
-              >
-                Create One Now!
-              </Link>
+              {/* No sign-up: like at a bank's branch, an admin creates the customer and hands over the
+                  first password (POST /api/admin/users/customers). */}
+              Use the username and password the bank gave you.
             </Typography>
 
             <LoginForm />

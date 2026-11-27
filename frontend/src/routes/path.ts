@@ -21,7 +21,6 @@ const paths = {
   adminAccountHistory: `${rootPaths.pagesRoot}admin/accounts/:accountNumber/history`,
   accounts: `${rootPaths.pagesRoot}accounts`,
   login: `${rootPaths.authRoot}/login`,
-  signup: `${rootPaths.authRoot}/sign-up`,
   notFound: `${rootPaths.errorRoot}/404`,
 };
 

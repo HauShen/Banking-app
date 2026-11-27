@@ -39,8 +39,8 @@ export const useUser = (id: string | undefined) =>
     enabled: Boolean(id),
   });
 
-/** UserProfileRequestBody.java */
-export interface NewAdmin {
+/** UserProfileRequestBody.java: the body for a new admin or a new customer. */
+export interface NewUser {
   username: string;
   fullName: string;
   email: string;
@@ -48,8 +48,15 @@ export interface NewAdmin {
 }
 
 /** POST /api/admin/users → 201: a new ADMIN account. */
-export const createAdmin = (admin: NewAdmin) =>
+export const createAdmin = (admin: NewUser) =>
   apiFetch<UserProfile>('/api/admin/users', { method: 'POST', body: admin });
+
+/**
+ * POST /api/admin/users/customers → 201: a new CUSTOMER. The only way customers are created (no sign-up);
+ * the admin hands over the first password, and the customer changes it on the Profile page.
+ */
+export const createCustomer = (customer: NewUser) =>
+  apiFetch<UserProfile>('/api/admin/users/customers', { method: 'POST', body: customer });
 
 /** PATCH /api/admin/users/{id}/role. 409 for your own role or the last admin. */
 export const changeRole = ({ id, role }: { id: string; role: Role }) =>
@@ -90,6 +97,7 @@ const useUserMutation = <TArgs, TResult>(mutationFn: (args: TArgs) => Promise<TR
 };
 
 export const useCreateAdmin = () => useUserMutation(createAdmin);
+export const useCreateCustomer = () => useUserMutation(createCustomer);
 export const useChangeRole = () => useUserMutation(changeRole);
 export const useDeleteUser = () => useUserMutation(deleteUser);
 export const useUpdateUser = () => useUserMutation(updateUser);

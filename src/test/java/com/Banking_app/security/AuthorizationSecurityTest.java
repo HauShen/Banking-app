@@ -45,20 +45,50 @@ class AuthorizationSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("Registration ignores a 'role' field: nobody can sign themselves up as admin")
-    void registration_ignoresRoleField() {
+    @DisplayName("Creating a customer ignores a 'role' field: it always makes a CUSTOMER, never an admin")
+    void createCustomer_ignoresRoleField() {
         String username = uniqueName("sneaky");
-        ResponseEntity<String> registered = post("/api/auth/register", null, Map.of(
+        ResponseEntity<String> created = post("/api/admin/users/customers", adminToken(), Map.of(
                 "username", username,
                 "fullName", "Sneaky User",
                 "email", username + "@example.com",
                 "password", PASSWORD,
                 "role", "ADMIN"));
-        assertStatus(registered, 201);
-        String token = text(registered, "accessToken");
+        assertStatus(created, 201);
+        assertThat(text(created, "role")).isEqualTo("CUSTOMER");
 
+        String token = login(username, PASSWORD);
         assertThat(text(get("/api/users/me", token), "role")).isEqualTo("CUSTOMER");
         assertStatus(get("/api/admin/users", token), 403);
+    }
+
+    @Test
+    @DisplayName("No public sign-up: POST /api/auth/register -> 404, nobody can create their own account")
+    void publicSignUp_isGone() {
+        String username = uniqueName("walkin");
+
+        ResponseEntity<String> response = post("/api/auth/register", null, Map.of(
+                "username", username,
+                "fullName", "Walk-in User",
+                "email", username + "@example.com",
+                "password", PASSWORD));
+
+        assertStatus(response, 404);
+    }
+
+    @Test
+    @DisplayName("Customers can't create customers: the old /api/users/create -> 404, the admin endpoint -> 403")
+    void customer_cantCreateCustomers() {
+        String customer = register(uniqueName("cust"));
+        String username = uniqueName("friend");
+        Map<String, String> body = Map.of(
+                "username", username,
+                "fullName", "A Friend",
+                "email", username + "@example.com",
+                "password", PASSWORD);
+
+        assertStatus(post("/api/users/create", customer, body), 404);
+        assertStatus(post("/api/admin/users/customers", customer, body), 403);
     }
 
     @Test

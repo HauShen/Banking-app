@@ -60,18 +60,6 @@ class RefreshTokenSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("Register also starts a session with a refresh cookie")
-    void register_setsCookie() {
-        String username = uniqueName("newbie");
-        ResponseEntity<String> response = post("/api/auth/register", null, Map.of(
-                "username", username, "fullName", "New User",
-                "email", username + "@example.com", "password", PASSWORD));
-
-        assertStatus(response, 201);
-        assertThat(refreshTokenFrom(response)).isNotBlank();
-    }
-
-    @Test
     @DisplayName("Refresh (no access token needed) returns a working access token and a new refresh cookie")
     void refresh_rotates() {
         String username = uniqueName("rotate");
