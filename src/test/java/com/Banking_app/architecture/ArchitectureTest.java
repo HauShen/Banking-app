@@ -218,9 +218,11 @@ public class ArchitectureTest {
             .that().resideInAPackage("com.Banking_app.demo..")
             .should().dependOnClassesThat(resideInAPackage("com.Banking_app..").and(not(resideInAnyPackage(
                     "com.Banking_app.demo..",
-                    "com.Banking_app..application.port.in.."))))
+                    "com.Banking_app..application.port.in..",
+                    "com.Banking_app.exception"))))
             .because("the demo seeder writes the tables directly and calls modules only through their inbound "
-                    + "ports (the warm-up), never their services, domain or adapters");
+                    + "ports (the warm-up), never their services, domain or adapters; the demo guard uses the "
+                    + "app's shared error contract (com.Banking_app.exception) for its 403");
 
     @ArchTest
     static final ArchRule kafkaOnlyInAdapters = noClasses()

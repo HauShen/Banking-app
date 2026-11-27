@@ -179,6 +179,25 @@ describe('admin users page', () => {
     expect(api.requests).toContain('DELETE c1');
   });
 
+  it("shows the demo guard's reason when a shared demo user can't be deleted", async () => {
+    const reason =
+      "This is a shared demo user, so it can't be changed. Log in as demoadmin and create your own customer to try this.";
+    mockSession(devadmin);
+    const api = mockAdminApi([devadmin, person('c1', 'weiming', 'CUSTOMER')], {
+      del: () => HttpResponse.json({ status: 403, message: reason }, { status: 403 }),
+    });
+    renderUsers();
+
+    const details = await openUser('weiming');
+    await userEvent.click(within(details).getByRole('button', { name: /delete user/i }));
+    const confirm = await screen.findByRole('dialog', { name: /delete user\?/i });
+    await userEvent.click(within(confirm).getByRole('button', { name: /^delete$/i }));
+
+    expect(await within(confirm).findByText(reason)).toBeInTheDocument();
+    expect(api.requests).toContain('DELETE c1');
+    expect(screen.getByText('2 users')).toBeInTheDocument();
+  });
+
   it('offers no role change or delete on your own account', async () => {
     mockSession(devadmin);
     mockAdminApi([devadmin]);

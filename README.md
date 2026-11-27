@@ -25,6 +25,10 @@ These passwords are public on purpose: they only exist when the backend runs wit
 bank, no real money moves, and **everything resets every night at 04:00 Malaysia time** (whatever visitors did that
 day is gone).
 
+The six demo users and their accounts are shared by every visitor, so they can't be edited, deleted, demoted, locked
+or given a new password, and wrong passwords don't lock their logins. Everything else works: to try editing, locking
+or deleting, log in as `demoadmin`, create your own customer and open an account for them.
+
 **A two-minute tour of the event-driven parts, live:**
 1. Log in as `weiming` in one window and as `priya.n` in a private window. Send RM 50 from weiming's savings to
    `5550123456`. A few seconds later priya.n's notification bell shows it (transfer → outbox → Kafka →
@@ -559,7 +563,9 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 ### Other protections
 - **Login brute-force protection:** 5 failed logins for one username within 15 minutes lock that username for
   15 minutes (unknown usernames too, so a lockout reveals nothing); 20 failures from one IP block that IP.
-  While locked, even the correct password gets 429. Limits are configurable (`security.login.*`).
+  While locked, even the correct password gets 429. Limits are configurable (`security.login.*`). The live demo
+  exempts its shared logins from the per-username lock (`security.login.unthrottled-usernames`), so nobody can lock
+  them for everyone; the per-IP limit still applies to them.
 - **No public sign-up:** only an admin creates customers (`POST /api/admin/users/customers`, audited). That endpoint
   has no `role` field, so it can only make customers; admins are created with `POST /api/admin/users` or bootstrapped.
 - Every error, including 401/403 from the security layer, uses the same JSON body
@@ -632,7 +638,7 @@ for the `*KafkaTest` classes).
 ./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (192 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (195 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
