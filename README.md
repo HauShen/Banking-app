@@ -632,7 +632,7 @@ for the `*KafkaTest` classes).
 ./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (175 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (192 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
