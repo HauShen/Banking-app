@@ -17,7 +17,16 @@ describe('errorMessage', () => {
     );
   });
 
-  it('uses fixed wording for 401, 403, 429 and never shows server internals', () => {
+  it("uses the backend's reason for a 403 when it gives one", () => {
+    expect(errorMessage(new ApiError(403, 'You can only view your own accounts'))).toBe(
+      'You can only view your own accounts',
+    );
+    const guard =
+      "This is a shared demo user, so it can't be changed. Log in as demoadmin and create your own customer to try this.";
+    expect(errorMessage(new ApiError(403, guard))).toBe(guard);
+  });
+
+  it('uses fixed wording for 401, a bare 403, 429 and never shows server internals', () => {
     expect(errorMessage(new ApiError(401, 'x'))).toMatch(/session has expired/);
     expect(errorMessage(new ApiError(403, 'Forbidden'))).toBe(
       "You don't have permission to do this.",

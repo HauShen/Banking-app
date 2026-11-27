@@ -14,8 +14,9 @@ export type ErrorMessages = Partial<Record<number, MessageOverride>>;
 
 /**
  * One sentence to show the user for anything the API client throws.
- * 400 / 404 / 409 use the backend's own message (e.g. "Selected account has been locked");
- * 5xx never shows server internals.
+ * 400 / 404 / 409 use the backend's own message (e.g. "Selected account has been locked"), and so does 403 when the
+ * backend wrote one (e.g. "You can only view your own accounts", or the live demo's "This is a shared demo
+ * user…"); 5xx never shows server internals.
  */
 export const errorMessage = (error: unknown, overrides: ErrorMessages = {}): string => {
   if (error instanceof NetworkError) {
@@ -27,7 +28,12 @@ export const errorMessage = (error: unknown, overrides: ErrorMessages = {}): str
   if (override) return typeof override === 'function' ? override(error) : override;
 
   if (error.status === 401) return 'Your session has expired. Please sign in again.';
-  if (error.status === 403) return "You don't have permission to do this.";
+  if (error.status === 403) {
+    // "Forbidden" is only the status text: the backend didn't say why.
+    return error.message && error.message !== 'Forbidden'
+      ? error.message
+      : "You don't have permission to do this.";
+  }
   if (error.status === 429) {
     return error.retryAfterSeconds
       ? `Too many requests. Try again in ${formatWait(error.retryAfterSeconds)}.`

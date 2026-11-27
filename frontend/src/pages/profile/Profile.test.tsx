@@ -211,6 +211,17 @@ describe('changing the password', () => {
     expect(screen.getByLabelText(/^new password/i)).toHaveValue('N3wPassword!');
   });
 
+  it("shows why a shared demo login's password can't be changed", async () => {
+    const reason =
+      "This is a shared demo login, so its profile and password can't be changed. Log in as demoadmin and create your own customer to try this.";
+    mockChangePassword(() => HttpResponse.json({ status: 403, message: reason }, { status: 403 }));
+    renderProfile();
+
+    await fillPasswords('Demo1234!', 'N3wPassword!');
+
+    expect(await screen.findByText(reason)).toBeInTheDocument();
+  });
+
   it('explains how long to wait after too many wrong guesses', async () => {
     mockChangePassword(() =>
       HttpResponse.json(

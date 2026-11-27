@@ -25,6 +25,10 @@ These passwords are public on purpose: they only exist when the backend runs wit
 bank, no real money moves, and **everything resets every night at 04:00 Malaysia time** (whatever visitors did that
 day is gone).
 
+The six demo users and their accounts are shared by every visitor, so they can't be edited, deleted, demoted, locked
+or given a new password, and wrong passwords don't lock their logins. Everything else works: to try editing, locking
+or deleting, log in as `demoadmin`, create your own customer and open an account for them.
+
 **A two-minute tour of the event-driven parts, live:**
 1. Log in as `weiming` in one window and as `priya.n` in a private window. Send RM 50 from weiming's savings to
    `5550123456`. A few seconds later priya.n's notification bell shows it (transfer → outbox → Kafka →
@@ -634,7 +638,7 @@ for the `*KafkaTest` classes).
 ./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (192 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (195 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test
