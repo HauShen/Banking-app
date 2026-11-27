@@ -310,6 +310,7 @@ Try them interactively in Swagger UI (dev profile): `http://localhost:8080/swagg
 | GET | `/api/admin/users/{id}` | ADMIN | User by id |
 | GET | `/api/admin/users/by-username/{username}` | ADMIN | User by username |
 | POST | `/api/admin/users` | ADMIN | Create another admin |
+| POST | `/api/admin/users/customers` | ADMIN | Create a customer (audited; no token returned: the admin hands over the initial password) |
 | PUT | `/api/admin/users/{id}` | ADMIN | Update a user's profile (audited) |
 | PATCH | `/api/admin/users/{id}/role` | ADMIN | Change role (audited; not own role, not the last admin) |
 | POST | `/api/admin/users/{id}/revoke-tokens` | ADMIN | Log a user out of every device, e.g. a compromised account (204) |

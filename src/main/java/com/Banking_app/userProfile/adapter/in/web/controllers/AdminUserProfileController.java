@@ -8,6 +8,7 @@ import com.Banking_app.userProfile.adapter.in.web.mapper.UserProfileWebMapper;
 import com.Banking_app.userProfile.adapter.out.security.SecurityUserDetails;
 import com.Banking_app.userProfile.application.port.in.command.ChangeUserRoleCommand;
 import com.Banking_app.userProfile.application.port.in.command.CreateAdminCommand;
+import com.Banking_app.userProfile.application.port.in.command.CreateCustomerCommand;
 import com.Banking_app.userProfile.application.port.in.command.DeleteUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.command.UpdateUserProfileCommand;
 import com.Banking_app.userProfile.application.port.in.query.ListUserProfilesQuery;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserProfileController {
     private final CreateAdminUserProfileUseCase createAdminUseCase;
+    private final CreateCustomerUseCase createCustomerUseCase;
     private final ChangeUserRoleUseCase changeUserRoleUseCase;
     private final GetUserProfileUseCase getUserProfileUseCase;
     private final ListUserProfilesUseCase listUserProfilesUseCase;
@@ -36,6 +38,7 @@ public class AdminUserProfileController {
     private final UserProfileWebMapper webMapper;
 
     public AdminUserProfileController(CreateAdminUserProfileUseCase createAdminUseCase,
+                                      CreateCustomerUseCase createCustomerUseCase,
                                       ChangeUserRoleUseCase changeUserRoleUseCase,
                                       GetUserProfileUseCase getUserProfileUseCase,
                                       ListUserProfilesUseCase listUserProfilesUseCase,
@@ -43,6 +46,7 @@ public class AdminUserProfileController {
                                       UpdateUserProfileUseCase updateUserProfileUseCase,
                                       UserProfileWebMapper webMapper) {
         this.createAdminUseCase = createAdminUseCase;
+        this.createCustomerUseCase = createCustomerUseCase;
         this.changeUserRoleUseCase = changeUserRoleUseCase;
         this.getUserProfileUseCase = getUserProfileUseCase;
         this.listUserProfilesUseCase = listUserProfilesUseCase;
@@ -58,6 +62,21 @@ public class AdminUserProfileController {
 
         UserProfile created = createAdminUseCase.createAdmin(
                 new CreateAdminCommand(webMapper.toCommand(requestBody), principal.getUserId()));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(webMapper.toResponse(created));
+    }
+
+    /**
+     * An admin creates a customer (201, no tokens: the admin isn't logging in as them). Audited as CUSTOMER_CREATED.
+     * The admin hands over the initial password; the customer changes it with POST /api/auth/change-password.
+     */
+    @PostMapping("/customers")
+    public ResponseEntity<UserProfileResponseBody> createCustomer(
+            @Valid @RequestBody UserProfileRequestBody requestBody,
+            @AuthenticationPrincipal SecurityUserDetails principal) {
+
+        UserProfile created = createCustomerUseCase.createCustomer(
+                new CreateCustomerCommand(webMapper.toCommand(requestBody), principal.getUserId()));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(webMapper.toResponse(created));
     }
