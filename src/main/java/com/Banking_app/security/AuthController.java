@@ -30,16 +30,9 @@ public class AuthController {
         this.refreshCookies = refreshCookies;
     }
 
-    // register, login and refresh: access token in the JSON body (short-lived, keep it in memory),
+    // login and refresh: access token in the JSON body (short-lived, keep it in memory),
     // refresh token in an HttpOnly cookie (long-lived, JavaScript can't read it).
-
-    @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody AuthenticationRequest request) {
-        AuthTokens tokens = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, refreshCookies.create(tokens.refreshToken()))
-                .body(tokens.accessToken());
-    }
+    // There is no sign-up endpoint: customers are created by an admin (POST /api/admin/users/customers).
 
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request,
