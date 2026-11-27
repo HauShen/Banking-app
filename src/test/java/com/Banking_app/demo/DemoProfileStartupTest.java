@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -200,6 +201,118 @@ class DemoProfileStartupTest {
             assertThat(task.getTask()).isInstanceOf(CronTask.class);
             assertThat(((CronTask) task.getTask()).getExpression()).isEqualTo("0 0 4 * * *");
         });
+    }
+
+    // --- The demo guard (plan step C1): the seeded users and accounts are shared, so they can't be changed. ---
+    // Only requests that write no transactions here: other tests check that the warm-up's 4 are the newest ones.
+
+    @Test
+    void theGuard_stopsTheAdmin_fromChangingSeededUsers() {
+        String admin = login("demoadmin", ADMIN_PASSWORD);
+        DemoCast cast = DemoCast.standard(90);
+        String weiming = cast.user("weiming").id();
+        Map<String, String> rename = Map.of("fullName", "Renamed", "email", "renamed@example.com");
+
+        assertShared(send(HttpMethod.PUT, "/api/admin/users/" + weiming, admin, rename));
+        assertShared(send(HttpMethod.PATCH, "/api/admin/users/" + weiming + "/role", admin, Map.of("role", "ADMIN")));
+        assertShared(send(HttpMethod.DELETE, "/api/admin/users/" + weiming, admin, null));
+        assertShared(send(HttpMethod.POST, "/api/admin/users/" + weiming + "/revoke-tokens", admin, null));
+        assertShared(send(HttpMethod.PUT, "/api/admin/users/" + cast.user("demoadmin").id(), admin, rename));
+
+        assertThat(jdbc.queryForMap("SELECT full_name, role FROM users WHERE username = 'weiming'"))
+                .containsEntry("full_name", "Lim Wei Ming")
+                .containsEntry("role", "CUSTOMER");
+    }
+
+    @Test
+    void theGuard_keepsTheSharedLogins_asTheLoginPageShowsThem() {
+        String weiming = login("weiming", CUSTOMER_PASSWORD);
+        String admin = login("demoadmin", ADMIN_PASSWORD);
+
+        assertShared(send(HttpMethod.PUT, "/api/users/me", weiming,
+                Map.of("fullName", "Renamed", "email", "renamed@example.com")));
+        assertShared(send(HttpMethod.POST, "/api/auth/change-password", weiming,
+                Map.of("currentPassword", CUSTOMER_PASSWORD, "newPassword", "Changed1234!")));
+        assertShared(send(HttpMethod.POST, "/api/auth/change-password", admin,
+                Map.of("currentPassword", ADMIN_PASSWORD, "newPassword", "Changed1234!")));
+
+        login("weiming", CUSTOMER_PASSWORD);   // the published passwords still work
+        login("demoadmin", ADMIN_PASSWORD);
+    }
+
+    @Test
+    void theGuard_stopsSeededAccounts_fromBeingLockedUnlockedOrDeleted() {
+        String admin = login("demoadmin", ADMIN_PASSWORD);
+        long savings = accountId(DemoCast.MAIN_SAVINGS);
+        long locked = accountId(DemoCast.AHMAD_SAVINGS_LOCKED);
+
+        assertShared(send(HttpMethod.PATCH, "/api/accounts/" + savings + "/status?status=LOCKED", admin, null));
+        assertShared(send(HttpMethod.PATCH, "/api/accounts/" + locked + "/status?status=ACTIVE", admin, null));
+        assertShared(send(HttpMethod.DELETE, "/api/accounts/" + savings, admin, null));
+
+        assertThat(accountStatus(DemoCast.MAIN_SAVINGS)).isEqualTo("ACTIVE");
+        assertThat(accountStatus(DemoCast.AHMAD_SAVINGS_LOCKED)).isEqualTo("LOCKED");
+    }
+
+    @Test
+    void theGuard_letsVisitorsChange_whatTheyCreated() {
+        String admin = login("demoadmin", ADMIN_PASSWORD);
+        ResponseEntity<String> created = send(HttpMethod.POST, "/api/admin/users/customers", admin, Map.of(
+                "username", "guard.visitor", "fullName", "Guard Visitor",
+                "email", "guard.visitor@example.com", "password", "Visitor1234!"));
+        assertSuccess(created);
+        String id = json(created).get("id").asText();
+
+        // the visitor's own customer can change their profile and password
+        String visitor = login("guard.visitor", "Visitor1234!");
+        assertSuccess(send(HttpMethod.PUT, "/api/users/me", visitor,
+                Map.of("fullName", "Guard Visitor Renamed", "email", "guard.visitor@example.com")));
+        assertSuccess(send(HttpMethod.POST, "/api/auth/change-password", visitor,
+                Map.of("currentPassword", "Visitor1234!", "newPassword", "Visitor5678!")));
+
+        // and the admin can do everything to them and their account
+        assertSuccess(send(HttpMethod.PUT, "/api/admin/users/" + id, admin,
+                Map.of("fullName", "Edited By Admin", "email", "guard.visitor@example.com")));
+        ResponseEntity<String> account = send(HttpMethod.POST, "/api/accounts/create", admin,
+                Map.of("userId", id, "accountType", "SAVINGS"));
+        assertSuccess(account);
+        long accountId = json(account).get("accountId").asLong();
+        assertSuccess(send(HttpMethod.PATCH, "/api/accounts/" + accountId + "/status?status=LOCKED", admin, null));
+        assertSuccess(send(HttpMethod.DELETE, "/api/accounts/" + accountId, admin, null));
+        assertSuccess(send(HttpMethod.PATCH, "/api/admin/users/" + id + "/role", admin, Map.of("role", "ADMIN")));
+        assertSuccess(send(HttpMethod.PATCH, "/api/admin/users/" + id + "/role", admin, Map.of("role", "CUSTOMER")));
+        assertSuccess(send(HttpMethod.POST, "/api/admin/users/" + id + "/revoke-tokens", admin, null));
+        assertSuccess(send(HttpMethod.DELETE, "/api/admin/users/" + id, admin, null));
+
+        assertThat(count("SELECT COUNT(*) FROM users WHERE username = 'guard.visitor'")).isZero();
+    }
+
+    private ResponseEntity<String> send(HttpMethod method, String uri, String token, Object body) {
+        RestClient.RequestBodySpec request = http.method(method).uri(uri).headers(h -> h.setBearerAuth(token));
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
+        return request.retrieve().toEntity(String.class);
+    }
+
+    private static void assertShared(ResponseEntity<String> response) {
+        assertThat(response.getStatusCode().value()).as(response.getBody()).isEqualTo(403);
+        assertThat(json(response).get("message").asText()).startsWith("This is a shared demo");
+    }
+
+    private static void assertSuccess(ResponseEntity<String> response) {
+        assertThat(response.getStatusCode().is2xxSuccessful()).as(response.getStatusCode() + " " + response.getBody())
+                .isTrue();
+    }
+
+    private long accountId(String accountNumber) {
+        Long id = jdbc.queryForObject("SELECT id FROM accounts WHERE account_number = ?", Long.class, accountNumber);
+        return id == null ? 0 : id;
+    }
+
+    private String accountStatus(String accountNumber) {
+        return jdbc.queryForObject("SELECT account_status FROM accounts WHERE account_number = ?", String.class,
+                accountNumber);
     }
 
     private String login(String username, String password) {
