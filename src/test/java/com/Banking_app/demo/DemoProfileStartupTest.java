@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpMethod;
@@ -30,6 +31,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -81,6 +84,7 @@ class DemoProfileStartupTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private DemoDataSeeder seeder;
     @Autowired private ScheduledTaskHolder scheduledTasks;
+    @Value("${security.login.unthrottled-usernames}") private String unthrottledUsernames;
 
     private RestClient http;
 
@@ -201,6 +205,30 @@ class DemoProfileStartupTest {
             assertThat(task.getTask()).isInstanceOf(CronTask.class);
             assertThat(((CronTask) task.getTask()).getExpression()).isEqualTo("0 0 4 * * *");
         });
+    }
+
+    // --- The shared logins can't be locked (plan step C2) ---
+
+    @Test
+    void wrongPasswords_cantLockASharedLogin() {
+        // Test settings: 5 failures lock a username for 2 s. The demo exempts its logins from that lock.
+        for (int i = 0; i < 6; i++) {
+            ResponseEntity<String> response = http.post().uri("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("username", "weiming", "password", "wrong-password"))
+                    .retrieve().toEntity(String.class);
+            assertThat(response.getStatusCode().value()).as(response.getBody()).isEqualTo(401);
+        }
+
+        login("weiming", CUSTOMER_PASSWORD);   // 200, not 429
+    }
+
+    @Test
+    void theLockoutExemption_coversExactlyTheSeededLogins() {
+        Set<String> seeded = DemoCast.standard(90).users().stream().map(DemoUser::username)
+                .collect(Collectors.toSet());
+
+        assertThat(Set.of(unthrottledUsernames.split(","))).isEqualTo(seeded);
     }
 
     // --- The demo guard (plan step C1): the seeded users and accounts are shared, so they can't be changed. ---

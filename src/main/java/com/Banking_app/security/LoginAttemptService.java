@@ -10,7 +10,9 @@ import java.util.Deque;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Brute-force protection for POST /api/auth/login.
@@ -23,6 +25,10 @@ import java.util.concurrent.ConcurrentHashMap;
  *       {@code lockout}. Stops one client trying a common password against many usernames. A success does
  *       not clear it, so an attacker can't reset it by logging into their own account.</li>
  * </ul>
+ *
+ * Usernames in {@code unthrottledUsernames} are never locked per username (the live demo's shared logins, whose
+ * passwords are public: otherwise anyone could lock them for every visitor). The per-IP limit still applies to them.
+ *
  *
  * Known limits (documented in the README): state is in memory, so it resets on restart and is not shared
  * between several instances (production answer: Redis, or rate limiting at the API gateway). The check and the
@@ -38,16 +44,22 @@ public class LoginAttemptService {
     private final Clock clock;
     private final Map<String, Attempts> byUsername = new ConcurrentHashMap<>();
     private final Map<String, Attempts> byIp = new ConcurrentHashMap<>();
+    private final Set<String> unthrottled;
 
     public LoginAttemptService(LoginThrottleProperties properties, Clock clock) {
         this.properties = properties;
         this.clock = clock;
+        this.unthrottled = properties.unthrottledUsernames().stream()
+                .map(LoginAttemptService::key)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /** How long this login must still wait, or empty if it may be attempted now. */
     public Optional<Duration> blockedFor(String username, String clientIp) {
         Instant now = clock.instant();
-        Duration userWait = remaining(byUsername.get(key(username)), now);
+        Duration userWait = unthrottled.contains(key(username))
+                ? Duration.ZERO
+                : remaining(byUsername.get(key(username)), now);
         Duration ipWait = remaining(byIp.get(clientIp), now);
         Duration wait = userWait.compareTo(ipWait) >= 0 ? userWait : ipWait;
         return wait.isZero() ? Optional.empty() : Optional.of(wait);
@@ -55,7 +67,9 @@ public class LoginAttemptService {
 
     public void recordFailure(String username, String clientIp) {
         Instant now = clock.instant();
-        register(byUsername, key(username), properties.maxFailuresPerUser(), now);
+        if (!unthrottled.contains(key(username))) {
+            register(byUsername, key(username), properties.maxFailuresPerUser(), now);
+        }
         register(byIp, clientIp, properties.maxFailuresPerIp(), now);
     }
 

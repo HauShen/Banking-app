@@ -559,7 +559,9 @@ Ownership rules live in the application layer: the web adapter turns the logged-
 ### Other protections
 - **Login brute-force protection:** 5 failed logins for one username within 15 minutes lock that username for
   15 minutes (unknown usernames too, so a lockout reveals nothing); 20 failures from one IP block that IP.
-  While locked, even the correct password gets 429. Limits are configurable (`security.login.*`).
+  While locked, even the correct password gets 429. Limits are configurable (`security.login.*`). The live demo
+  exempts its shared logins from the per-username lock (`security.login.unthrottled-usernames`), so nobody can lock
+  them for everyone; the per-IP limit still applies to them.
 - **No public sign-up:** only an admin creates customers (`POST /api/admin/users/customers`, audited). That endpoint
   has no `role` field, so it can only make customers; admins are created with `POST /api/admin/users` or bootstrapped.
 - Every error, including 401/403 from the security layer, uses the same JSON body
