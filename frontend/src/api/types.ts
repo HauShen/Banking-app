@@ -1,4 +1,4 @@
-/** Body of /api/auth/register, /login and /refresh (AuthenticationResponse.java). */
+/** Body of /api/auth/login, /refresh and /change-password (AuthenticationResponse.java). */
 export interface AuthenticationResponse {
   accessToken: string;
   tokenType: string;

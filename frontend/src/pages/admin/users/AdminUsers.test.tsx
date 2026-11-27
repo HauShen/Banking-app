@@ -26,7 +26,7 @@ const devadmin = person('a1', 'devadmin', 'ADMIN');
 
 /**
  * In-memory user store behind the admin API: lists (with page/size/sort recorded), role changes,
- * deletes and new admins all work on it. `overrides` can replace one endpoint's answer.
+ * deletes, new admins and new customers all work on it. `overrides` can replace one endpoint's answer.
  */
 const mockAdminApi = (
   users: UserProfile[],
@@ -68,6 +68,14 @@ const mockAdminApi = (
       requests.push('POST');
       if (overrides.post) return overrides.post();
       const created = { ...person(`n${store.length}`, body.username, 'ADMIN'), ...body };
+      store = [...store, created];
+      return HttpResponse.json(created, { status: 201 });
+    }),
+    http.post(`${API}/api/admin/users/customers`, async ({ request }) => {
+      const body = (await request.json()) as Omit<UserProfile, 'id' | 'role'>;
+      bodies.push(body);
+      requests.push('POST customers');
+      const created = { ...person(`n${store.length}`, body.username, 'CUSTOMER'), ...body };
       store = [...store, created];
       return HttpResponse.json(created, { status: 201 });
     }),
@@ -181,7 +189,40 @@ describe('admin users page', () => {
     expect(within(details).queryByRole('button', { name: /delete user/i })).not.toBeInTheDocument();
   });
 
-  it('creates an administrator, with the sign-up rules and errors on their field', async () => {
+  it('creates a customer through the admin endpoint and lists them', async () => {
+    mockSession(devadmin);
+    const api = mockAdminApi([devadmin]);
+    renderUsers();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /new customer/i }));
+    const dialog = await screen.findByRole('dialog', { name: /new customer/i });
+    expect(within(dialog).getByText(/give it to the customer/i)).toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText(/full name/i), 'Siti Aminah');
+    await user.type(within(dialog).getByLabelText(/username/i), 'siti');
+    await user.type(within(dialog).getByLabelText(/email address/i), 'siti@banking.local');
+    await user.type(within(dialog).getByLabelText(/^password/i), 'Secret123!');
+    await user.type(within(dialog).getByLabelText(/confirm password/i), 'Secret123!');
+    await user.click(within(dialog).getByRole('button', { name: /create customer/i }));
+
+    expect(await screen.findByText(/customer siti created/i)).toBeInTheDocument();
+    expect(await screen.findByText('siti')).toBeInTheDocument();
+    expect(screen.getByText('2 users')).toBeInTheDocument();
+    expect(screen.getByText('Customer')).toBeInTheDocument();
+    expect(api.requests).toContain('POST customers');
+    expect(api.requests).not.toContain('POST');
+    expect(api.bodies).toEqual([
+      {
+        username: 'siti',
+        fullName: 'Siti Aminah',
+        email: 'siti@banking.local',
+        password: 'Secret123!',
+      },
+    ]);
+  });
+
+  it('creates an administrator, with the same field rules and errors on their field', async () => {
     mockSession(devadmin);
     const api = mockAdminApi([devadmin], {
       post: () =>
@@ -193,7 +234,7 @@ describe('admin users page', () => {
     await user.click(await screen.findByRole('button', { name: /new administrator/i }));
     const dialog = await screen.findByRole('dialog', { name: /new administrator/i });
     await user.click(within(dialog).getByRole('button', { name: /create administrator/i }));
-    expect(await within(dialog).findByText('Enter your full name.')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Enter the full name.')).toBeInTheDocument();
     expect(api.requests).not.toContain('POST');
 
     await user.type(within(dialog).getByLabelText(/full name/i), 'Second Admin');

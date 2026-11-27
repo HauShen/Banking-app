@@ -271,7 +271,7 @@ npm run dev
 ```
 Frontend runs on `http://localhost:5173` and forwards `/api` to the backend on `http://localhost:8080` and
 `/api/notifications` to notification-service on `http://localhost:8082`; sign in with `devadmin` / `DevAdmin123!` and
-create customers as that admin. No configuration is needed. To point the dev server elsewhere, set `VITE_API_PROXY_TARGET` and
+create customers as that admin (Users page → New customer). No configuration is needed. To point the dev server elsewhere, set `VITE_API_PROXY_TARGET` and
 `VITE_NOTIFICATIONS_PROXY_TARGET` in `frontend/.env.local` (see `frontend/README.md`).
 
 ---
@@ -632,7 +632,7 @@ for the `*KafkaTest` classes).
 ./gradlew :notification-service:test            # notification-service only
 ```
 
-Frontend (178 tests; the backend is mocked with MSW, so no backend or Docker is needed):
+Frontend (175 tests; the backend is mocked with MSW, so no backend or Docker is needed):
 ```bash
 cd frontend
 npm test

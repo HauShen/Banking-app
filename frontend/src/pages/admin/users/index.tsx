@@ -1,15 +1,18 @@
 import { Alert, Button, Card, Snackbar, Stack, Typography } from '@mui/material';
 import { GridPaginationModel } from '@mui/x-data-grid';
 import { useUsers } from 'api/adminUsers';
-import type { UserProfile } from 'api/types';
-import CreateAdminDialog from 'components/sections/admin/users/CreateAdminDialog';
+import type { Role, UserProfile } from 'api/types';
+import CreateUserDialog from 'components/sections/admin/users/CreateUserDialog';
 import UserDrawer from 'components/sections/admin/users/UserDrawer';
 import UsersTable, { USER_PAGE_SIZES, UserSort } from 'components/sections/admin/users/UsersTable';
 import { errorMessage } from 'lib/errors';
 import { useAuth } from 'providers/AuthProvider';
 import { useState } from 'react';
 
-/** Admin: every user, page by page (GET /api/admin/users), with details, role change, delete, new admins. */
+/**
+ * Admin: every user, page by page (GET /api/admin/users), with details, role change, delete, and new
+ * customers (the only way a customer is created: no public sign-up) and new admins.
+ */
 const AdminUsersPage = () => {
   const { user: me } = useAuth();
   const [pagination, setPagination] = useState<GridPaginationModel>({
@@ -18,7 +21,7 @@ const AdminUsersPage = () => {
   });
   const [sort, setSort] = useState<UserSort>({ sortBy: 'USERNAME', direction: 'ASC' });
   const [selected, setSelected] = useState<UserProfile | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<Role | null>(null);
   const [notice, setNotice] = useState<string>();
 
   const users = useUsers({
@@ -34,9 +37,14 @@ const AdminUsersPage = () => {
         <Typography sx={{ color: 'text.secondary' }}>
           {users.data ? `${users.data.totalElements} users` : ' '}
         </Typography>
-        <Button variant="contained" onClick={() => setCreating(true)}>
-          New administrator
-        </Button>
+        <Stack direction="row" gap={1.5}>
+          <Button variant="outlined" onClick={() => setCreating('ADMIN')}>
+            New administrator
+          </Button>
+          <Button variant="contained" onClick={() => setCreating('CUSTOMER')}>
+            New customer
+          </Button>
+        </Stack>
       </Stack>
       {users.error ? (
         <Alert severity="error">{errorMessage(users.error)}</Alert>
@@ -66,9 +74,21 @@ const AdminUsersPage = () => {
           setNotice(message);
         }}
       />
-      <CreateAdminDialog
-        open={creating}
-        onClose={() => setCreating(false)}
+      {/* One dialog per role, so the title doesn't change while a dialog's closing animation runs. */}
+      <CreateUserDialog
+        role="CUSTOMER"
+        open={creating === 'CUSTOMER'}
+        onClose={() => setCreating(null)}
+        onCreated={(username) =>
+          setNotice(
+            `Customer ${username} created. To open an account, click them in the list, then "Accounts of this user".`,
+          )
+        }
+      />
+      <CreateUserDialog
+        role="ADMIN"
+        open={creating === 'ADMIN'}
+        onClose={() => setCreating(null)}
         onCreated={(username) => setNotice(`Administrator ${username} created.`)}
       />
       <Snackbar

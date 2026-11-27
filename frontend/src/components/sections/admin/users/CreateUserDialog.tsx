@@ -9,7 +9,8 @@ import {
   TextField,
   TextFieldProps,
 } from '@mui/material';
-import { useCreateAdmin } from 'api/adminUsers';
+import { useCreateAdmin, useCreateCustomer } from 'api/adminUsers';
+import type { Role } from 'api/types';
 import {
   PASSWORD_MIN,
   SignupErrors,
@@ -29,21 +30,42 @@ const EMPTY: SignupValues = {
   confirmPassword: '',
 };
 
-interface CreateAdminDialogProps {
+const TEXT: Record<Role, { title: string; submit: string; passwordHint: string }> = {
+  CUSTOMER: {
+    title: 'New customer',
+    submit: 'Create customer',
+    passwordHint: `At least ${PASSWORD_MIN} characters. Give it to the customer; they can change it on their Profile page.`,
+  },
+  ADMIN: {
+    title: 'New administrator',
+    submit: 'Create administrator',
+    passwordHint: `At least ${PASSWORD_MIN} characters`,
+  },
+};
+
+interface CreateUserDialogProps {
+  /** CUSTOMER → POST /api/admin/users/customers, ADMIN → POST /api/admin/users. */
+  role: Role;
   open: boolean;
   onClose: () => void;
   onCreated: (username: string) => void;
 }
 
-/** POST /api/admin/users: a new administrator. Same field rules as sign-up. */
-const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps) => {
+/**
+ * An admin creates a customer or another administrator. Customers are only created here: there is no
+ * public sign-up. Both use the same fields and rules; the backend sets the role from the endpoint.
+ */
+const CreateUserDialog = ({ role, open, onClose, onCreated }: CreateUserDialogProps) => {
   const [values, setValues] = useState<SignupValues>(EMPTY);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [problem, setProblem] = useState<string | null>(null);
   const createAdmin = useCreateAdmin();
+  const createCustomer = useCreateCustomer();
+  const create = role === 'ADMIN' ? createAdmin : createCustomer;
+  const text = TEXT[role];
 
   const close = () => {
-    if (createAdmin.isPending) return;
+    if (create.isPending) return;
     setValues(EMPTY);
     setErrors({});
     setProblem(null);
@@ -59,7 +81,7 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
       return;
     }
     const username = values.username.trim();
-    createAdmin.mutate(
+    create.mutate(
       {
         username,
         fullName: values.fullName.trim(),
@@ -90,7 +112,7 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
     },
     error: Boolean(errors[name]),
     helperText: errors[name],
-    disabled: createAdmin.isPending,
+    disabled: create.isPending,
     required: true,
     fullWidth: true,
     ...extra,
@@ -99,7 +121,7 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
       <form noValidate onSubmit={handleSubmit}>
-        <DialogTitle>New administrator</DialogTitle>
+        <DialogTitle>{text.title}</DialogTitle>
         <DialogContent>
           <Stack gap={2.5} sx={{ pt: 1 }}>
             <TextField {...field('fullName', 'Full name')} autoFocus />
@@ -109,7 +131,7 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
               {...field('password', 'Password', {
                 type: 'password',
                 autoComplete: 'new-password',
-                helperText: errors.password ?? `At least ${PASSWORD_MIN} characters`,
+                helperText: errors.password ?? text.passwordHint,
               })}
             />
             <TextField
@@ -122,11 +144,11 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={close} disabled={createAdmin.isPending}>
+          <Button onClick={close} disabled={create.isPending}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={createAdmin.isPending}>
-            {createAdmin.isPending ? 'Creating…' : 'Create administrator'}
+          <Button type="submit" variant="contained" disabled={create.isPending}>
+            {create.isPending ? 'Creating…' : text.submit}
           </Button>
         </DialogActions>
       </form>
@@ -134,4 +156,4 @@ const CreateAdminDialog = ({ open, onClose, onCreated }: CreateAdminDialogProps)
   );
 };
 
-export default CreateAdminDialog;
+export default CreateUserDialog;

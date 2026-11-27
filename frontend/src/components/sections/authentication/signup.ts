@@ -12,8 +12,9 @@ export interface SignupValues {
 export type SignupField = keyof SignupValues;
 export type SignupErrors = Partial<Record<SignupField, string>>;
 
-// Same rules as the backend (UserProfile.java, RegisterUserProfileCommand.java), so most mistakes
-// are caught before any request is sent. The backend still checks everything.
+// The fields of a new user, used by the admin's "New customer" and "New administrator" dialogs (there is
+// no public sign-up any more). Same rules as the backend (UserProfile.java, RegisterUserProfileCommand.java),
+// so most mistakes are caught before any request is sent. The backend still checks everything.
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 30;
 export const FULL_NAME_MAX = 100;
@@ -26,7 +27,7 @@ export const validateSignup = (values: SignupValues): SignupErrors => {
   const fullName = values.fullName.trim();
   const username = values.username.trim();
 
-  if (!fullName) errors.fullName = 'Enter your full name.';
+  if (!fullName) errors.fullName = 'Enter the full name.';
   else if (fullName.length > FULL_NAME_MAX) {
     errors.fullName = `Full name can be at most ${FULL_NAME_MAX} characters.`;
   }

@@ -96,7 +96,7 @@ export const refreshAccessToken = (): Promise<string> => {
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   /** Sent as JSON. */
   body?: unknown;
-  /** Attach the access token and refresh it on 401. Default true; false for login/register. */
+  /** Attach the access token and refresh it on 401. Default true; false for login. */
   auth?: boolean;
 }
 
